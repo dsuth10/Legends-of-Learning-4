@@ -18,13 +18,9 @@ DB_PATH = BASE_DIR / 'instance' / DB_NAME
 
 # SQLite specific settings
 SQLITE_CONFIG = {
-    'timeout': 30,         # Connection timeout in seconds
-}
-
-# SQLite PRAGMAs to set after connection
-SQLITE_PRAGMAS = {
     'journal_mode': 'WAL',  # Write-Ahead Logging for better concurrency
     'foreign_keys': 'ON',   # Enforce foreign key constraints
+    'timeout': 30,         # Connection timeout in seconds
 }
 
 # SQLAlchemy connection pool settings
@@ -46,13 +42,19 @@ def get_database_url() -> str:
     """
     Build and return the database URL for SQLAlchemy.
     
+    The URL is constructed using the DB_PATH configuration, with query parameters
+    for various SQLite settings.
+    
     Returns:
-        str: The database URL
+        str: The complete database URL with configuration parameters
     """
     # Create instance directory if it doesn't exist
     os.makedirs(DB_PATH.parent, exist_ok=True)
     
-    return f'sqlite:///{DB_PATH}'
+    # Build query parameters from SQLITE_CONFIG
+    params = '&'.join(f'{k}={v}' for k, v in SQLITE_CONFIG.items())
+    
+    return f'sqlite:///{DB_PATH}?{params}'
 
 def get_sqlalchemy_config() -> Dict[str, Any]:
     """

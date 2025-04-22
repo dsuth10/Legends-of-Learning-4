@@ -29,11 +29,6 @@ def create_app(config=None):
     login_manager.init_app(app)
     migrate.init_app(app, db)
     
-    # Initialize database with proper configuration
-    from app.models.db_init import init_db
-    with app.app_context():
-        init_db(app)
-    
     # Configure login
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
