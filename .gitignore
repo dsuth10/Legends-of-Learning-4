@@ -102,3 +102,7 @@ yarn-debug.log*
 yarn-error.log*
 dev-debug.log
 # OS specific
+
+# Added by Claude Task Master
+.idea
+.vscode
