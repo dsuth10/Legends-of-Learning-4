@@ -1,0 +1,171 @@
+{
+  "meta": {
+    "generatedAt": "2025-04-22T09:06:30.869Z",
+    "tasksAnalyzed": 20,
+    "thresholdScore": 5,
+    "projectName": "Your Project Name",
+    "usedResearch": false
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 1,
+      "taskTitle": "Set up Flask project structure and environment",
+      "complexityScore": 4,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the Flask project setup into specific subtasks covering directory creation, virtual environment setup, dependency installation, and security configuration.",
+      "reasoning": "This is a standard Flask setup task with moderate complexity. It involves creating directories, setting up a virtual environment, installing dependencies, and configuring security settings."
+    },
+    {
+      "taskId": 2,
+      "taskTitle": "Implement SQLite database configuration with SQLAlchemy",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Divide the SQLite/SQLAlchemy configuration into subtasks covering database connection setup, WAL mode configuration, transaction handling implementation, and session management.",
+      "reasoning": "This task involves specific SQLite configuration with WAL mode, transaction handling with retry logic, and SQLAlchemy integration, making it moderately complex."
+    },
+    {
+      "taskId": 3,
+      "taskTitle": "Create database models and schema",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the database model creation into logical groups of related models (user-related, character-related, quest-related, etc.) with specific attention to relationships and constraints.",
+      "reasoning": "This task has high complexity due to the large number of models (15+) with complex relationships, constraints, and data types that need to be carefully implemented."
+    },
+    {
+      "taskId": 4,
+      "taskTitle": "Set up Alembic migrations",
+      "complexityScore": 4,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Divide the Alembic migration setup into subtasks covering initialization, initial migration script creation, version checking implementation, and configuration setup.",
+      "reasoning": "Setting up Alembic is moderately complex, requiring configuration, initial migration creation, and version checking, but follows standard patterns."
+    },
+    {
+      "taskId": 5,
+      "taskTitle": "Implement authentication system with Flask-Login",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the authentication system into subtasks covering Flask-Login integration, route creation, password hashing implementation, role-based access control, and template creation.",
+      "reasoning": "Authentication involves security considerations, role-based access, password hashing, and UI components, making it moderately complex."
+    },
+    {
+      "taskId": 6,
+      "taskTitle": "Create teacher signup and access code system",
+      "complexityScore": 5,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Divide the teacher signup system into subtasks covering route creation, form implementation, access code validation, admin functionality for code management, and optional email verification.",
+      "reasoning": "This task involves form handling, access code validation, and potentially email verification, making it moderately complex."
+    },
+    {
+      "taskId": 7,
+      "taskTitle": "Implement class management for teachers",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down class management into subtasks covering CRUD operations for classes, join code generation, multi-class support, dashboard view creation, and settings configuration.",
+      "reasoning": "Class management involves multiple CRUD operations, code generation, and dashboard views, increasing its complexity."
+    },
+    {
+      "taskId": 8,
+      "taskTitle": "Develop student roster management with CSV import",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Divide student roster management into subtasks covering individual student creation, CSV template design, CSV import functionality, username/password generation, error handling, and list view implementation.",
+      "reasoning": "CSV import adds significant complexity with template design, bulk processing, error handling, and automatic credential generation."
+    },
+    {
+      "taskId": 9,
+      "taskTitle": "Implement clan system and assignment interface",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the clan system into subtasks covering clan CRUD operations, drag-and-drop interface implementation, clan size configuration, dashboard creation, and customization options.",
+      "reasoning": "The drag-and-drop interface and clan dashboard with metrics increase the complexity of this task significantly."
+    },
+    {
+      "taskId": 10,
+      "taskTitle": "Develop character creation and customization system",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Divide character creation into subtasks covering creation flow, class selection implementation, avatar customization, stat initialization, profile view creation, and level progression system.",
+      "reasoning": "Character creation involves multiple steps, class-specific logic, customization options, and stat calculations, making it complex."
+    },
+    {
+      "taskId": 11,
+      "taskTitle": "Implement equipment and inventory system",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the equipment system into subtasks covering slot implementation, equipment item creation with tiers, inventory management, equip/unequip functionality, stat calculations, and database seeding.",
+      "reasoning": "This system involves complex relationships between items, slots, and stats, with tier levels and class-specific equipment, making it highly complex."
+    },
+    {
+      "taskId": 12,
+      "taskTitle": "Develop shop system with tiered items",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Divide the shop system into subtasks covering interface creation, tiered item display logic, preview functionality, purchasing system, transaction logging, and restriction implementation.",
+      "reasoning": "The shop system involves complex business logic for tiered items, level restrictions, and transaction processing."
+    },
+    {
+      "taskId": 13,
+      "taskTitle": "Implement abilities system",
+      "complexityScore": 8,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Break down the abilities system into subtasks covering class-specific ability implementation, slot unlocking logic, power cost system, effect implementation, targeting system, and management interface.",
+      "reasoning": "The abilities system is highly complex with class-specific abilities, effects, targeting, and power management that all need to interact correctly."
+    },
+    {
+      "taskId": 14,
+      "taskTitle": "Develop clan assist mechanics",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Divide clan assist mechanics into subtasks covering assist functionality implementation, XP formula creation, anti-grinding safeguards, assist logging, daily limit implementation, and targeting UI.",
+      "reasoning": "Clan assist involves complex game mechanics, anti-abuse measures, and interaction between multiple systems."
+    },
+    {
+      "taskId": 15,
+      "taskTitle": "Implement quest system",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the quest system into subtasks covering creation interface, quest types implementation, scheduling functionality, completion tracking, reward implementation, and student view creation.",
+      "reasoning": "The quest system involves complex scheduling, tracking, and reward mechanics with different quest types."
+    },
+    {
+      "taskId": 16,
+      "taskTitle": "Develop Council Chamber for rewards and consequences",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Divide the Council Chamber implementation into subtasks covering interface creation, reward/consequence creation, application interface, audit logging, and template implementation.",
+      "reasoning": "This task involves creating interfaces for configuring and applying rewards/consequences with audit logging, making it moderately complex."
+    },
+    {
+      "taskId": 17,
+      "taskTitle": "Implement teacher configuration controls",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down teacher configuration into subtasks covering XP scalar implementation, ability balancing interface, daily XP cap configuration, prestige mode implementation, and class-specific configurations.",
+      "reasoning": "This task involves creating multiple configuration options that affect game balance and mechanics across the system."
+    },
+    {
+      "taskId": 18,
+      "taskTitle": "Develop analytics and reporting",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Divide analytics and reporting into subtasks covering student progress analytics, clan comparison implementation, quest statistics, collaboration metrics, behavioral tracking, and exportable reports.",
+      "reasoning": "Analytics requires complex data aggregation, visualization, and export functionality across multiple aspects of the system."
+    },
+    {
+      "taskId": 19,
+      "taskTitle": "Implement backup and restore system",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the backup system into subtasks covering automated backup implementation, manual backup functionality, download feature, restore functionality with validation, and backup rotation.",
+      "reasoning": "Backup and restore involves file system operations, scheduling, data validation, and error handling, making it moderately complex."
+    },
+    {
+      "taskId": 20,
+      "taskTitle": "Create student dashboard and profile views",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Divide the student dashboard into subtasks covering character profile display, clan view implementation, quest tracker, inventory/shop access, ability management interface, and progress indicators.",
+      "reasoning": "The student dashboard integrates multiple complex systems (character, clan, quests, inventory, abilities) into a cohesive UI, increasing its complexity."
+    }
+  ]
+}

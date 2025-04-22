@@ -1,0 +1,237 @@
+==============================================
+Legends of Learning 3 – Integrated Product Requirements Document
+==============================================
+
+----------------------------------------------------------------
+1  Overview
+----------------------------------------------------------------
+Legends of Learning 2 is a gamified learning‑management platform for Year‑9 students (≈14 years old).  
+The system blends academic effort tracking with an RPG‑style character and clan framework to reinforce work ethic, positive behaviour, and collaboration.
+
+Key points  
+• Students earn experience (XP) and gold for completing teacher‑defined quests and demonstrating desirable behaviours.  
+• Clan mechanics encourage peer support; character abilities benefit fellow clan members.  
+• Teachers configure classes, quests, rewards, consequences, shop inventory and analytics from a single dashboard.  
+• All persistent data is stored in a self‑contained **SQLite database** for easy deployment and backup on school devices with no external server dependency.
+
+----------------------------------------------------------------
+2  Core Features
+----------------------------------------------------------------
+### 2.1 User Management
+- Two roles: **Teacher** and **Student** (role‑based access control)
+- Teacher signup requires an access code
+- Students created in bulk or individually within a class
+- Secure authentication (Flask‑Login + hashed passwords)
+
+### 2.2 Character System
+- Classes: **Warrior** (protection), **Sorcerer** (energy), **Druid** (healing)
+- Gender choice + avatar customisation
+- Stats: *Health*, *Power*, *Gold*, *XP*; level 1 → 5 progression
+- Equipment slots (weapon, armour, accessory) affect stats
+- Abilities unlocked by level or via the shop; usable only inside the student’s clan
+
+### 2.3 Shop System
+- Gold spent on equipment and abilities
+- Five item tiers mapping to levels 1–5
+- Preview & “coming soon” locks for future levels
+- Gold sources: quests, teacher bonuses, clan achievements
+- In-game store for spending earned gold
+- Level-based equipment availability:
+  - Level 1: Basic starter gear
+  - Level 2: Enhanced basic equipment
+  - Level 3: Advanced class-specific gear
+  - Level 4: Specialized equipment
+  - Level 5: Legendary items
+- Equipment categories:
+  - Weapons (affects Power)
+    * Tier 1 (Level 1): Training weapons
+    * Tier 2 (Level 2): Enhanced weapons
+    * Tier 3 (Level 3): Class mastery weapons
+    * Tier 4 (Level 4): Advanced class weapons
+    * Tier 5 (Level 5): Legendary weapons
+  - Armor (affects Health)
+    * Tier 1 (Level 1): Basic protection
+    * Tier 2 (Level 2): Enhanced armor
+    * Tier 3 (Level 3): Class-specific armor
+    * Tier 4 (Level 4): Advanced protection
+    * Tier 5 (Level 5): Legendary armor
+  - Accessories (affects various stats)
+    * Tier 1 (Level 1): Simple trinkets
+    * Tier 2 (Level 2): Enhanced accessories
+    * Tier 3 (Level 3): Class-focused items
+    * Tier 4 (Level 4): Advanced artifacts
+    * Tier 5 (Level 5): Legendary accessories
+- Purchasable abilities:
+  - Level 1: Basic class abilities
+  - Level 2: Enhanced support skills
+  - Level 3: Advanced class abilities
+  - Level 4: Specialized powers
+  - Level 5: Ultimate abilities
+- Equipment progression tiers
+- Item and ability previews
+- Level requirement displays
+- Gold earning through:
+  - Daily quest completion
+  - Weekly quest achievements
+  - Special teacher rewards
+  - Clan cooperation bonuses
+
+
+### 2.4 Clan System
+- Students grouped into clans within a class (teacher sets size)
+- Teacher uses a drag and drop interface to assign students to Clans
+- Character abilities work on team‑mates only
+- Dashboard shows aggregate clan progress and peer‑support metrics
+
+### 2.5 Class & Quest Management
+- Multi‑class support per teacher
+- CSV import for student rosters
+- **Quest types**: Daily (repeatable) and Weekly (larger reward)
+- Council Chamber: teachers configure rewards & consequences that adjust stats directly
+
+
+### 2.6 Level Tiers & Rewards
+----------------------------------------------------------------
+| Level | Cumulative XP | Unlocks                                           | Stat Bonus (+Health/+Power) | Shop Tier |
+|-------|---------------|---------------------------------------------------|-----------------------------|-----------|
+| 1     | 0             | Starter avatar gear, basic class ability          | +0 / +0                     | Tier 1    |
+| 2     | 120           | Extra avatar options, **second** ability slot     | +20 / +10                   | Tier 2    |
+| 3     | 300           | Class‑specific gear, **third** ability slot       | +30 / +15                   | Tier 3    |
+| 4     | 600           | Advanced clan banners, **fourth** ability slot    | +40 / +20                   | Tier 4    |
+| 5     | 1 000         | Legendary gear, prestige profile border           | +50 / +25                   | Tier 5    |
+
+*Cumulative XP totals can be adjusted by teachers in the admin panel.*
+
+### 2.7 Earning Experience
+----------------------------------------------------------------
+| Action                        | Base XP | Limit / Cool‑down                       | Purpose                               |
+|-------------------------------|---------|-----------------------------------------|---------------------------------------|
+| **Daily Quest**               | 15 XP   | 1 per day                               | Encourages routine effort             |
+| **Weekly Quest**              | 60 XP   | 1 per week                              | Rewards sustained projects            |
+| **Clan Assist** (ability use) | see §2.1| Max 5 assists per day count toward XP   | Promotes peer support                 |
+| **Teacher Bonus**             | 5–50 XP | At teacher discretion                   | Recognises exceptional effort         |
+| **Behaviour Token**           | 10 XP   | Max 3 per lesson                        | Links positive behaviour to progress  |
+
+###  2.8 Clan‑Assist XP Formula
+
+assistXP = 5 + (targetLevel – userLevel) × 2   (minimum 3 XP)
+
+
+----------------------------------------------------------------
+### 2.9 Support Abilities (examples)
+----------------------------------------------------------------
+| Class      | Ability (Tier/Lvl)        | Effect                                        | Power Cost | XP Granted* |
+|------------|---------------------------|-----------------------------------------------|------------|-------------|
+| **Druid**  | Nature’s Touch (T1/L1)    | Heal 15 Health to an ally                     | 10         | +5 XP       |
+|            | Living Growth (T3/L3)     | Heal 30 Health + regen 5/turn (3 turns)       | 25         | +8 XP       |
+| **Warrior**| Basic Shield (T1/L1)      | Absorb next 20 damage for ally                | 10         | +5 XP       |
+|            | Guardian’s Shield (T3/L3) | Absorb 40 damage, lasts 2 turns               | 25         | +8 XP       |
+| **Sorcerer**| Minor Restore (T1/L1)    | Restore 15 Power to ally                      | 10         | +5 XP       |
+|            | Energy Wave (T3/L3)       | Restore 25 Power + 10 Power splash to clan    | 25         | +8 XP       |
+
+*XP only awarded when the ability benefits **another student** and has a meaningful effect.*
+
+----------------------------------------------------------------
+### 2.10 Anti‑Grinding Safeguards
+----------------------------------------------------------------
+1. **Server‑Side Validation**: API rejects assist XP if target is full health/power.
+
+----------------------------------------------------------------
+### 2.11 Teacher Configuration Controls
+----------------------------------------------------------------
+- **XP Scalars**: ±50 % modifiers per class for quests or assists.  
+- **Ability Balancing**: Costs and effects editable in Council Chamber.  
+- **Max Daily XP**: Adjustable cap (default 120 XP).  
+- **Prestige Mode**: Optional reset at Level 5 (cosmetic badge +10 % XP gain).
+
+
+3  Educational Objectives
+
+Primary goals  
+1. Reward consistent effort and positive behaviours, not just test scores.  
+2. Foster collaboration through shared clan objectives.  
+3. Provide teachers with data‑driven insight into engagement patterns.  
+
+Behavioural metrics captured  
+- Class participation, homework completion, peer support actions, behaviour incidents, quest streaks.
+
+
+4  User Experience
+
+| User | Key Workflows |
+|------|---------------|
+| **Teacher** | Create/manage classes → import students → set clans → design quests/rewards → monitor dashboards → adjust shop balance |
+| **Student** | Create avatar → join clan → complete quests → spend gold → apply abilities → track personal & clan progress |
+
+
+5  Technical Architecture
+
+### 5.1 Stack
+- **Backend** Flask (>=3.0) + **SQLAlchemy 2** ORM  
+- **Database** SQLite 3 (journal_mode=WAL, foreign keys ON) – file `legends.db`  
+- **Migrations** Alembic – schema version checked at app start  
+- **Auth** Flask‑Login, Werkzeug hashers, HTTPS only  
+- **Frontend** Jinja2 templates, Bootstrap 5, vanilla JS, Font Awesome  
+- **File structure** `/app` (Flask), `/static` (images/css/js), `/templates`, `/backups`
+
+### 5.2 Schema Snapshot
+```
+users(id, role, username, pw_hash, created_at, updated_at)
+classes(id, teacher_id→users.id, name, join_code)
+students(user_id PK→users.id, class_id→classes.id, clan_id→clans.id,
+         xp, level, health, power, gold)
+clans(id, class_id→classes.id, name)
+characters(id, student_id→students.user_id, class_type, gender, image_path)
+equipment(id, slot, tier, class_restrict, name,
+          power_boost, health_boost, gold_cost)
+inventories(student_id→students.user_id, equipment_id→equipment.id,
+           equipped, acquired_at)
+abilities(id, class_restrict, tier, name, description,
+          power_cost, heal_amt, shield_amt)
+shop_purchases(id, student_id, item_type, item_id, gold_spent, purchased_at)
+quests(id, class_id, title, description, freq, xp_reward, gold_reward,
+      active_from, active_to)
+quest_logs(id, quest_id, student_id, completed_at)
+rewards(id, class_id, title, xp_delta, health_delta, power_delta, gold_delta)
+consequences(id, class_id, title, xp_delta, health_delta, power_delta, gold_delta)
+audit_log(id, user_id, action, payload_json, created_at)
+assist_logs(id, user_id, target_id, ability_id, xp_awarded, used_at)`  
+
+
+### 5.3 Concurrency & Integrity
+- WAL allows concurrent reads during writes.  
+- Each request holds a short transaction; busy writes retry (max 5).  
+- Weekly `PRAGMA integrity_check`; termly `VACUUM` to defragment.
+
+### 5.4 Back‑ups & Restore
+- Hourly copy of `legends.db` to `/backups/legends‑{YYYY‑MM‑DD‑HH}.db`
+- Teacher dashboard button to download a zipped backup
+- Restore = replace file + restart service (schema validated on startup)
+
+
+9  Appendix – Game Content Tables
+
+
+### 9.1 Character Classes
+*Warrior*: High health, shielding abilities  
+*Sorcerer*: High power, energise abilities  
+*Druid*: Healing abilities, balanced stats  
+
+### 9.2 Equipment Tiers (Levels 1‑5)
+- **Weapons**: Training Sword → Legendary Protector (Warrior) etc.  
+- **Armour**: Training Plate → Legendary Guard (Warrior) …  
+- **Accessories**: Minor Charm → Legendary Treasure (all classes)
+
+### 9.3 Abilities
+Tiered abilities for each class plus universal support skills; unlocked via level or purchased in the shop.
+
+### 9.4 Level Progression
+| Level | XP Needed | Unlocks |
+|-------|-----------|---------|
+| 1 | 0 | Starter gear & basic ability |
+| 2 | 100 | Enhanced gear tier 2 |
+| 3 | 300 | Class‑specific gear tier 3 |
+| 4 | 600 | Advanced gear tier 4 |
+| 5 | 1000 | Legendary gear tier 5 |
+
+
