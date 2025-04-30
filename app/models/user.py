@@ -2,13 +2,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app.models.base import Base
 from app.models import db
 from enum import Enum
+from flask_login import UserMixin
 
 class UserRole(Enum):
     TEACHER = 'teacher'
     STUDENT = 'student'
     ADMIN = 'admin'
 
-class User(Base):
+class User(UserMixin, Base):
     """User model for authentication and role management."""
     
     __tablename__ = 'users'

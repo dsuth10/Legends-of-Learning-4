@@ -9,24 +9,26 @@ class Clan(Base):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
-    description = db.Column(db.Text)
-    emblem = db.Column(db.String(256))  # Path/URL to clan emblem image
+    description = db.Column(db.Text, nullable=True)
+    emblem = db.Column(db.String(256), nullable=True)  # Path/URL to clan emblem image
     level = db.Column(db.Integer, default=1, nullable=False)
     experience = db.Column(db.Integer, default=0, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Foreign Keys
-    class_id = db.Column(db.Integer, db.ForeignKey('classes.id', ondelete='CASCADE'), nullable=False)
+    class_id = db.Column(db.Integer, db.ForeignKey('classrooms.id', ondelete='CASCADE'), nullable=False)
     leader_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='SET NULL'), nullable=True)
     
     # Relationships
-    class_ = db.relationship('Class', backref=db.backref('clans', lazy='dynamic'))
+    class_ = db.relationship('Classroom', backref=db.backref('classroom_clans', lazy='dynamic'))
     leader = db.relationship('Character', foreign_keys=[leader_id], backref=db.backref('leading_clan', uselist=False))
     # Note: members relationship is defined in Character model
     
     __table_args__ = (
-        db.Index('idx_clan_class', 'class_id'),  # For looking up clans in a class
-        db.UniqueConstraint('name', 'class_id', name='uq_clan_name_class'),  # Unique clan names within a class
+        db.Index('idx_clan_class', 'class_id'),  # For looking up clans in a classroom
+        db.UniqueConstraint('name', 'class_id', name='uq_clan_name_class'),  # Unique clan names within a classroom
     )
     
     def __init__(self, name, class_id, description=None, **kwargs):

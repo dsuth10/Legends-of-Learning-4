@@ -8,6 +8,8 @@ for the SQLite database used in the application.
 from typing import Dict, Any
 import os
 from pathlib import Path
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 # Base directory of the application
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -18,8 +20,6 @@ DB_PATH = BASE_DIR / 'instance' / DB_NAME
 
 # SQLite specific settings
 SQLITE_CONFIG = {
-    'journal_mode': 'WAL',  # Write-Ahead Logging for better concurrency
-    'foreign_keys': 'ON',   # Enforce foreign key constraints
     'timeout': 30,         # Connection timeout in seconds
 }
 
@@ -43,18 +43,14 @@ def get_database_url() -> str:
     Build and return the database URL for SQLAlchemy.
     
     The URL is constructed using the DB_PATH configuration, with query parameters
-    for various SQLite settings.
+    for various SQLite settings (except PRAGMAs, which are set via event listener).
     
     Returns:
-        str: The complete database URL with configuration parameters
+        str: The complete database URL
     """
     # Create instance directory if it doesn't exist
     os.makedirs(DB_PATH.parent, exist_ok=True)
-    
-    # Build query parameters from SQLITE_CONFIG
-    params = '&'.join(f'{k}={v}' for k, v in SQLITE_CONFIG.items())
-    
-    return f'sqlite:///{DB_PATH}?{params}'
+    return f'sqlite:///{DB_PATH}'
 
 def get_sqlalchemy_config() -> Dict[str, Any]:
     """
@@ -68,6 +64,17 @@ def get_sqlalchemy_config() -> Dict[str, Any]:
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
         'SQLALCHEMY_ENGINE_OPTIONS': {
             **POOL_CONFIG,
-            'connect_args': SQLITE_CONFIG
+            'connect_args': {k: v for k, v in SQLITE_CONFIG.items() if k != 'journal_mode' and k != 'foreign_keys'}
         }
-    } 
+    }
+
+# --- Add PRAGMA event listener for SQLite ---
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    try:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+    except Exception as e:
+        print(f"[DB PRAGMA] Warning: {e}") 

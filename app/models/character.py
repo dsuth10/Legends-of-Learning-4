@@ -28,7 +28,7 @@ class Character(Base):
     
     # Relationships
     student = db.relationship('User', backref=db.backref('characters', lazy='dynamic'))
-    clan = db.relationship('Clan', backref=db.backref('members', lazy='dynamic'))
+    clan = db.relationship('Clan', foreign_keys=[clan_id], backref=db.backref('members', lazy='dynamic', foreign_keys='Character.clan_id'))
     
     __table_args__ = (
         db.Index('idx_character_student', 'student_id'),  # For looking up student's characters

@@ -8,7 +8,7 @@ def init_db(app):
     # Import models here to ensure they are registered with SQLAlchemy
     from app.models.base import Base
     from app.models.user import User, UserRole
-    from app.models.classroom import Class, class_students
+    from app.models.classroom import Classroom, class_students
     from app.models.character import Character
     from app.models.clan import Clan
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot, Inventory

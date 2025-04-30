@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('teacher.dashboard') }}">
+                            <i class="fas fa-home"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'classes' %}active{% endif %}" href="#">
+                            <i class="fas fa-chalkboard"></i> Classes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'students' %}active{% endif %}" href="#">
+                            <i class="fas fa-users"></i> Students
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'clans' %}active{% endif %}" href="#">
+                            <i class="fas fa-shield-alt"></i> Clans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'quests' %}active{% endif %}" href="#">
+                            <i class="fas fa-scroll"></i> Quests
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'shop' %}active{% endif %}" href="#">
+                            <i class="fas fa-store"></i> Shop Config
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'analytics' %}active{% endif %}" href="#">
+                            <i class="fas fa-chart-bar"></i> Analytics
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'backup' %}active{% endif %}" href="#">
+                            <i class="fas fa-database"></i> Backup
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ url_for('teacher.dashboard') }}">Dashboard</a></li>
+                        {% block breadcrumb %}{% endblock %}
+                    </ol>
+                </nav>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    {% block toolbar %}{% endblock %}
+                </div>
+            </div>
+
+            {% block dashboard_content %}{% endblock %}
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: #333;
+}
+
+.sidebar .nav-link.active {
+    color: #2470dc;
+}
+
+.sidebar .nav-link:hover {
+    color: #2470dc;
+}
+
+.sidebar .nav-link i {
+    margin-right: 8px;
+}
+
+main {
+    padding-top: 48px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://kit.fontawesome.com/your-font-awesome-kit.js" crossorigin="anonymous"></script>
+{% endblock %} 
