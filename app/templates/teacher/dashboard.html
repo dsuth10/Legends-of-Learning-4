@@ -125,7 +125,7 @@
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-success btn-block">
+                        <a href="{{ url_for('teacher.import_students') }}" class="btn btn-success btn-block">
                             <i class="fas fa-file-import me-2"></i>Import Students
                         </a>
                     </div>
@@ -137,6 +137,11 @@
                     <div class="col-md-3 mb-3">
                         <a href="#" class="btn btn-warning btn-block">
                             <i class="fas fa-tasks me-2"></i>Assign Quests
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('teacher.add_student') }}" class="btn btn-primary btn-block">
+                            <i class="fas fa-user-plus me-2"></i>Add Student
                         </a>
                     </div>
                 </div>

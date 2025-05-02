@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, abort
+from flask import Blueprint, render_template, abort, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from functools import wraps
 from datetime import datetime, timedelta
@@ -8,13 +8,30 @@ from ..models.character import Character
 from ..models.clan import Clan
 from ..models.quest import Quest
 from ..models.audit import AuditLog
+from app.models.user import User, UserRole
+from werkzeug.security import generate_password_hash
+import csv
+from io import TextIOWrapper
+from werkzeug.utils import secure_filename
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher')
 
 def teacher_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.role != 'teacher':
+        if not current_user.is_authenticated or current_user.role != UserRole.TEACHER:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+def student_required(f):
+    """
+    Decorator to restrict access to students only.
+    Usage: @login_required @student_required above a view function.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != UserRole.STUDENT:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -87,4 +104,111 @@ def dashboard():
         stats=stats,
         recent_activities=recent_activities,
         active_page='dashboard'
-    ) 
+    )
+
+@teacher_bp.route('/add-student', methods=['GET', 'POST'])
+@login_required
+@teacher_required
+def add_student():
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        class_id = request.form.get('class_id')
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+
+        # Validation
+        if not all([username, email, password, class_id]):
+            flash('All fields are required.', 'danger')
+            return render_template('teacher/add_student.html', classes=classes)
+
+        if User.query.filter((User.username == username) | (User.email == email)).first():
+            flash('Username or email already exists.', 'danger')
+            return render_template('teacher/add_student.html', classes=classes)
+
+        # Create user
+        new_user = User(
+            username=username,
+            email=email,
+            role=UserRole.STUDENT,
+            first_name=first_name,
+            last_name=last_name
+        )
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Assign to class
+        classroom = Classroom.query.get(class_id)
+        if classroom:
+            classroom.add_student(new_user)
+            flash('Student account created and added to class!', 'success')
+        else:
+            flash('Class not found.', 'danger')
+
+        return redirect(url_for('teacher.add_student'))
+
+    return render_template('teacher/add_student.html', classes=classes)
+
+@teacher_bp.route('/import-students', methods=['GET', 'POST'])
+@login_required
+@teacher_required
+def import_students():
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    results = None
+    errors = []
+    if request.method == 'POST':
+        file = request.files.get('csv_file')
+        class_id = request.form.get('class_id')
+        if not file or not class_id:
+            flash('CSV file and class selection are required.', 'danger')
+            return render_template('teacher/import_students.html', classes=classes)
+        try:
+            stream = TextIOWrapper(file.stream, encoding='utf-8')
+            reader = csv.DictReader(stream)
+            required_fields = {'username', 'email', 'password'}
+            if not required_fields.issubset(reader.fieldnames):
+                flash('CSV must have columns: username, email, password', 'danger')
+                return render_template('teacher/import_students.html', classes=classes)
+            classroom = Classroom.query.get(class_id)
+            if not classroom:
+                flash('Class not found.', 'danger')
+                return render_template('teacher/import_students.html', classes=classes)
+            created = 0
+            failed = 0
+            for i, row in enumerate(reader, start=2):  # start=2 for header row
+                username = row.get('username', '').strip()
+                email = row.get('email', '').strip()
+                password = row.get('password', '').strip()
+                first_name = row.get('first_name', '').strip()
+                last_name = row.get('last_name', '').strip()
+                if not username or not email or not password:
+                    errors.append(f'Row {i}: Missing required fields.')
+                    failed += 1
+                    continue
+                if User.query.filter((User.username == username) | (User.email == email)).first():
+                    errors.append(f'Row {i}: Username or email already exists.')
+                    failed += 1
+                    continue
+                new_user = User(
+                    username=username,
+                    email=email,
+                    role=UserRole.STUDENT,
+                    first_name=first_name,
+                    last_name=last_name
+                )
+                new_user.set_password(password)
+                db.session.add(new_user)
+                db.session.commit()
+                classroom.add_student(new_user)
+                created += 1
+            results = {'created': created, 'failed': failed}
+            if created:
+                flash(f'Successfully created {created} students.', 'success')
+            if failed:
+                flash(f'Failed to create {failed} students. See errors below.', 'danger')
+        except Exception as e:
+            flash(f'Error processing CSV: {e}', 'danger')
+    return render_template('teacher/import_students.html', classes=classes, results=results, errors=errors) 

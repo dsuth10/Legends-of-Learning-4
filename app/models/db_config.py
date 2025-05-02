@@ -59,13 +59,17 @@ def get_sqlalchemy_config() -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Configuration dictionary for SQLAlchemy
     """
+    uri = os.environ.get('SQLALCHEMY_DATABASE_URI', get_database_url())
+    is_memory_sqlite = uri.startswith('sqlite:///:memory:')
+    engine_options = {
+        'connect_args': {k: v for k, v in SQLITE_CONFIG.items() if k != 'journal_mode' and k != 'foreign_keys'}
+    }
+    if not is_memory_sqlite:
+        engine_options.update({k: v for k, v in POOL_CONFIG.items()})
     return {
-        'SQLALCHEMY_DATABASE_URI': get_database_url(),
+        'SQLALCHEMY_DATABASE_URI': uri,
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
-        'SQLALCHEMY_ENGINE_OPTIONS': {
-            **POOL_CONFIG,
-            'connect_args': {k: v for k, v in SQLITE_CONFIG.items() if k != 'journal_mode' and k != 'foreign_keys'}
-        }
+        'SQLALCHEMY_ENGINE_OPTIONS': engine_options
     }
 
 # --- Add PRAGMA event listener for SQLite ---

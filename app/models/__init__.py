@@ -13,6 +13,8 @@ def init_db(app):
     from app.models.clan import Clan
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot, Inventory
     from app.models.ability import Ability, AbilityType, CharacterAbility
+    from app.models.student import Student
+    from app.models.assist_log import AssistLog
     
     # Create tables
     with app.app_context():

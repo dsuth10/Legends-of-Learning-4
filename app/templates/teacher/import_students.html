@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Import Students{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Import Students via CSV</h2>
+    <p>Upload a CSV file to create multiple student accounts at once. The CSV must have columns: <code>username</code>, <code>email</code>, <code>password</code>. Optional: <code>first_name</code>, <code>last_name</code>.</p>
+    <a href="{{ url_for('static', filename='csv/student_import_template.csv') }}" class="btn btn-link">Download CSV Template</a>
+    <form method="POST" enctype="multipart/form-data" class="mt-3">
+        <div class="mb-3">
+            <label for="class_id" class="form-label">Class</label>
+            <select class="form-select" name="class_id" required>
+                <option value="">Select a class</option>
+                {% for c in classes %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="csv_file" class="form-label">CSV File</label>
+            <input type="file" class="form-control" name="csv_file" accept=".csv" required>
+        </div>
+        <button type="submit" class="btn btn-success">Import Students</button>
+    </form>
+    {% if results %}
+        <div class="mt-4">
+            <h5>Import Results</h5>
+            <p>Created: {{ results.created }}<br>Failed: {{ results.failed }}</p>
+        </div>
+    {% endif %}
+    {% if errors %}
+        <div class="alert alert-danger mt-3">
+            <ul>
+                {% for error in errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

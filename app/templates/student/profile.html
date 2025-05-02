@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Profile for {{ student.get_display_name() }}</h2>
+    <p>This is where you can view and edit your profile information (display name, avatar, etc.).</p>
+    <!-- Add profile fields and edit form here -->
+</div>
+{% endblock %} 

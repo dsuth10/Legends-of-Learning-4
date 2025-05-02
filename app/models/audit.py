@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.types import JSON
 from app.models import db
 from app.models.base import Base
 
@@ -12,7 +12,7 @@ class AuditLog(Base):
     event_type = db.Column(db.String(50), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     character_id = db.Column(db.Integer, db.ForeignKey('characters.id'), nullable=True)
-    event_data = db.Column(JSONB, nullable=False)  # Stores event-specific data
+    event_data = db.Column(JSON, nullable=False)  # Stores event-specific data
     ip_address = db.Column(db.String(45), nullable=True)  # IPv4/IPv6 address
     event_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
     

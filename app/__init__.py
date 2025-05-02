@@ -12,17 +12,26 @@ login_manager = LoginManager()
 migrate = Migrate()
 
 def create_app(config=None):
-    app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), '..', 'templates'))
+    app = Flask(__name__, template_folder="templates")
     
     # Load database configuration
     app.config.update(get_sqlalchemy_config())
     
     # Additional configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+    app.config['TEACHER_ACCESS_CODE'] = os.environ.get('TEACHER_ACCESS_CODE', 'default-secure-code-for-dev')
     
     # Override with passed config if any
     if config:
         app.config.update(config)
+
+    # Remove pool options for in-memory SQLite
+    uri = app.config['SQLALCHEMY_DATABASE_URI']
+    if uri.startswith('sqlite:///:memory:'):
+        engine_options = app.config.get('SQLALCHEMY_ENGINE_OPTIONS', {})
+        for k in ['pool_size', 'max_overflow', 'pool_timeout']:
+            engine_options.pop(k, None)
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = engine_options
     
     # Initialize extensions
     db.init_app(app)

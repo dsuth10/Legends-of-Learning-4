@@ -27,7 +27,7 @@ target_metadata = db.metadata
 
 # Import all models to ensure they are registered with SQLAlchemy
 from app.models.user import User
-from app.models.classroom import Class
+from app.models.classroom import Classroom
 from app.models.character import Character
 from app.models.clan import Clan
 from app.models.equipment import Equipment
