@@ -12,7 +12,7 @@ login_manager = LoginManager()
 migrate = Migrate()
 
 def create_app(config=None):
-    app = Flask(__name__, template_folder="templates")
+    app = Flask(__name__, template_folder="templates", static_folder="../static")
     
     # Load database configuration
     app.config.update(get_sqlalchemy_config())
@@ -20,6 +20,13 @@ def create_app(config=None):
     # Additional configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
     app.config['TEACHER_ACCESS_CODE'] = os.environ.get('TEACHER_ACCESS_CODE', 'default-secure-code-for-dev')
+    
+    # Session and cookie security settings
+    app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour in seconds
+    app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
+    app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JS access to cookies
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Mitigate CSRF
+    # For production, ensure HTTPS is enforced (see Flask-Talisman or reverse proxy setup)
     
     # Override with passed config if any
     if config:

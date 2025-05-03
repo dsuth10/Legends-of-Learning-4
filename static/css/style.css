@@ -1,0 +1,105 @@
+/* Light mode (default) */
+:root {
+  --bg-main: #f8f9fa;
+  --bg-card: #fff;
+  --text-main: #222;
+  --text-muted: #666;
+  --navbar-bg: #212529;
+  --navbar-text: #fff;
+  --btn-primary-bg: #375a7f;
+  --btn-primary-text: #fff;
+  --btn-secondary-bg: #6c757d;
+  --btn-secondary-text: #fff;
+  --input-bg: #fff;
+  --input-text: #222;
+  --input-border: #ced4da;
+  --alert-bg: #e2e3e5;
+  --alert-text: #222;
+}
+
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
+}
+.card, .modal-content {
+  background-color: var(--bg-card) !important;
+  color: var(--text-main) !important;
+}
+.navbar {
+  background-color: var(--navbar-bg) !important;
+  color: var(--navbar-text) !important;
+}
+.btn-primary {
+  background-color: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
+  border: none;
+}
+.btn-secondary {
+  background-color: var(--btn-secondary-bg) !important;
+  color: var(--btn-secondary-text) !important;
+  border: none;
+}
+input, select, textarea {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  border-color: var(--input-border) !important;
+}
+.alert {
+  background-color: var(--alert-bg) !important;
+  color: var(--alert-text) !important;
+}
+
+/* Dark mode overrides */
+body.dark-mode {
+  --bg-main: #181a1b;
+  --bg-card: #23272b;
+  --text-main: #e0e0e0;
+  --text-muted: #b0b0b0;
+  --navbar-bg: #181a1b;
+  --navbar-text: #f8f9fa;
+  --btn-primary-bg: #4fc3f7;
+  --btn-primary-text: #181a1b;
+  --btn-secondary-bg: #444;
+  --btn-secondary-text: #e0e0e0;
+  --input-bg: #23272b;
+  --input-text: #e0e0e0;
+  --input-border: #444;
+  --alert-bg: #23272b;
+  --alert-text: #f8d7da;
+}
+
+body.dark-mode, body.dark-mode .card, body.dark-mode .modal-content {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
+}
+body.dark-mode .navbar {
+  background-color: var(--navbar-bg) !important;
+  color: var(--navbar-text) !important;
+}
+body.dark-mode .btn-primary {
+  background-color: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
+}
+body.dark-mode .btn-secondary {
+  background-color: var(--btn-secondary-bg) !important;
+  color: var(--btn-secondary-text) !important;
+}
+body.dark-mode input, body.dark-mode select, body.dark-mode textarea {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  border-color: var(--input-border) !important;
+}
+body.dark-mode .alert {
+  background-color: var(--alert-bg) !important;
+  color: var(--alert-text) !important;
+}
+
+/* Ensure links and focus states are visible in both modes */
+a, .nav-link {
+  color: #4fc3f7 !important;
+}
+a:hover, .nav-link:hover {
+  color: #82e9ff !important;
+}
+
+/* Add more customizations as needed for contrast and accessibility */ 

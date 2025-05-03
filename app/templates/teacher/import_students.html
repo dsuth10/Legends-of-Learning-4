@@ -9,11 +9,11 @@
     <a href="{{ url_for('static', filename='csv/student_import_template.csv') }}" class="btn btn-link">Download CSV Template</a>
     <form method="POST" enctype="multipart/form-data" class="mt-3">
         <div class="mb-3">
-            <label for="class_id" class="form-label">Class</label>
-            <select class="form-select" name="class_id" required>
-                <option value="">Select a class</option>
-                {% for c in classes %}
-                    <option value="{{ c.id }}">{{ c.name }}</option>
+            <label for="class_id" class="form-label">Select Class</label>
+            <select class="form-select" id="class_id" name="class_id" required>
+                <option value="" disabled selected>Select a class</option>
+                {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }} (Join Code: {{ class.join_code }})</option>
                 {% endfor %}
             </select>
         </div>

@@ -72,6 +72,50 @@
     </div>
 </div>
 
+<!-- Class List Table for Multi-Class Support -->
+<div class="row">
+  <div class="col-12">
+    <div class="card shadow mb-4">
+      <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Your Classes</h6>
+        <a href="#" class="btn btn-success btn-sm">Create New Class</a>
+      </div>
+      <div class="card-body">
+        {% if classes and classes|length > 0 %}
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Join Code</th>
+                <th>Students</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for class in classes %}
+              <tr>
+                <td>{{ class.name }}</td>
+                <td>{{ class.join_code }}</td>
+                <td>{{ class.students.count() }}</td>
+                <td>
+                  {# <a href="{{ url_for('teacher.view_class', class_id=class.id) }}" class="btn btn-sm btn-primary">Manage</a> #}
+                  <span class="text-muted">Coming Soon</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-center text-muted my-4">No classes found. Click "Create New Class" to get started.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<!-- End Class List Table -->
+
 <!-- Recent Activity -->
 <div class="row">
     <div class="col-12">

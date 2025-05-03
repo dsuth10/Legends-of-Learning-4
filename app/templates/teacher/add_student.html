@@ -7,6 +7,15 @@
     <h2>Add Student</h2>
     <form method="POST">
         <div class="mb-3">
+            <label for="class_id" class="form-label">Select Class</label>
+            <select class="form-select" id="class_id" name="class_id" required>
+                <option value="" disabled selected>Select a class</option>
+                {% for class in classes %}
+                    <option value="{{ class.id }}">{{ class.name }} (Join Code: {{ class.join_code }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
             <label for="username" class="form-label">Username</label>
             <input type="text" class="form-control" name="username" required>
         </div>
@@ -25,15 +34,6 @@
         <div class="mb-3">
             <label for="last_name" class="form-label">Last Name</label>
             <input type="text" class="form-control" name="last_name">
-        </div>
-        <div class="mb-3">
-            <label for="class_id" class="form-label">Class</label>
-            <select class="form-select" name="class_id" required>
-                <option value="">Select a class</option>
-                {% for c in classes %}
-                    <option value="{{ c.id }}">{{ c.name }}</option>
-                {% endfor %}
-            </select>
         </div>
         <button type="submit" class="btn btn-primary">Add Student</button>
     </form>

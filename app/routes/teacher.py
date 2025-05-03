@@ -97,13 +97,17 @@ def dashboard():
         }
         recent_activities.append(activity)
 
+    # Fetch all active classes for the current teacher
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+
     return render_template(
         'teacher/dashboard.html',
         title='Teacher Dashboard',
         teacher=current_user,
         stats=stats,
         recent_activities=recent_activities,
-        active_page='dashboard'
+        active_page='dashboard',
+        classes=classes
     )
 
 @teacher_bp.route('/add-student', methods=['GET', 'POST'])
