@@ -106,3 +106,6 @@ dev-debug.log
 # Added by Claude Task Master
 .idea
 .vscode
+
+# Added by Claude Task Master
+.cursor/mcp.json
