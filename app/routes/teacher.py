@@ -13,6 +13,7 @@ from werkzeug.security import generate_password_hash
 import csv
 from io import TextIOWrapper
 from werkzeug.utils import secure_filename
+from app.models.classroom import class_students
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher')
 
@@ -48,8 +49,9 @@ def dashboard():
             is_active=True
         ).count(),
         
-        'total_students': db.session.query(Classroom.students).\
-            join(Classroom.students).\
+        'total_students': db.session.query(User).\
+            join(class_students, class_students.c.user_id == User.id).\
+            join(Classroom, Classroom.id == class_students.c.class_id).\
             filter(Classroom.teacher_id == current_user.id).\
             distinct().\
             count(),
@@ -215,4 +217,46 @@ def import_students():
                 flash(f'Failed to create {failed} students. See errors below.', 'danger')
         except Exception as e:
             flash(f'Error processing CSV: {e}', 'danger')
-    return render_template('teacher/import_students.html', classes=classes, results=results, errors=errors) 
+    return render_template('teacher/import_students.html', classes=classes, results=results, errors=errors)
+
+@teacher_bp.route('/classes')
+@login_required
+@teacher_required
+def classes():
+    return render_template('teacher/classes.html', active_page='classes')
+
+@teacher_bp.route('/students')
+@login_required
+@teacher_required
+def students():
+    return render_template('teacher/students.html', active_page='students')
+
+@teacher_bp.route('/clans')
+@login_required
+@teacher_required
+def clans():
+    return render_template('teacher/clans.html', active_page='clans')
+
+@teacher_bp.route('/quests')
+@login_required
+@teacher_required
+def quests():
+    return render_template('teacher/quests.html', active_page='quests')
+
+@teacher_bp.route('/shop')
+@login_required
+@teacher_required
+def shop():
+    return render_template('teacher/shop.html', active_page='shop')
+
+@teacher_bp.route('/analytics')
+@login_required
+@teacher_required
+def analytics():
+    return render_template('teacher/analytics.html', active_page='analytics')
+
+@teacher_bp.route('/backup')
+@login_required
+@teacher_required
+def backup():
+    return render_template('teacher/backup.html', active_page='backup') 

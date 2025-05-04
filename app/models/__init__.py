@@ -17,6 +17,6 @@ def init_db(app):
     from app.models.assist_log import AssistLog
     
     # Create tables
-    with app.app_context():
-        db.create_all()
+    # with app.app_context():
+    #     db.create_all()
 

@@ -22,7 +22,7 @@ class Clan(Base):
     leader_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='SET NULL'), nullable=True)
     
     # Relationships
-    class_ = db.relationship('Classroom', backref=db.backref('classroom_clans', lazy='dynamic'))
+    class_ = db.relationship('Classroom', backref=db.backref('classroom_clans', lazy='dynamic'), overlaps="clans,classroom")
     leader = db.relationship('Character', foreign_keys=[leader_id], backref=db.backref('leading_clan', uselist=False))
     # Note: members relationship is defined in Character model
     

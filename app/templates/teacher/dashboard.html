@@ -78,7 +78,7 @@
     <div class="card shadow mb-4">
       <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
         <h6 class="m-0 font-weight-bold text-primary">Your Classes</h6>
-        <a href="#" class="btn btn-success btn-sm">Create New Class</a>
+        <a href="{{ url_for('teacher.classes') }}" class="btn btn-success btn-sm">Create New Class</a>
       </div>
       <div class="card-body">
         {% if classes and classes|length > 0 %}
@@ -164,7 +164,7 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-primary btn-block">
+                        <a href="{{ url_for('teacher.classes') }}" class="btn btn-primary btn-block">
                             <i class="fas fa-plus-circle me-2"></i>Create New Class
                         </a>
                     </div>
@@ -174,12 +174,12 @@
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-info btn-block">
+                        <a href="{{ url_for('teacher.clans') }}" class="btn btn-info btn-block">
                             <i class="fas fa-users-cog me-2"></i>Manage Clans
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <a href="#" class="btn btn-warning btn-block">
+                        <a href="{{ url_for('teacher.quests') }}" class="btn btn-warning btn-block">
                             <i class="fas fa-tasks me-2"></i>Assign Quests
                         </a>
                     </div>

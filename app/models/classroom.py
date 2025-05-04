@@ -5,8 +5,8 @@ from datetime import datetime
 # Association table for student-class relationship
 class_students = db.Table(
     'class_students',
-    db.Column('class_id', db.Integer, db.ForeignKey('classrooms.id', ondelete='CASCADE'), primary_key=True),
-    db.Column('user_id', db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('class_id', db.Integer, db.ForeignKey('classrooms.id', ondelete='CASCADE')),
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id', ondelete='CASCADE')),
     db.Column('joined_at', db.DateTime, nullable=False, default=datetime.utcnow),
     db.Column('created_at', db.DateTime, nullable=False, default=datetime.utcnow),
     db.Column('updated_at', db.DateTime, nullable=False, default=datetime.utcnow)
@@ -31,7 +31,7 @@ class Classroom(Base):
         backref=db.backref('classes', lazy='dynamic'),
         lazy='dynamic'
     )
-    clans = db.relationship('Clan', backref='classroom', lazy='dynamic')
+    clans = db.relationship('Clan', backref='classroom', lazy='dynamic', overlaps="class_,classroom_clans")
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 

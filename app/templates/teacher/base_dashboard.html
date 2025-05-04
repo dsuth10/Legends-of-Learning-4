@@ -13,37 +13,37 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'classes' %}active{% endif %}" href="#">
+                        <a class="nav-link {% if active_page == 'classes' %}active{% endif %}" href="{{ url_for('teacher.classes') }}">
                             <i class="fas fa-chalkboard"></i> Classes
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'students' %}active{% endif %}" href="#">
+                        <a class="nav-link {% if active_page == 'students' %}active{% endif %}" href="{{ url_for('teacher.students') }}">
                             <i class="fas fa-users"></i> Students
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'clans' %}active{% endif %}" href="#">
+                        <a class="nav-link {% if active_page == 'clans' %}active{% endif %}" href="{{ url_for('teacher.clans') }}">
                             <i class="fas fa-shield-alt"></i> Clans
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'quests' %}active{% endif %}" href="#">
+                        <a class="nav-link {% if active_page == 'quests' %}active{% endif %}" href="{{ url_for('teacher.quests') }}">
                             <i class="fas fa-scroll"></i> Quests
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'shop' %}active{% endif %}" href="#">
+                        <a class="nav-link {% if active_page == 'shop' %}active{% endif %}" href="{{ url_for('teacher.shop') }}">
                             <i class="fas fa-store"></i> Shop Config
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'analytics' %}active{% endif %}" href="#">
+                        <a class="nav-link {% if active_page == 'analytics' %}active{% endif %}" href="{{ url_for('teacher.analytics') }}">
                             <i class="fas fa-chart-bar"></i> Analytics
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'backup' %}active{% endif %}" href="#">
+                        <a class="nav-link {% if active_page == 'backup' %}active{% endif %}" href="{{ url_for('teacher.backup') }}">
                             <i class="fas fa-database"></i> Backup
                         </a>
                     </li>
