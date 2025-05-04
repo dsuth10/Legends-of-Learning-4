@@ -1,0 +1,42 @@
+{% extends "teacher/base_dashboard.html" %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('teacher.classes') }}">Classes</a></li>
+<li class="breadcrumb-item active" aria-current="page">Edit Class</li>
+{% endblock %}
+{% block dashboard_content %}
+<!-- Flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Edit Class</h5>
+  </div>
+  <div class="card-body">
+    <form method="POST">
+      <div class="mb-3">
+        <label for="name" class="form-label">Class Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="name" name="name" required maxlength="64" value="{{ class_.name }}">
+      </div>
+      <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="2" maxlength="255">{{ class_.description }}</textarea>
+      </div>
+      <div class="mb-3">
+        <label for="max_students" class="form-label">Max Students</label>
+        <input type="number" class="form-control" id="max_students" name="max_students" min="1" max="999" value="{{ class_.max_students }}">
+      </div>
+      <button type="submit" class="btn btn-success">Update Class</button>
+      <a href="{{ url_for('teacher.classes') }}" class="btn btn-secondary ms-2">Back to Classes</a>
+    </form>
+  </div>
+</div>
+{% endblock %} 

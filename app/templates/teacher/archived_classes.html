@@ -1,0 +1,49 @@
+{% extends "teacher/base_dashboard.html" %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('teacher.classes') }}">Classes</a></li>
+<li class="breadcrumb-item active" aria-current="page">Archived Classes</li>
+{% endblock %}
+{% block dashboard_content %}
+<!-- Back to Active Classes Link -->
+<div class="d-flex justify-content-end mb-2">
+  <a href="{{ url_for('teacher.classes') }}" class="btn btn-primary btn-sm">Back to Active Classes</a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Archived Classes</h5>
+  </div>
+  <div class="card-body">
+    {% if classes and classes|length > 0 %}
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Join Code</th>
+              <th>Max Students</th>
+              <th>Students</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for class in classes %}
+            <tr>
+              <td>{{ class.name }}</td>
+              <td>{{ class.description or '-' }}</td>
+              <td>{{ class.join_code }}</td>
+              <td>{{ class.max_students }}</td>
+              <td>{{ class.students.count() }}</td>
+              <td><span class="text-muted">(future: restore/delete)</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-center text-muted my-4">No archived classes found.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %} 

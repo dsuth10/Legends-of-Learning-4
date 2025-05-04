@@ -6,11 +6,113 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <h2 class="card-title mb-2">Welcome, {{ student.get_display_name() }}!</h2>
+                    <p class="lead">This is your student dashboard. Here you will see your progress, quests, clan info, and more.</p>
+                </div>
+            </div>
+
+            <!-- Profile Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">Profile</div>
                 <div class="card-body">
-                    <h2 class="card-title mb-4 text-center">Welcome, {{ student.get_display_name() }}!</h2>
-                    <p class="lead text-center">This is your student dashboard. Here you will see your progress, quests, clan info, and more.</p>
-                    <!-- Add more student-specific dashboard content here -->
+                    <strong>Name:</strong> {{ student.get_display_name() }}<br>
+                    <strong>Email:</strong> {{ student.email }}<br>
+                    {% if main_character %}
+                        <strong>Level:</strong> {{ main_character.level }}<br>
+                        <strong>XP:</strong> {{ main_character.experience }}<br>
+                        <strong>Gold:</strong> {{ main_character.gold if main_character.gold is defined else 'N/A' }}<br>
+                        <strong>Health:</strong> {{ main_character.health }}/{{ main_character.max_health }}<br>
+                        <strong>Power:</strong> {{ main_character.power if main_character.power is defined else 'N/A' }}<br>
+                    {% else %}
+                        <em>No character created yet.</em>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Class Info -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">Your Classes</div>
+                <div class="card-body">
+                    {% if classes and classes|length > 0 %}
+                        <ul class="list-group">
+                        {% for class in classes %}
+                            <li class="list-group-item">
+                                <strong>{{ class.name }}</strong>
+                                {% if class.join_code %}<span class="badge bg-secondary ms-2">Join Code: {{ class.join_code }}</span>{% endif %}
+                                {% if class.teacher %}<br><small>Teacher: {{ class.teacher.get_display_name() }}</small>{% endif %}
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <em>You are not enrolled in any classes.</em>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Clan Info -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">Clan</div>
+                <div class="card-body">
+                    {% if clan %}
+                        <strong>{{ clan.name }}</strong><br>
+                        <small>Level: {{ clan.level }}, Members: {{ clan.get_member_count() }}</small><br>
+                        {% if clan.emblem %}<img src="{{ clan.emblem }}" alt="Clan Emblem" class="img-fluid mt-2" style="max-height:40px;">{% endif %}
+                    {% else %}
+                        <em>You are not in a clan.</em>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Current Quests -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">Current Quests</div>
+                <div class="card-body">
+                    {% if active_quests and active_quests|length > 0 %}
+                        <ul class="list-group">
+                        {% for quest_log in active_quests %}
+                            <li class="list-group-item">
+                                <strong>{{ quest_log.quest.title }}</strong> - {{ quest_log.quest.description }}<br>
+                                <small>Status: {{ quest_log.status }}</small>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <em>No active quests.</em>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">Recent Activity</div>
+                <div class="card-body">
+                    {% if recent_activities and recent_activities|length > 0 %}
+                        <ul class="list-group">
+                        {% for activity in recent_activities %}
+                            <li class="list-group-item">
+                                <strong>{{ activity.event_type }}</strong> - {{ activity.event_timestamp.strftime('%Y-%m-%d %H:%M') }}<br>
+                                <small>{{ activity.event_data.get('description', '') }}</small>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <em>No recent activity to display.</em>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">Quick Links</div>
+                <div class="card-body text-center">
+                    <a href="{{ url_for('student.profile') }}" class="btn btn-outline-primary m-1">Profile</a>
+                    <a href="{{ url_for('student.character') }}" class="btn btn-outline-success m-1">Character</a>
+                    <a href="{{ url_for('student.quests') }}" class="btn btn-outline-warning m-1">Quests</a>
+                    <a href="{{ url_for('student.clan') }}" class="btn btn-outline-info m-1">Clan</a>
+                    <a href="{{ url_for('student.shop') }}" class="btn btn-outline-secondary m-1">Shop</a>
+                    <a href="{{ url_for('student.progress') }}" class="btn btn-outline-dark m-1">Progress</a>
                 </div>
             </div>
         </div>

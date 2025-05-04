@@ -3,8 +3,91 @@
 <li class="breadcrumb-item active" aria-current="page">Classes</li>
 {% endblock %}
 {% block dashboard_content %}
-<div class="alert alert-info mt-4">
-  <h4 class="alert-heading">Classes</h4>
-  <p>This feature is coming soon.</p>
+<!-- Flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<!-- Class Creation Form -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Create New Class</h5>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('teacher.classes') }}">
+      <div class="mb-3">
+        <label for="name" class="form-label">Class Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="name" name="name" required maxlength="64">
+      </div>
+      <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="2" maxlength="255"></textarea>
+      </div>
+      <div class="mb-3">
+        <label for="max_students" class="form-label">Max Students</label>
+        <input type="number" class="form-control" id="max_students" name="max_students" min="1" max="999" value="30">
+      </div>
+      <button type="submit" class="btn btn-success">Create Class</button>
+    </form>
+  </div>
+</div>
+
+<!-- Archived Classes Link -->
+<div class="d-flex justify-content-end mb-2">
+  <a href="{{ url_for('teacher.archived_classes') }}" class="btn btn-secondary btn-sm">View Archived Classes</a>
+</div>
+
+<!-- Class List Table -->
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Your Classes</h5>
+  </div>
+  <div class="card-body">
+    {% if classes and classes|length > 0 %}
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Join Code</th>
+              <th>Max Students</th>
+              <th>Students</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for class in classes %}
+            <tr>
+              <td>{{ class.name }}</td>
+              <td>{{ class.description or '-' }}</td>
+              <td>{{ class.join_code }}</td>
+              <td>{{ class.max_students }}</td>
+              <td>{{ class.students.count() }}</td>
+              <td>
+                <a href="{{ url_for('teacher.edit_class', class_id=class.id) }}" class="btn btn-primary btn-sm me-2">Edit</a>
+                <form method="POST" action="{{ url_for('teacher.archive_class', class_id=class.id) }}" style="display:inline;">
+                  <button type="submit" class="btn btn-warning btn-sm me-2" onclick="return confirm('Are you sure you want to archive this class?');">Archive</button>
+                </form>
+                <form method="POST" action="{{ url_for('teacher.delete_class', class_id=class.id) }}" style="display:inline;">
+                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to permanently delete this class? This cannot be undone.');">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-center text-muted my-4">No classes found. Use the form above to create your first class.</p>
+    {% endif %}
+  </div>
 </div>
 {% endblock %} 
