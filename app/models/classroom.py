@@ -49,7 +49,6 @@ class Classroom(Base):
         """Remove a student from the classroom."""
         if self.students.filter_by(id=student.id).first():
             self.students.remove(student)
-            self.save()
 
     @classmethod
     def get_by_join_code(cls, join_code):

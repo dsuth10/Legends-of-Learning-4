@@ -18,6 +18,7 @@ import random, string
 from app.models.student import Student
 import io
 import json
+import logging
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher')
 
@@ -159,6 +160,30 @@ def dashboard():
 @teacher_required
 def add_student():
     classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    # Check if this is a reassignment confirmation
+    if request.method == 'POST' and request.form.get('reassign_confirm') == '1':
+        user_id = request.form.get('user_id')
+        class_id = request.form.get('class_id')
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        user = User.query.filter_by(id=user_id, role=UserRole.STUDENT).first()
+        student_profile = Student.query.filter_by(user_id=user_id, class_id=None, status='unassigned').first()
+        classroom = Classroom.query.get(class_id)
+        if user and student_profile and classroom:
+            # Update name fields if provided
+            if first_name:
+                user.first_name = first_name
+            if last_name:
+                user.last_name = last_name
+            student_profile.class_id = classroom.id
+            student_profile.status = 'active'
+            db.session.commit()
+            flash('Unassigned student reassigned to class!', 'success')
+            return redirect(url_for('teacher.add_student'))
+        else:
+            flash('Could not reassign student. Please try again.', 'danger')
+            return render_template('teacher/add_student.html', classes=classes)
+
     if request.method == 'POST':
         username = request.form.get('username')
         email = request.form.get('email')
@@ -172,9 +197,26 @@ def add_student():
             flash('All fields are required.', 'danger')
             return render_template('teacher/add_student.html', classes=classes)
 
-        if User.query.filter((User.username == username) | (User.email == email)).first():
-            flash('Username or email already exists.', 'danger')
-            return render_template('teacher/add_student.html', classes=classes)
+        existing_user = User.query.filter((User.username == username) | (User.email == email), User.role == UserRole.STUDENT).first()
+        if existing_user:
+            student_profile = Student.query.filter_by(user_id=existing_user.id).first()
+            if student_profile and student_profile.class_id is None and student_profile.status == 'unassigned':
+                # Prompt for reassignment
+                return render_template(
+                    'teacher/add_student.html',
+                    classes=classes,
+                    reassignable_student={
+                        'user_id': existing_user.id,
+                        'username': existing_user.username,
+                        'email': existing_user.email,
+                        'first_name': first_name or existing_user.first_name,
+                        'last_name': last_name or existing_user.last_name,
+                        'class_id': class_id
+                    }
+                )
+            else:
+                flash('Username or email already exists.', 'danger')
+                return render_template('teacher/add_student.html', classes=classes)
 
         # Create user
         new_user = User(
@@ -217,7 +259,6 @@ def import_students():
     if request.method == 'POST':
         # Step 1: Handle mapping form submit
         if request.form.get('mapping_submit') == '1':
-            # Get mapping and file contents
             mapping = {f: request.form.get(f) for f in required_fields}
             file_contents = request.form.get('file_contents')
             class_id = request.form.get('class_id')
@@ -233,17 +274,26 @@ def import_students():
                 first_name = row.get('first_name', '').strip() if 'first_name' in row else ''
                 last_name = row.get('last_name', '').strip() if 'last_name' in row else ''
                 error = None
+                reassignable = False
+                existing_user = User.query.filter((User.username == username) | (User.email == email), User.role == UserRole.STUDENT).first()
                 if not username or not email or not password:
                     error = 'Missing required fields.'
-                elif User.query.filter((User.username == username) | (User.email == email)).first():
-                    error = 'Username or email already exists.'
+                elif existing_user:
+                    student_profile = Student.query.filter_by(user_id=existing_user.id).first()
+                    if student_profile and student_profile.class_id is None and student_profile.status == 'unassigned':
+                        reassignable = True
+                        error = None
+                    else:
+                        error = 'Username or email already exists.'
                 preview_data.append({
                     'username': username,
                     'email': email,
                     'password': password,
                     'first_name': first_name,
                     'last_name': last_name,
-                    'error': error
+                    'error': error,
+                    'reassignable': reassignable,
+                    'user_id': existing_user.id if reassignable else None
                 })
             session['import_preview_data'] = preview_data
             session['import_class_id'] = class_id
@@ -260,6 +310,7 @@ def import_students():
                 flash('Class not found.', 'danger')
                 return render_template('teacher/import_students.html', classes=classes)
             created = 0
+            reassigned = 0
             failed = 0
             errors = []
             for i, row in enumerate(preview_data, start=2):
@@ -267,14 +318,35 @@ def import_students():
                     failed += 1
                     errors.append(f'Row {i}: {row["error"]}')
                     continue
+                if row.get('reassignable') and row.get('user_id'):
+                    # Reassign unassigned student
+                    user_id = row['user_id']
+                    student_profile = Student.query.filter_by(user_id=user_id, class_id=None, status='unassigned').first()
+                    user = User.query.filter_by(id=user_id, role=UserRole.STUDENT).first()
+                    if student_profile and user:
+                        student_profile.class_id = classroom.id
+                        student_profile.status = 'active'
+                        # Optionally update name fields
+                        if row.get('first_name'):
+                            user.first_name = row['first_name']
+                        if row.get('last_name'):
+                            user.last_name = row['last_name']
+                        db.session.commit()
+                        reassigned += 1
+                    else:
+                        failed += 1
+                        errors.append(f'Row {i}: Could not reassign student.')
+                    continue
+                # Normal creation
                 username = row['username']
                 email = row['email']
                 password = row['password']
                 first_name = row.get('first_name', '')
                 last_name = row.get('last_name', '')
-                if User.query.filter((User.username == username) | (User.email == email)).first():
-                    errors.append(f'Row {i}: Username or email already exists.')
+                existing_user = User.query.filter((User.username == username) | (User.email == email), User.role == UserRole.STUDENT).first()
+                if existing_user:
                     failed += 1
+                    errors.append(f'Row {i}: Username or email already exists.')
                     continue
                 new_user = User(
                     username=username,
@@ -291,11 +363,11 @@ def import_students():
                 db.session.add(student_profile)
                 db.session.commit()
                 created += 1
-            results = {'created': created, 'failed': failed}
-            if created:
-                flash(f'Successfully created {created} students.', 'success')
+            results = {'created': created, 'reassigned': reassigned, 'failed': failed}
+            if created or reassigned:
+                flash(f'Successfully created {created} students, reassigned {reassigned} unassigned students.', 'success')
             if failed:
-                flash(f'Failed to create {failed} students. See errors below.', 'danger')
+                flash(f'Failed to create or reassign {failed} students. See errors below.', 'danger')
             session.pop('import_preview_data', None)
             session.pop('import_class_id', None)
             return render_template('teacher/import_students.html', classes=classes, results=results, errors=errors)
@@ -313,7 +385,6 @@ def import_students():
                 flash('CSV file is empty or invalid.', 'danger')
                 return render_template('teacher/import_students.html', classes=classes)
             if required_fields.issubset(csv_columns):
-                # All required fields present, proceed as before
                 preview_data = []
                 for i, row in enumerate(reader, start=2):
                     username = row.get('username', '').strip()
@@ -322,23 +393,31 @@ def import_students():
                     first_name = row.get('first_name', '').strip()
                     last_name = row.get('last_name', '').strip()
                     error = None
+                    reassignable = False
+                    existing_user = User.query.filter((User.username == username) | (User.email == email), User.role == UserRole.STUDENT).first()
                     if not username or not email or not password:
                         error = 'Missing required fields.'
-                    elif User.query.filter((User.username == username) | (User.email == email)).first():
-                        error = 'Username or email already exists.'
+                    elif existing_user:
+                        student_profile = Student.query.filter_by(user_id=existing_user.id).first()
+                        if student_profile and student_profile.class_id is None and student_profile.status == 'unassigned':
+                            reassignable = True
+                            error = None
+                        else:
+                            error = 'Username or email already exists.'
                     preview_data.append({
                         'username': username,
                         'email': email,
                         'password': password,
                         'first_name': first_name,
                         'last_name': last_name,
-                        'error': error
+                        'error': error,
+                        'reassignable': reassignable,
+                        'user_id': existing_user.id if reassignable else None
                     })
                 session['import_preview_data'] = preview_data
                 session['import_class_id'] = class_id
                 return render_template('teacher/import_students.html', classes=classes, preview_data=preview_data, class_id=class_id)
             else:
-                # Required fields missing, show mapping UI
                 file.stream.seek(0)
                 file_contents = file.read().decode('utf-8')
                 return render_template(
@@ -569,21 +648,44 @@ def edit_student(user_id):
 def remove_student(user_id):
     user = User.query.filter_by(id=user_id, role=UserRole.STUDENT).first_or_404()
     class_id = request.form.get('class_id', type=int)
+    if not class_id:
+        flash('Class ID missing. Please try again from the class view.', 'danger')
+        return redirect(url_for('teacher.students'))
     classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
-    if not classroom or not user in classroom.students:
-        abort(403)
-    # Remove from classroom association
-    classroom.remove_student(user)
-    # Set student profile to unassigned
-    student_profile = Student.query.filter_by(user_id=user.id, class_id=class_id).first()
-    if student_profile:
-        student_profile.class_id = None
-        student_profile.status = 'unassigned'
+    # Debug: log students before removal
+    logging.warning(f"[DEBUG] Before removal: class {class_id} students: {[u.id for u in classroom.students.all()]}")
+    logging.warning(f"[DEBUG] Student profile before: {Student.query.filter_by(user_id=user.id, class_id=class_id).first()}")
+    # Log association table before
+    assoc_before = db.session.execute(class_students.select().where(class_students.c.class_id == class_id)).fetchall()
+    logging.warning(f"[DEBUG] Association table before: {assoc_before}")
+    if not classroom or not classroom.students.filter_by(id=user.id).first():
+        flash('You do not have permission to remove this student from the selected class.', 'danger')
+        return redirect(url_for('teacher.students', class_id=class_id))
+    try:
+        # Remove from classroom association
+        classroom.remove_student(user)
         db.session.commit()
-        flash('Student removed from class and marked as unassigned.', 'success')
-    else:
-        db.session.commit()
-        flash('Student removed from class.', 'warning')
+        # Log association table after
+        assoc_after = db.session.execute(class_students.select().where(class_students.c.class_id == class_id)).fetchall()
+        logging.warning(f"[DEBUG] Association table after: {assoc_after}")
+        # Set student profile to unassigned
+        student_profile = Student.query.filter_by(user_id=user.id, class_id=class_id).first()
+        if student_profile:
+            student_profile.class_id = None
+            student_profile.status = 'unassigned'
+            db.session.commit()
+            flash('Student removed from class and marked as unassigned.', 'success')
+        else:
+            db.session.commit()
+            flash('Student removed from class.', 'warning')
+        # Debug: log students after removal
+        classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+        logging.warning(f"[DEBUG] After removal: class {class_id} students: {[u.id for u in classroom.students.all()]}")
+        student_profile = Student.query.filter_by(user_id=user.id).first()
+        logging.warning(f"[DEBUG] Student profile after: {student_profile}")
+    except Exception as e:
+        logging.error(f"[ERROR] Exception during student removal: {e}")
+        flash(f"Error removing student: {e}", 'danger')
     return redirect(url_for('teacher.students', class_id=class_id))
 
 @teacher_bp.route('/students/<int:user_id>/status', methods=['POST'])
