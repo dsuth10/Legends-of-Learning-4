@@ -1,0 +1,33 @@
+{% extends "teacher/base_dashboard.html" %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('teacher.students', class_id=student.classes[0].id if student.classes else None) }}">Students</a></li>
+<li class="breadcrumb-item active" aria-current="page">Edit Student</li>
+{% endblock %}
+{% block dashboard_content %}
+<div class="container mt-4">
+  <h2>Edit Student</h2>
+  <form method="post">
+    <div class="mb-3">
+      <label for="first_name" class="form-label">First Name</label>
+      <input type="text" class="form-control" id="first_name" name="first_name" value="{{ student.first_name }}">
+    </div>
+    <div class="mb-3">
+      <label for="last_name" class="form-label">Last Name</label>
+      <input type="text" class="form-control" id="last_name" name="last_name" value="{{ student.last_name }}">
+    </div>
+    <div class="mb-3">
+      <label for="email" class="form-label">Email</label>
+      <input type="email" class="form-control" id="email" name="email" value="{{ student.email }}" required>
+    </div>
+    <div class="mb-3">
+      <label for="is_active" class="form-label">Status</label>
+      <select class="form-select" id="is_active" name="is_active">
+        <option value="true" {% if student.is_active %}selected{% endif %}>Active</option>
+        <option value="false" {% if not student.is_active %}selected{% endif %}>Inactive</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-success">Save Changes</button>
+    <a href="{{ url_for('teacher.students', class_id=student.classes[0].id if student.classes else None) }}" class="btn btn-secondary ms-2">Cancel</a>
+  </form>
+</div>
+{% endblock %} 

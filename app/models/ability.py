@@ -5,9 +5,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pydantic import BaseModel, Field
 from enum import Enum as PyEnum
 
-from app.models import db
-from app.models.character import Character
 from app.models.base import Base
+from app.models.character import Character
+from app.models import db
 
 class AbilityTier(str, PyEnum):
     BASIC = "basic"
@@ -33,92 +33,71 @@ class AbilityType(str, PyEnum):
 
 class Ability(Base):
     """Ability model for character skills and powers."""
-    
     __tablename__ = 'abilities'
-    
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
     description = db.Column(db.Text)
     type = db.Column(db.String(32), nullable=False)  # Store as string, validate with AbilityType
     level_requirement = db.Column(db.Integer, default=1, nullable=False)
-    
     # Ability stats
     power = db.Column(db.Integer, default=10, nullable=False)  # Base effectiveness
     cooldown = db.Column(db.Integer, default=0, nullable=False)  # Cooldown in turns
     duration = db.Column(db.Integer, default=1, nullable=False)  # Duration in turns for buffs/debuffs
-    
     # Metadata
     is_passive = db.Column(db.Boolean, default=False, nullable=False)
     is_ultimate = db.Column(db.Boolean, default=False, nullable=False)
-    
-    def __init__(self, name, type, **kwargs):
+    cost = db.Column(db.Integer, default=0, nullable=False)
+    def __init__(self, name, type, cost=0, **kwargs):
         super().__init__(**kwargs)
         self.name = name
         if isinstance(type, AbilityType):
             self.type = type.value
         else:
             self.type = AbilityType(type).value
-    
+        self.cost = cost
     @property
     def ability_type(self) -> AbilityType:
         """Get the ability type as an enum."""
         return AbilityType(self.type)
-    
     def __repr__(self):
-        return f'<Ability {self.name} ({self.type})>'
+        return f'<Ability {self.name} ({self.type}) - Cost: {self.cost}>'
 
 class CharacterAbility(Base):
     """Association model between characters and their learned abilities."""
-    
     __tablename__ = 'character_abilities'
-    
     id = db.Column(db.Integer, primary_key=True)
     character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=False)
     ability_id = db.Column(db.Integer, db.ForeignKey('abilities.id', ondelete='CASCADE'), nullable=False)
     level = db.Column(db.Integer, default=1, nullable=False)  # Ability can be leveled up
     is_equipped = db.Column(db.Boolean, default=False, nullable=False)  # Some abilities might need to be "equipped" to be used
     learned_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    
     # Relationships
-    character = db.relationship('Character', backref=db.backref('learned_abilities', lazy='dynamic'))
+    character = db.relationship('Character', back_populates='abilities')
     ability = db.relationship('Ability')
-    
     __table_args__ = (
         db.Index('idx_char_ability_char', 'character_id'),  # For looking up character's abilities
         db.Index('idx_char_ability_equipped', 'character_id', 'is_equipped'),  # For equipped abilities
         db.UniqueConstraint('character_id', 'ability_id', name='uq_char_ability'),  # Can't learn same ability twice
     )
-    
     def __init__(self, character_id, ability_id, **kwargs):
         super().__init__(**kwargs)
         self.character_id = character_id
         self.ability_id = ability_id
-    
     def level_up(self):
-        """Level up the ability, increasing its effectiveness."""
         self.level += 1
         self.save()
-    
     def equip(self):
-        """Equip this ability for use."""
-        # Count currently equipped abilities
         equipped_count = CharacterAbility.query.filter_by(
             character_id=self.character_id,
             is_equipped=True
         ).count()
-        
-        # Check if we can equip more abilities (limit of 4 equipped abilities)
         if not self.is_equipped and equipped_count >= 4:
             raise ValueError("Cannot equip more than 4 abilities")
-        
         self.is_equipped = True
         self.save()
-    
     def unequip(self):
-        """Unequip this ability."""
         self.is_equipped = False
         self.save()
-    
     def __repr__(self):
         status = "equipped" if self.is_equipped else "learned"
         return f'<CharacterAbility {self.ability.name} (Level {self.level}, {status})>'
@@ -152,4 +131,9 @@ class AbilityRead(AbilityBase):
 
     class Config:
         from_attributes = True
-        arbitrary_types_allowed = True 
+        arbitrary_types_allowed = True
+
+# At the end of the file, after both classes are defined:
+from app.models.character import Character
+Character.abilities = db.relationship('CharacterAbility', back_populates='character', lazy='dynamic')
+CharacterAbility.character = db.relationship('Character', back_populates='abilities') 

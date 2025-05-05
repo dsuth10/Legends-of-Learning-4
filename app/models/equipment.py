@@ -1,5 +1,4 @@
 from app.models.base import Base
-from app.models import db
 from datetime import datetime
 from enum import Enum
 
@@ -23,6 +22,7 @@ class Equipment(Base):
     
     __tablename__ = 'equipment'
     
+    from app.models import db
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
     description = db.Column(db.Text)
@@ -38,12 +38,14 @@ class Equipment(Base):
     # Metadata
     rarity = db.Column(db.Integer, default=1, nullable=False)  # 1=common, 2=uncommon, 3=rare, 4=epic, 5=legendary
     is_tradeable = db.Column(db.Boolean, default=True, nullable=False)
+    cost = db.Column(db.Integer, default=0, nullable=False)  # Cost in gold to purchase
     
-    def __init__(self, name, type, slot, **kwargs):
+    def __init__(self, name, type, slot, cost=0, **kwargs):
         super().__init__(**kwargs)
         self.name = name
         self.type = type
         self.slot = slot
+        self.cost = cost
     
     def __repr__(self):
         return f'<Equipment {self.name} ({self.type.value})>'
@@ -53,6 +55,7 @@ class Inventory(Base):
     
     __tablename__ = 'inventories'
     
+    from app.models import db
     id = db.Column(db.Integer, primary_key=True)
     character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=False)
     equipment_id = db.Column(db.Integer, db.ForeignKey('equipment.id', ondelete='CASCADE'), nullable=False)
@@ -80,6 +83,7 @@ class Inventory(Base):
     
     def equip(self):
         """Equip this item, unequipping any item in the same slot."""
+        from app.models import db
         if not self.is_equipped:
             # Unequip any item in the same slot
             current_equipped = Inventory.query.join(Equipment).filter(
@@ -97,6 +101,7 @@ class Inventory(Base):
     
     def unequip(self):
         """Unequip this item."""
+        from app.models import db
         if self.is_equipped:
             self.is_equipped = False
             self.save()

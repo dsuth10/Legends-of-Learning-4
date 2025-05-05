@@ -21,6 +21,8 @@ class Character(Base):
     strength = db.Column(db.Integer, default=10, nullable=False)
     defense = db.Column(db.Integer, default=10, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
+    character_class = db.Column(db.String(32), nullable=False, default='Adventurer')
+    gold = db.Column(db.Integer, default=0, nullable=False)
     
     # Foreign Keys
     student_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
@@ -29,6 +31,7 @@ class Character(Base):
     # Relationships
     student = db.relationship('User', backref=db.backref('characters', lazy='dynamic'))
     clan = db.relationship('Clan', foreign_keys=[clan_id], backref=db.backref('members', lazy='dynamic', foreign_keys='Character.clan_id'))
+    # abilities = db.relationship('CharacterAbility', back_populates='character', lazy='dynamic')
     
     __table_args__ = (
         db.Index('idx_character_student', 'student_id'),  # For looking up student's characters
@@ -83,7 +86,12 @@ class Character(Base):
         self.save()
     
     def __repr__(self):
-        return f'<Character {self.name} (Level {self.level})>'
+        return f'<Character {self.name} ({self.character_class}) (Level {self.level})>'
+
+    @property
+    def learned_abilities(self):
+        """Alias for abilities relationship."""
+        return self.abilities
 
 # Pydantic models for validation
 class CharacterBase(BaseModel):

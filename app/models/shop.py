@@ -3,8 +3,11 @@ from sqlalchemy.orm import validates
 from app.models import db
 from app.models.base import Base
 from app.models.character import Character
-from app.models.equipment import Equipment
-from app.models.ability import Ability
+from enum import Enum
+
+class PurchaseType(Enum):
+    EQUIPMENT = 'equipment'
+    ABILITY = 'ability'
 
 class ShopPurchase(Base):
     """Model for tracking purchases made in the game shop."""
@@ -24,7 +27,9 @@ class ShopPurchase(Base):
     @validates('purchase_type')
     def validate_purchase_type(self, key, value):
         """Validate that purchase_type is either 'equipment' or 'ability'."""
-        if value not in ['equipment', 'ability']:
+        if isinstance(value, PurchaseType):
+            value = value.value
+        if value not in [PurchaseType.EQUIPMENT.value, PurchaseType.ABILITY.value]:
             raise ValueError("purchase_type must be either 'equipment' or 'ability'")
         return value
     
@@ -38,16 +43,26 @@ class ShopPurchase(Base):
     def get_purchased_item(self):
         """Get the purchased item (equipment or ability) based on purchase_type."""
         if self.purchase_type == 'equipment':
+            from app.models.equipment import Equipment
             return Equipment.get_by_id(self.item_id)
         else:  # ability
+            from app.models.ability import Ability
             return Ability.get_by_id(self.item_id)
     
     @classmethod
-    def get_character_purchases(cls, character_id):
-        """Get all purchases made by a character."""
-        return cls.query.filter_by(character_id=character_id).order_by(cls.purchase_date.desc()).all()
+    def get_character_purchases(cls, character_id, purchase_type=None):
+        """Get all purchases made by a character, optionally filtered by purchase_type."""
+        query = cls.query.filter_by(character_id=character_id)
+        if purchase_type is not None:
+            query = query.filter_by(purchase_type=purchase_type)
+        return query.order_by(cls.purchase_date.desc()).all()
     
     @classmethod
     def get_recent_purchases(cls, limit=10):
         """Get the most recent purchases across all characters."""
-        return cls.query.order_by(cls.purchase_date.desc()).limit(limit).all() 
+        return cls.query.order_by(cls.purchase_date.desc()).limit(limit).all()
+
+# At the end of the file, after both classes are defined:
+from app.models.character import Character
+ShopPurchase.character = db.relationship('Character', back_populates='purchases')
+Character.purchases = db.relationship('ShopPurchase', back_populates='character', cascade='all, delete-orphan') 

@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
+from flask_sqlalchemy import SQLAlchemy
 
 # Base directory of the application
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -37,6 +38,8 @@ RETRY_CONFIG = {
     'retry_delay': 0.1,    # Delay between retries in seconds
     'backoff_factor': 2,   # Multiply retry delay by this factor after each retry
 }
+
+db = SQLAlchemy()
 
 def get_database_url() -> str:
     """

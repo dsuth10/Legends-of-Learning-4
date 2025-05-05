@@ -2,6 +2,27 @@ from datetime import datetime
 from sqlalchemy.types import JSON
 from app.models import db
 from app.models.base import Base
+from enum import Enum
+from sqlalchemy.orm import validates
+
+class EventType(Enum):
+    LOGIN = 'LOGIN'
+    LOGOUT = 'LOGOUT'
+    USER_LOGIN = 'USER_LOGIN'
+    USER_LOGOUT = 'USER_LOGOUT'
+    CHARACTER_CREATE = 'CHARACTER_CREATE'
+    CHARACTER_UPDATE = 'CHARACTER_UPDATE'
+    PURCHASE = 'PURCHASE'
+    QUEST_START = 'QUEST_START'
+    QUEST_COMPLETE = 'QUEST_COMPLETE'
+    QUEST_FAIL = 'QUEST_FAIL'
+    CLAN_JOIN = 'CLAN_JOIN'
+    CLAN_LEAVE = 'CLAN_LEAVE'
+    ABILITY_LEARN = 'ABILITY_LEARN'
+    EQUIPMENT_CHANGE = 'EQUIPMENT_CHANGE'
+    GOLD_TRANSACTION = 'GOLD_TRANSACTION'
+    XP_GAIN = 'XP_GAIN'
+    LEVEL_UP = 'LEVEL_UP'
 
 class AuditLog(Base):
     """Model for tracking important game events and changes."""
@@ -23,6 +44,8 @@ class AuditLog(Base):
     EVENT_TYPES = {
         'LOGIN': 'User login',
         'LOGOUT': 'User logout',
+        'USER_LOGIN': 'User login',
+        'USER_LOGOUT': 'User logout',
         'CHARACTER_CREATE': 'Character creation',
         'CHARACTER_UPDATE': 'Character update',
         'PURCHASE': 'Shop purchase',
@@ -41,6 +64,8 @@ class AuditLog(Base):
     @classmethod
     def log_event(cls, event_type, event_data, user_id=None, character_id=None, ip_address=None):
         """Create a new audit log entry."""
+        if isinstance(event_type, EventType):
+            event_type = event_type.value
         if event_type not in cls.EVENT_TYPES:
             raise ValueError(f"Invalid event type: {event_type}")
             
@@ -90,4 +115,10 @@ class AuditLog(Base):
         if event_type:
             query = query.filter_by(event_type=event_type)
             
-        return query.order_by(cls.event_timestamp.desc()).limit(limit).all() 
+        return query.order_by(cls.event_timestamp.desc()).limit(limit).all()
+
+    @validates('event_type')
+    def validate_event_type(self, key, value):
+        if value not in self.EVENT_TYPES:
+            raise ValueError(f"Invalid event type: {value}")
+        return value 

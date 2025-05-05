@@ -22,8 +22,12 @@ class Clan(Base):
     leader_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='SET NULL'), nullable=True)
     
     # Relationships
-    class_ = db.relationship('Classroom', backref=db.backref('classroom_clans', lazy='dynamic'), overlaps="clans,classroom")
-    leader = db.relationship('Character', foreign_keys=[leader_id], backref=db.backref('leading_clan', uselist=False))
+    class_ = db.relationship(
+        'Classroom',
+        backref=db.backref('classroom_clans', lazy='dynamic', overlaps="clans,classroom"),
+        overlaps="clans,classroom"
+    )
+    leader = db.relationship('Character', foreign_keys=[leader_id], backref=db.backref('leading_clan', uselist=False), post_update=True)
     # Note: members relationship is defined in Character model
     
     __table_args__ = (
@@ -46,8 +50,9 @@ class Clan(Base):
     
     def add_member(self, character):
         """Add a character to the clan."""
-        if len(self.members.all()) >= self.class_.max_clan_size:
-            raise ValueError("Clan is at maximum capacity")
+        max_size = self.class_.max_clan_size if self.class_ and self.class_.max_clan_size is not None else 9999
+        if len(self.members.all()) >= max_size:
+            raise ValueError("Clan is full")
         character.join_clan(self)
         self.save()
     

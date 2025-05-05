@@ -3,6 +3,7 @@ from app.models.base import Base
 from app.models import db
 from enum import Enum
 from flask_login import UserMixin
+from app.models.classroom import class_students, Classroom
 
 class UserRole(Enum):
     TEACHER = 'teacher'
@@ -27,6 +28,15 @@ class User(UserMixin, Base):
     display_name = db.Column(db.String(64))  # For in-game display
     
     # Relationships will be added by other models (class membership, characters, etc.)
+    
+    enrolled_classes = db.relationship(
+        'Classroom',
+        secondary=class_students,
+        primaryjoin=(id == class_students.c.user_id),
+        secondaryjoin=(Classroom.id == class_students.c.class_id),
+        lazy='dynamic',
+        overlaps="classes,students"
+    )
     
     __table_args__ = (
         db.Index('idx_user_role_active', 'role', 'is_active'),  # For filtering active users by role

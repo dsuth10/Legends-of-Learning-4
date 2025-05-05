@@ -15,6 +15,7 @@ from io import TextIOWrapper
 from werkzeug.utils import secure_filename
 from app.models.classroom import class_students
 import random, string
+from app.models.student import Student
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher')
 
@@ -151,6 +152,10 @@ def add_student():
         classroom = Classroom.query.get(class_id)
         if classroom:
             classroom.add_student(new_user)
+            # Create Student profile with correct class_id
+            student_profile = Student(user_id=new_user.id, class_id=classroom.id)
+            db.session.add(student_profile)
+            db.session.commit()
             flash('Student account created and added to class!', 'success')
         else:
             flash('Class not found.', 'danger')
@@ -210,6 +215,10 @@ def import_students():
                 db.session.add(new_user)
                 db.session.commit()
                 classroom.add_student(new_user)
+                # Create Student profile with correct class_id
+                student_profile = Student(user_id=new_user.id, class_id=classroom.id)
+                db.session.add(student_profile)
+                db.session.commit()
                 created += 1
             results = {'created': created, 'failed': failed}
             if created:
@@ -302,11 +311,158 @@ def delete_class(class_id):
         flash(f'Error deleting class: {e}', 'danger')
     return redirect(url_for('teacher.classes'))
 
-@teacher_bp.route('/students')
+@teacher_bp.route('/students', methods=['GET'])
 @login_required
 @teacher_required
 def students():
-    return render_template('teacher/students.html', active_page='students')
+    class_id = request.args.get('class_id', type=int)
+    search = request.args.get('search', '').strip()
+    # Advanced filters
+    level = request.args.get('level', type=int)
+    gold = request.args.get('gold', type=int)
+    xp = request.args.get('xp', type=int)
+    health = request.args.get('health', type=int)
+    power = request.args.get('power', type=int)
+    clan_id = request.args.get('clan_id', type=int)
+    character_class = request.args.get('character_class', '').strip()
+    # Sorting
+    sort = request.args.get('sort', 'username')
+    direction = request.args.get('direction', 'asc')
+
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    selected_class = None
+    students = []
+    clans = []
+    character_classes = []
+    if class_id:
+        selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+        if selected_class:
+            students_query = db.session.query(User, Student, Character, Clan)
+            students_query = students_query.join(Student, Student.user_id == User.id)
+            students_query = students_query.outerjoin(Character, (Character.student_id == User.id) & (Character.is_active == True))
+            students_query = students_query.outerjoin(Clan, Student.clan_id == Clan.id)
+            students_query = students_query.filter(Student.class_id == class_id)
+            if search:
+                students_query = students_query.filter(
+                    (User.username.ilike(f'%{search}%')) |
+                    (User.first_name.ilike(f'%{search}%')) |
+                    (User.last_name.ilike(f'%{search}%')) |
+                    (User.email.ilike(f'%{search}%'))
+                )
+            if level is not None:
+                students_query = students_query.filter(Student.level == level)
+            if gold is not None:
+                students_query = students_query.filter(Student.gold == gold)
+            if xp is not None:
+                students_query = students_query.filter(Student.xp == xp)
+            if health is not None:
+                students_query = students_query.filter(Student.health == health)
+            if power is not None:
+                students_query = students_query.filter(Student.power == power)
+            if clan_id:
+                students_query = students_query.filter(Student.clan_id == clan_id)
+            if character_class:
+                students_query = students_query.filter(Character.name.ilike(f'%{character_class}%'))
+            # Sorting logic
+            sort_map = {
+                'username': User.username,
+                'email': User.email,
+                'level': Student.level,
+                'gold': Student.gold,
+                'xp': Student.xp,
+                'health': Student.health,
+                'power': Student.power,
+                'character_class': Character.name,
+                'clan': Clan.name,
+            }
+            sort_col = sort_map.get(sort, User.username)
+            if direction == 'desc':
+                sort_col = sort_col.desc()
+            else:
+                sort_col = sort_col.asc()
+            students_query = students_query.order_by(sort_col)
+            # Get all results as tuples (User, Student, Character, Clan)
+            student_tuples = students_query.all()
+            students = []
+            for user, student, character, clan in student_tuples:
+                students.append({
+                    'user': user,
+                    'student': student,
+                    'character': character,
+                    'clan': clan
+                })
+            clans = Clan.query.filter_by(class_id=class_id).all()
+            character_classes = db.session.query(Character.name).filter(Character.student_id.in_([u.id for u,_,_,_ in student_tuples if u])).distinct().all()
+            character_classes = [cc[0] for cc in character_classes if cc[0]]
+        else:
+            flash('Class not found or you do not have permission.', 'danger')
+    return render_template(
+        'teacher/students.html',
+        classes=classes,
+        selected_class=selected_class,
+        students=students,
+        search=search,
+        level=level,
+        gold=gold,
+        xp=xp,
+        health=health,
+        power=power,
+        clan_id=clan_id,
+        character_class=character_class,
+        clans=clans,
+        character_classes=character_classes,
+        sort=sort,
+        direction=direction,
+        active_page='students'
+    )
+
+@teacher_bp.route('/students/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@teacher_required
+def edit_student(user_id):
+    user = User.query.filter_by(id=user_id, role=UserRole.STUDENT).first_or_404()
+    # Ensure the student is in a class owned by the current teacher
+    class_ids = [c.id for c in user.classes if c.teacher_id == current_user.id]
+    if not class_ids:
+        abort(403)
+    if request.method == 'POST':
+        user.first_name = request.form.get('first_name', user.first_name)
+        user.last_name = request.form.get('last_name', user.last_name)
+        user.email = request.form.get('email', user.email)
+        user.is_active = request.form.get('is_active', str(user.is_active)).lower() == 'true'
+        db.session.commit()
+        flash('Student information updated.', 'success')
+        return redirect(url_for('teacher.students', class_id=class_ids[0]))
+    # TODO: Render edit student form in template
+    return render_template('teacher/edit_student.html', student=user)
+
+@teacher_bp.route('/students/<int:user_id>/remove', methods=['POST'])
+@login_required
+@teacher_required
+def remove_student(user_id):
+    user = User.query.filter_by(id=user_id, role=UserRole.STUDENT).first_or_404()
+    class_id = request.form.get('class_id', type=int)
+    classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+    if not classroom or not user in classroom.students:
+        abort(403)
+    classroom.remove_student(user)
+    db.session.commit()
+    flash('Student removed from class.', 'success')
+    return redirect(url_for('teacher.students', class_id=class_id))
+
+@teacher_bp.route('/students/<int:user_id>/status', methods=['POST'])
+@login_required
+@teacher_required
+def toggle_student_status(user_id):
+    user = User.query.filter_by(id=user_id, role=UserRole.STUDENT).first_or_404()
+    # Ensure the student is in a class owned by the current teacher
+    class_ids = [c.id for c in user.classes if c.teacher_id == current_user.id]
+    if not class_ids:
+        abort(403)
+    user.is_active = not user.is_active
+    db.session.commit()
+    flash(f'Student status set to {"Active" if user.is_active else "Inactive"}.', 'success')
+    return redirect(url_for('teacher.students', class_id=class_ids[0]))
 
 @teacher_bp.route('/clans')
 @login_required

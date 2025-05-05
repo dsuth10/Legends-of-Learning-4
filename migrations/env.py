@@ -9,22 +9,6 @@ from alembic import context
 from app.models import db
 from app.models.db_config import get_database_url
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
-config = context.config
-
-# Set the SQLAlchemy URL in the alembic config
-config.set_main_option("sqlalchemy.url", get_database_url())
-
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-
-# add your model's MetaData object here
-# for 'autogenerate' support
-target_metadata = db.metadata
-
 # Import all models to ensure they are registered with SQLAlchemy
 from app.models.user import User
 from app.models.classroom import Classroom
@@ -35,6 +19,33 @@ from app.models.ability import Ability
 from app.models.shop import ShopPurchase
 from app.models.quest import Quest, QuestLog
 from app.models.audit import AuditLog
+from app.models.student import Student
+from app.models.assist_log import AssistLog
+from app.models.base import Base
+from app.models.db_maintenance import *  # If this file contains models
+from app.models.classroom import class_students  # Association table
+
+# this is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
+config = context.config
+
+# Set the SQLAlchemy URL in the alembic config
+# config.set_main_option("sqlalchemy.url", get_database_url())  # Commented out to allow test fixture to set DB URL
+
+# Debug: Print the DB URL being used
+print("Alembic using DB URL:", config.get_main_option("sqlalchemy.url"))
+
+# Interpret the config file for Python logging.
+# This line sets up loggers basically.
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+# add your model's MetaData object here
+# for 'autogenerate' support
+target_metadata = db.metadata
+
+# Debug: Print the tables Alembic sees in target_metadata
+print("Alembic target_metadata tables:", list(target_metadata.tables.keys()))
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.

@@ -177,36 +177,36 @@ class Reward(Base):
     equipment_id = db.Column(db.Integer, db.ForeignKey('equipment.id', ondelete='SET NULL'), nullable=True)
     ability_id = db.Column(db.Integer, db.ForeignKey('abilities.id', ondelete='SET NULL'), nullable=True)
     
-    # Relationships for specific rewards
-    equipment = db.relationship('Equipment')
-    ability = db.relationship('Ability')
-    
-    def distribute(self, character):
-        """Distribute the reward to a character."""
+    def distribute(self, character, session=None):
+        from app.models import db
+        if session is None:
+            session = db.session
         if self.type == RewardType.EXPERIENCE:
             character.gain_experience(self.amount)
-        
+            session.commit()
         elif self.type == RewardType.GOLD:
-            # Assuming character has a gold attribute
             character.gold += self.amount
             character.save()
-        
-        elif self.type == RewardType.EQUIPMENT and self.equipment:
+            session.commit()
+        elif self.type == RewardType.EQUIPMENT and self.equipment_id:
+            from app.models.equipment import Inventory
             inventory = Inventory(
                 character_id=character.id,
                 equipment_id=self.equipment_id
             )
-            inventory.save()
-        
-        elif self.type == RewardType.ABILITY and self.ability:
+            session.add(inventory)
+            session.commit()
+        elif self.type == RewardType.ABILITY and self.ability_id:
+            from app.models.ability import CharacterAbility
             char_ability = CharacterAbility(
                 character_id=character.id,
                 ability_id=self.ability_id
             )
-            char_ability.save()
-        
-        elif self.type == RewardType.CLAN_EXPERIENCE and character.clan:
+            session.add(char_ability)
+            session.commit()
+        elif self.type == RewardType.CLAN_EXPERIENCE and hasattr(character, 'clan') and character.clan:
             character.clan.gain_experience(self.amount)
+            session.commit()
     
     def __repr__(self):
         return f'<Reward {self.type.value} ({self.amount})>'
@@ -263,4 +263,7 @@ class QuestRead(QuestBase):
     updated_at: datetime
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+Reward.equipment = db.relationship('Equipment')
+Reward.ability = db.relationship('Ability') 

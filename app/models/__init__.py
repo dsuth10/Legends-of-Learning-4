@@ -1,6 +1,12 @@
 from flask_sqlalchemy import SQLAlchemy
 
-db = SQLAlchemy()
+from app.models.base import Base  # <-- Re-export Base
+from .db_config import db
+
+__all__ = [
+    'db',
+    'Base',
+]
 
 def init_db(app):
     db.init_app(app)

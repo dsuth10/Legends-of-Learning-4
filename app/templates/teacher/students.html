@@ -3,8 +3,135 @@
 <li class="breadcrumb-item active" aria-current="page">Students</li>
 {% endblock %}
 {% block dashboard_content %}
-<div class="alert alert-info mt-4">
-  <h4 class="alert-heading">Students</h4>
-  <p>This feature is coming soon.</p>
+<div class="container mt-4">
+  <h2>Student Roster Management</h2>
+  <form method="get" class="mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label for="class_id" class="form-label">Select Class</label>
+        <select class="form-select" id="class_id" name="class_id" required onchange="this.form.submit()">
+          <option value="" disabled {% if not selected_class %}selected{% endif %}>Select a class</option>
+          {% for class in classes %}
+            <option value="{{ class.id }}" {% if selected_class and class.id == selected_class.id %}selected{% endif %}>{{ class.name }} (Join Code: {{ class.join_code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if selected_class %}
+      <div class="col-md-2">
+        <label for="search" class="form-label">Search</label>
+        <input type="text" class="form-control" id="search" name="search" placeholder="Name or Email" value="{{ search }}">
+      </div>
+      <div class="col-md-1">
+        <label for="level" class="form-label">Level</label>
+        <input type="number" class="form-control" id="level" name="level" value="{{ level if level is not none }}">
+      </div>
+      <div class="col-md-1">
+        <label for="gold" class="form-label">Gold</label>
+        <input type="number" class="form-control" id="gold" name="gold" value="{{ gold if gold is not none }}">
+      </div>
+      <div class="col-md-1">
+        <label for="xp" class="form-label">XP</label>
+        <input type="number" class="form-control" id="xp" name="xp" value="{{ xp if xp is not none }}">
+      </div>
+      <div class="col-md-1">
+        <label for="health" class="form-label">Health</label>
+        <input type="number" class="form-control" id="health" name="health" value="{{ health if health is not none }}">
+      </div>
+      <div class="col-md-1">
+        <label for="power" class="form-label">Power</label>
+        <input type="number" class="form-control" id="power" name="power" value="{{ power if power is not none }}">
+      </div>
+      <div class="col-md-2">
+        <label for="clan_id" class="form-label">Clan</label>
+        <select class="form-select" id="clan_id" name="clan_id">
+          <option value="">All</option>
+          {% for clan in clans %}
+            <option value="{{ clan.id }}" {% if clan_id and clan.id == clan_id %}selected{% endif %}>{{ clan.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="character_class" class="form-label">Character Class</label>
+        <select class="form-select" id="character_class" name="character_class">
+          <option value="">All</option>
+          {% for cc in character_classes %}
+            <option value="{{ cc }}" {% if character_class == cc %}selected{% endif %}>{{ cc }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-1 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100" type="submit">Filter</button>
+      </div>
+      <input type="hidden" name="class_id" value="{{ selected_class.id }}">
+      {% endif %}
+    </div>
+  </form>
+  {% if selected_class %}
+    {% if students and students|length > 0 %}
+      <div class="table-responsive mt-3">
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              {% macro sort_link(label, col) %}
+                {% set is_sorted = sort == col %}
+                <a href="?{{ request.query_string|safe|replace('sort=' ~ sort, 'sort=' ~ col)|replace('direction=' ~ direction, 'direction=' ~ ('desc' if is_sorted and direction == 'asc' else 'asc')) }}" class="text-decoration-none">
+                  {{ label }}
+                  {% if is_sorted %}
+                    <i class="fas fa-sort-{{ 'up' if direction == 'asc' else 'down' }}"></i>
+                  {% else %}
+                    <i class="fas fa-sort text-muted"></i>
+                  {% endif %}
+                </a>
+              {% endmacro %}
+              <th>{{ sort_link('Name', 'username') }}</th>
+              <th>{{ sort_link('Email', 'email') }}</th>
+              <th>{{ sort_link('Level', 'level') }}</th>
+              <th>{{ sort_link('Gold', 'gold') }}</th>
+              <th>{{ sort_link('XP', 'xp') }}</th>
+              <th>{{ sort_link('Health', 'health') }}</th>
+              <th>{{ sort_link('Power', 'power') }}</th>
+              <th>{{ sort_link('Character Class', 'character_class') }}</th>
+              <th>{{ sort_link('Clan', 'clan') }}</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in students %}
+            <tr>
+              <td>{{ student['user'].full_name }}</td>
+              <td>{{ student['user'].email }}</td>
+              <td>{{ student['student'].level }}</td>
+              <td>{{ student['student'].gold }}</td>
+              <td>{{ student['student'].xp }}</td>
+              <td>{{ student['student'].health }}</td>
+              <td>{{ student['student'].power }}</td>
+              <td>{% if student['character'] %}{{ student['character'].name }}{% else %}-{% endif %}</td>
+              <td>{% if student['clan'] %}{{ student['clan'].name }}{% else %}-{% endif %}</td>
+              <td>
+                <form method="post" action="{{ url_for('teacher.toggle_student_status', user_id=student['user'].id) }}" style="display:inline;">
+                  <button type="submit" class="btn btn-sm {% if student['user'].is_active %}btn-success{% else %}btn-secondary{% endif %}">
+                    {% if student['user'].is_active %}Active{% else %}Inactive{% endif %}
+                  </button>
+                </form>
+              </td>
+              <td>
+                <a href="{{ url_for('teacher.edit_student', user_id=student['user'].id) }}" class="btn btn-primary btn-sm">Edit</a>
+                <form method="post" action="{{ url_for('teacher.remove_student', user_id=student['user'].id) }}" style="display:inline;">
+                  <input type="hidden" name="class_id" value="{{ selected_class.id }}">
+                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this student from the class?');">Remove</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info mt-4">No students found in this class.</div>
+    {% endif %}
+  {% else %}
+    <div class="alert alert-secondary mt-4">Select a class to view its students.</div>
+  {% endif %}
 </div>
 {% endblock %} 
