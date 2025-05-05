@@ -3,8 +3,144 @@
 <li class="breadcrumb-item active" aria-current="page">Analytics</li>
 {% endblock %}
 {% block dashboard_content %}
-<div class="alert alert-info mt-4">
-  <h4 class="alert-heading">Analytics</h4>
-  <p>This feature is coming soon.</p>
+<div class="container mt-4">
+  <h4>Analytics</h4>
+  <form class="mb-4" id="class-selector-form" onsubmit="return false;">
+    <div class="form-group row">
+      <label for="class_id" class="col-sm-2 col-form-label">Select Class:</label>
+      <div class="col-sm-6">
+        <select class="form-control" id="class_id" name="class_id">
+          <option value="">-- Choose a class --</option>
+          {% for c in classes %}
+            <option value="{{ c.id }}" {% if selected_class and c.id == selected_class.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </form>
+  <div id="analytics-charts">
+    {% if selected_class %}
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">Class Composition</div>
+          <div class="card-body">
+            <canvas id="classCompositionChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">Class Activity</div>
+          <div class="card-body">
+            <canvas id="classActivityChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% else %}
+      <div class="alert alert-info mt-4">Please select a class to view analytics.</div>
+    {% endif %}
+  </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let classCompositionChart = null;
+let classActivityChart = null;
+
+function renderCharts(classLabels, classCounts, activeCounts, inactiveCounts) {
+  const compCtx = document.getElementById('classCompositionChart').getContext('2d');
+  const actCtx = document.getElementById('classActivityChart').getContext('2d');
+  if (classCompositionChart) classCompositionChart.destroy();
+  if (classActivityChart) classActivityChart.destroy();
+  classCompositionChart = new Chart(compCtx, {
+    type: 'doughnut',
+    data: {
+      labels: classLabels,
+      datasets: [{
+        label: 'Students per Class',
+        data: classCounts,
+        backgroundColor: [
+          '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'
+        ],
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+  classActivityChart = new Chart(actCtx, {
+    type: 'bar',
+    data: {
+      labels: classLabels,
+      datasets: [
+        {
+          label: 'Active Students',
+          data: activeCounts,
+          backgroundColor: '#1cc88a'
+        },
+        {
+          label: 'Inactive Students',
+          data: inactiveCounts,
+          backgroundColor: '#f6c23e'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const classSelect = document.getElementById('class_id');
+  classSelect.addEventListener('change', function() {
+    const classId = this.value;
+    const chartsDiv = document.getElementById('analytics-charts');
+    if (!classId) {
+      chartsDiv.innerHTML = '<div class="alert alert-info mt-4">Please select a class to view analytics.</div>';
+      return;
+    }
+    fetch(`/teacher/analytics/data?class_id=${classId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          chartsDiv.innerHTML = `<div class='alert alert-danger mt-4'>${data.error}</div>`;
+          return;
+        }
+        chartsDiv.innerHTML = `
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header">Class Composition</div>
+              <div class="card-body">
+                <canvas id="classCompositionChart"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-header">Class Activity</div>
+              <div class="card-body">
+                <canvas id="classActivityChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>`;
+        renderCharts(data.class_labels, data.class_counts, data.active_counts, data.inactive_counts);
+      });
+  });
+  // Initial render if a class is already selected
+  {% if selected_class %}
+  renderCharts({{ class_labels|safe }}, {{ class_counts|safe }}, {{ active_counts|safe }}, {{ inactive_counts|safe }});
+  {% endif %}
+});
+</script>
 {% endblock %} 

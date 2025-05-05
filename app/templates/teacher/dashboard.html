@@ -5,71 +5,39 @@
 {% endblock %}
 
 {% block dashboard_content %}
-<div class="row">
-    <!-- Quick Stats -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Active Classes</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.active_classes }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-chalkboard fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card border-left-primary shadow h-100 py-2">
+      <div class="card-body">
+        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Classes</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_classes }}</div>
+      </div>
     </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-success shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Students</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_students }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-users fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-left-success shadow h-100 py-2">
+      <div class="card-body">
+        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Students</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_students }}</div>
+      </div>
     </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-info shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Active Clans</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.active_clans }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-shield-alt fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-left-info shadow h-100 py-2">
+      <div class="card-body">
+        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Active Students</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_students }}</div>
+      </div>
     </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-warning shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Active Quests</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.active_quests }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-scroll fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-left-warning shadow h-100 py-2">
+      <div class="card-body">
+        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Inactive Students</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ inactive_students }}</div>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Class List Table for Multi-Class Support -->
@@ -220,4 +188,59 @@
     width: 100%;
 }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const classLabels = {{ class_labels|safe }};
+const classCounts = {{ class_counts|safe }};
+const activeCounts = {{ active_counts|safe }};
+const inactiveCounts = {{ inactive_counts|safe }};
+
+// Class Composition Doughnut Chart
+new Chart(document.getElementById('classCompositionChart'), {
+  type: 'doughnut',
+  data: {
+    labels: classLabels,
+    datasets: [{
+      label: 'Students per Class',
+      data: classCounts,
+      backgroundColor: [
+        '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'
+      ],
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } }
+  }
+});
+
+// Class Activity Bar Chart
+new Chart(document.getElementById('classActivityChart'), {
+  type: 'bar',
+  data: {
+    labels: classLabels,
+    datasets: [
+      {
+        label: 'Active Students',
+        data: activeCounts,
+        backgroundColor: '#1cc88a'
+      },
+      {
+        label: 'Inactive Students',
+        data: inactiveCounts,
+        backgroundColor: '#f6c23e'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: { y: { beginAtZero: true } }
+  }
+});
+</script>
 {% endblock %} 

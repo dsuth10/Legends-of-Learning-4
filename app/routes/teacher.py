@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, abort, request, redirect, url_for, flash
+from flask import Blueprint, render_template, abort, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from functools import wraps
 from datetime import datetime, timedelta
@@ -16,6 +16,8 @@ from werkzeug.utils import secure_filename
 from app.models.classroom import class_students
 import random, string
 from app.models.student import Student
+import io
+import json
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher')
 
@@ -71,6 +73,22 @@ def dashboard():
             count()
     }
 
+    # Key metrics for the current teacher
+    total_classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).count()
+    total_students = db.session.query(User).\
+        join(class_students, class_students.c.user_id == User.id).\
+        join(Classroom, Classroom.id == class_students.c.class_id).\
+        filter(Classroom.teacher_id == current_user.id).\
+        distinct().\
+        count()
+    active_students = db.session.query(User).\
+        join(class_students, class_students.c.user_id == User.id).\
+        join(Classroom, Classroom.id == class_students.c.class_id).\
+        filter(Classroom.teacher_id == current_user.id, User.is_active == True).\
+        distinct().\
+        count()
+    inactive_students = total_students - active_students
+
     # Get recent activities (last 7 days)
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     recent_activities = []
@@ -104,6 +122,20 @@ def dashboard():
     # Fetch all active classes for the current teacher
     classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
 
+    # Chart data for class composition and activity
+    class_labels = []
+    class_counts = []
+    active_counts = []
+    inactive_counts = []
+    for c in classes:
+        class_labels.append(c.name)
+        total = c.students.count()
+        class_counts.append(total)
+        active = sum(1 for s in c.students if s.is_active)
+        inactive = total - active
+        active_counts.append(active)
+        inactive_counts.append(inactive)
+
     return render_template(
         'teacher/dashboard.html',
         title='Teacher Dashboard',
@@ -111,7 +143,15 @@ def dashboard():
         stats=stats,
         recent_activities=recent_activities,
         active_page='dashboard',
-        classes=classes
+        classes=classes,
+        total_classes=total_classes,
+        total_students=total_students,
+        active_students=active_students,
+        inactive_students=inactive_students,
+        class_labels=json.dumps(class_labels),
+        class_counts=json.dumps(class_counts),
+        active_counts=json.dumps(active_counts),
+        inactive_counts=json.dumps(inactive_counts)
     )
 
 @teacher_bp.route('/add-student', methods=['GET', 'POST'])
@@ -171,18 +211,49 @@ def import_students():
     classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
     results = None
     errors = []
+    preview_data = None
+    preview_errors = []
+    required_fields = {'username', 'email', 'password'}
     if request.method == 'POST':
-        file = request.files.get('csv_file')
-        class_id = request.form.get('class_id')
-        if not file or not class_id:
-            flash('CSV file and class selection are required.', 'danger')
-            return render_template('teacher/import_students.html', classes=classes)
-        try:
-            stream = TextIOWrapper(file.stream, encoding='utf-8')
-            reader = csv.DictReader(stream)
-            required_fields = {'username', 'email', 'password'}
-            if not required_fields.issubset(reader.fieldnames):
-                flash('CSV must have columns: username, email, password', 'danger')
+        # Step 1: Handle mapping form submit
+        if request.form.get('mapping_submit') == '1':
+            # Get mapping and file contents
+            mapping = {f: request.form.get(f) for f in required_fields}
+            file_contents = request.form.get('file_contents')
+            class_id = request.form.get('class_id')
+            if not file_contents or not class_id:
+                flash('Missing file or class selection.', 'danger')
+                return render_template('teacher/import_students.html', classes=classes)
+            reader = csv.DictReader(io.StringIO(file_contents))
+            preview_data = []
+            for i, row in enumerate(reader, start=2):
+                username = row.get(mapping['username'], '').strip()
+                email = row.get(mapping['email'], '').strip()
+                password = row.get(mapping['password'], '').strip()
+                first_name = row.get('first_name', '').strip() if 'first_name' in row else ''
+                last_name = row.get('last_name', '').strip() if 'last_name' in row else ''
+                error = None
+                if not username or not email or not password:
+                    error = 'Missing required fields.'
+                elif User.query.filter((User.username == username) | (User.email == email)).first():
+                    error = 'Username or email already exists.'
+                preview_data.append({
+                    'username': username,
+                    'email': email,
+                    'password': password,
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'error': error
+                })
+            session['import_preview_data'] = preview_data
+            session['import_class_id'] = class_id
+            return render_template('teacher/import_students.html', classes=classes, preview_data=preview_data, class_id=class_id)
+        # Step 2: Confirmation step (as before)
+        if request.form.get('confirm_import') == '1':
+            preview_data = session.get('import_preview_data')
+            class_id = session.get('import_class_id')
+            if not preview_data or not class_id:
+                flash('No preview data found. Please re-upload your CSV.', 'danger')
                 return render_template('teacher/import_students.html', classes=classes)
             classroom = Classroom.query.get(class_id)
             if not classroom:
@@ -190,16 +261,17 @@ def import_students():
                 return render_template('teacher/import_students.html', classes=classes)
             created = 0
             failed = 0
-            for i, row in enumerate(reader, start=2):  # start=2 for header row
-                username = row.get('username', '').strip()
-                email = row.get('email', '').strip()
-                password = row.get('password', '').strip()
-                first_name = row.get('first_name', '').strip()
-                last_name = row.get('last_name', '').strip()
-                if not username or not email or not password:
-                    errors.append(f'Row {i}: Missing required fields.')
+            errors = []
+            for i, row in enumerate(preview_data, start=2):
+                if row.get('error'):
                     failed += 1
+                    errors.append(f'Row {i}: {row["error"]}')
                     continue
+                username = row['username']
+                email = row['email']
+                password = row['password']
+                first_name = row.get('first_name', '')
+                last_name = row.get('last_name', '')
                 if User.query.filter((User.username == username) | (User.email == email)).first():
                     errors.append(f'Row {i}: Username or email already exists.')
                     failed += 1
@@ -215,7 +287,6 @@ def import_students():
                 db.session.add(new_user)
                 db.session.commit()
                 classroom.add_student(new_user)
-                # Create Student profile with correct class_id
                 student_profile = Student(user_id=new_user.id, class_id=classroom.id)
                 db.session.add(student_profile)
                 db.session.commit()
@@ -225,9 +296,65 @@ def import_students():
                 flash(f'Successfully created {created} students.', 'success')
             if failed:
                 flash(f'Failed to create {failed} students. See errors below.', 'danger')
+            session.pop('import_preview_data', None)
+            session.pop('import_class_id', None)
+            return render_template('teacher/import_students.html', classes=classes, results=results, errors=errors)
+        # Step 3: Initial upload step
+        file = request.files.get('csv_file')
+        class_id = request.form.get('class_id')
+        if not file or not class_id:
+            flash('CSV file and class selection are required.', 'danger')
+            return render_template('teacher/import_students.html', classes=classes)
+        try:
+            stream = TextIOWrapper(file.stream, encoding='utf-8')
+            reader = csv.DictReader(stream)
+            csv_columns = reader.fieldnames
+            if not csv_columns:
+                flash('CSV file is empty or invalid.', 'danger')
+                return render_template('teacher/import_students.html', classes=classes)
+            if required_fields.issubset(csv_columns):
+                # All required fields present, proceed as before
+                preview_data = []
+                for i, row in enumerate(reader, start=2):
+                    username = row.get('username', '').strip()
+                    email = row.get('email', '').strip()
+                    password = row.get('password', '').strip()
+                    first_name = row.get('first_name', '').strip()
+                    last_name = row.get('last_name', '').strip()
+                    error = None
+                    if not username or not email or not password:
+                        error = 'Missing required fields.'
+                    elif User.query.filter((User.username == username) | (User.email == email)).first():
+                        error = 'Username or email already exists.'
+                    preview_data.append({
+                        'username': username,
+                        'email': email,
+                        'password': password,
+                        'first_name': first_name,
+                        'last_name': last_name,
+                        'error': error
+                    })
+                session['import_preview_data'] = preview_data
+                session['import_class_id'] = class_id
+                return render_template('teacher/import_students.html', classes=classes, preview_data=preview_data, class_id=class_id)
+            else:
+                # Required fields missing, show mapping UI
+                file.stream.seek(0)
+                file_contents = file.read().decode('utf-8')
+                return render_template(
+                    'teacher/import_students.html',
+                    classes=classes,
+                    mapping_needed=True,
+                    csv_columns=csv_columns,
+                    required_fields=required_fields,
+                    file_contents=file_contents,
+                    class_id=class_id
+                )
         except Exception as e:
             flash(f'Error processing CSV: {e}', 'danger')
-    return render_template('teacher/import_students.html', classes=classes, results=results, errors=errors)
+            return render_template('teacher/import_students.html', classes=classes)
+    # GET request
+    return render_template('teacher/import_students.html', classes=classes)
 
 @teacher_bp.route('/classes', methods=['GET', 'POST'])
 @login_required
@@ -445,9 +572,18 @@ def remove_student(user_id):
     classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
     if not classroom or not user in classroom.students:
         abort(403)
+    # Remove from classroom association
     classroom.remove_student(user)
-    db.session.commit()
-    flash('Student removed from class.', 'success')
+    # Set student profile to unassigned
+    student_profile = Student.query.filter_by(user_id=user.id, class_id=class_id).first()
+    if student_profile:
+        student_profile.class_id = None
+        student_profile.status = 'unassigned'
+        db.session.commit()
+        flash('Student removed from class and marked as unassigned.', 'success')
+    else:
+        db.session.commit()
+        flash('Student removed from class.', 'warning')
     return redirect(url_for('teacher.students', class_id=class_id))
 
 @teacher_bp.route('/students/<int:user_id>/status', methods=['POST'])
@@ -486,7 +622,57 @@ def shop():
 @login_required
 @teacher_required
 def analytics():
-    return render_template('teacher/analytics.html', active_page='analytics')
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    class_id = request.args.get('class_id', type=int)
+    selected_class = None
+    class_labels = []
+    class_counts = []
+    active_counts = []
+    inactive_counts = []
+    if class_id:
+        selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+        if selected_class:
+            class_labels = [selected_class.name]
+            total = selected_class.students.count()
+            class_counts = [total]
+            active = sum(1 for s in selected_class.students if s.is_active)
+            inactive = total - active
+            active_counts = [active]
+            inactive_counts = [inactive]
+    return render_template(
+        'teacher/analytics.html',
+        active_page='analytics',
+        classes=classes,
+        selected_class=selected_class,
+        class_labels=json.dumps(class_labels),
+        class_counts=json.dumps(class_counts),
+        active_counts=json.dumps(active_counts),
+        inactive_counts=json.dumps(inactive_counts)
+    )
+
+@teacher_bp.route('/analytics/data')
+@login_required
+@teacher_required
+def analytics_data():
+    class_id = request.args.get('class_id', type=int)
+    if not class_id:
+        return {'error': 'Missing class_id'}, 400
+    selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+    if not selected_class:
+        return {'error': 'Class not found or not authorized'}, 404
+    class_labels = [selected_class.name]
+    total = selected_class.students.count()
+    class_counts = [total]
+    active = sum(1 for s in selected_class.students if s.is_active)
+    inactive = total - active
+    active_counts = [active]
+    inactive_counts = [inactive]
+    return {
+        'class_labels': class_labels,
+        'class_counts': class_counts,
+        'active_counts': active_counts,
+        'inactive_counts': inactive_counts
+    }
 
 @teacher_bp.route('/backup')
 @login_required
@@ -531,4 +717,54 @@ def edit_class(class_id):
 @teacher_required
 def archived_classes():
     classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=False).all()
-    return render_template('teacher/archived_classes.html', active_page='archived_classes', classes=classes) 
+    return render_template('teacher/archived_classes.html', active_page='archived_classes', classes=classes)
+
+@teacher_bp.route('/unassigned-students')
+@login_required
+@teacher_required
+def unassigned_students():
+    # Query all unassigned students for the current teacher
+    unassigned = (
+        db.session.query(User, Student)
+        .join(Student, Student.user_id == User.id)
+        .filter(
+            Student.class_id == None,
+            Student.status == 'unassigned',
+            User.is_active == True
+        )
+        .all()
+    )
+    # Fetch all classes for reassignment dropdown
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    return render_template(
+        'teacher/unassigned_students.html',
+        students=unassigned,
+        classes=classes,
+        active_page='unassigned_students'
+    )
+
+@teacher_bp.route('/unassigned-students/<int:user_id>/reassign', methods=['POST'])
+@login_required
+@teacher_required
+def reassign_unassigned_student(user_id):
+    class_id = request.form.get('class_id', type=int)
+    student_profile = Student.query.filter_by(user_id=user_id, class_id=None, status='unassigned').first_or_404()
+    classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first_or_404()
+    # Reassign student
+    student_profile.class_id = class_id
+    student_profile.status = 'active'
+    db.session.commit()
+    flash('Student reassigned to class.', 'success')
+    return redirect(url_for('teacher.unassigned_students'))
+
+@teacher_bp.route('/unassigned-students/<int:user_id>/delete', methods=['POST'])
+@login_required
+@teacher_required
+def delete_unassigned_student(user_id):
+    student_profile = Student.query.filter_by(user_id=user_id, class_id=None, status='unassigned').first_or_404()
+    user = User.query.filter_by(id=user_id, role=UserRole.STUDENT).first_or_404()
+    db.session.delete(student_profile)
+    db.session.delete(user)
+    db.session.commit()
+    flash('Unassigned student permanently deleted.', 'success')
+    return redirect(url_for('teacher.unassigned_students')) 

@@ -7,22 +7,85 @@
     <h2>Import Students via CSV</h2>
     <p>Upload a CSV file to create multiple student accounts at once. The CSV must have columns: <code>username</code>, <code>email</code>, <code>password</code>. Optional: <code>first_name</code>, <code>last_name</code>.</p>
     <a href="{{ url_for('static', filename='csv/student_import_template.csv') }}" class="btn btn-link">Download CSV Template</a>
-    <form method="POST" enctype="multipart/form-data" class="mt-3">
-        <div class="mb-3">
-            <label for="class_id" class="form-label">Select Class</label>
-            <select class="form-select" id="class_id" name="class_id" required>
-                <option value="" disabled selected>Select a class</option>
-                {% for class in classes %}
-                    <option value="{{ class.id }}">{{ class.name }} (Join Code: {{ class.join_code }})</option>
+    {% if mapping_needed %}
+        <form method="POST">
+            <input type="hidden" name="mapping_submit" value="1">
+            <input type="hidden" name="file_contents" value="{{ file_contents|e }}">
+            <input type="hidden" name="class_id" value="{{ class_id }}">
+            <div class="mb-3">
+                <h5>Map CSV Columns to Required Fields</h5>
+                <p>The uploaded CSV does not match the required columns. Please map each required field to a column in your file.</p>
+                {% for field in required_fields %}
+                    <div class="mb-2">
+                        <label for="{{ field }}" class="form-label">{{ field|capitalize }}</label>
+                        <select class="form-select" id="{{ field }}" name="{{ field }}" required>
+                            <option value="" disabled selected>Select column for {{ field }}</option>
+                            {% for col in csv_columns %}
+                                <option value="{{ col }}">{{ col }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 {% endfor %}
-            </select>
-        </div>
-        <div class="mb-3">
-            <label for="csv_file" class="form-label">CSV File</label>
-            <input type="file" class="form-control" name="csv_file" accept=".csv" required>
-        </div>
-        <button type="submit" class="btn btn-success">Import Students</button>
-    </form>
+            </div>
+            <button type="submit" class="btn btn-success">Continue</button>
+            <a href="{{ url_for('teacher.import_students') }}" class="btn btn-secondary ms-2">Cancel</a>
+        </form>
+    {% elif preview_data %}
+        <form method="POST">
+            <input type="hidden" name="confirm_import" value="1">
+            <input type="hidden" name="class_id" value="{{ class_id }}">
+            <div class="mb-3">
+                <h5>Preview Students to Import</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Password</th>
+                                <th>First Name</th>
+                                <th>Last Name</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in preview_data %}
+                            <tr class="{% if row.error %}table-danger{% else %}table-success{% endif %}">
+                                <td>{{ loop.index }}</td>
+                                <td>{{ row.username }}</td>
+                                <td>{{ row.email }}</td>
+                                <td>******</td>
+                                <td>{{ row.first_name }}</td>
+                                <td>{{ row.last_name }}</td>
+                                <td>{% if row.error %}<span class="text-danger">{{ row.error }}</span>{% else %}<span class="text-success">OK</span>{% endif %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success">Confirm Import</button>
+            <a href="{{ url_for('teacher.import_students') }}" class="btn btn-secondary ms-2">Cancel</a>
+        </form>
+    {% else %}
+        <form method="POST" enctype="multipart/form-data" class="mt-3">
+            <div class="mb-3">
+                <label for="class_id" class="form-label">Select Class</label>
+                <select class="form-select" id="class_id" name="class_id" required>
+                    <option value="" disabled selected>Select a class</option>
+                    {% for class in classes %}
+                        <option value="{{ class.id }}">{{ class.name }} (Join Code: {{ class.join_code }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="csv_file" class="form-label">CSV File</label>
+                <input type="file" class="form-control" name="csv_file" accept=".csv" required>
+            </div>
+            <button type="submit" class="btn btn-success">Import Students</button>
+        </form>
+    {% endif %}
     {% if results %}
         <div class="mt-4">
             <h5>Import Results</h5>
