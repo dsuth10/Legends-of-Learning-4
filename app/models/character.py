@@ -24,6 +24,10 @@ class Character(Base):
     character_class = db.Column(db.String(32), nullable=False, default='Adventurer')
     gold = db.Column(db.Integer, default=0, nullable=False)
     
+    # New fields for character creation customization
+    gender = db.Column(db.String(16), nullable=True)
+    avatar_url = db.Column(db.String(256), nullable=True)
+    
     # Foreign Keys
     student_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     clan_id = db.Column(db.Integer, db.ForeignKey('clans.id', ondelete='SET NULL'), nullable=True)
@@ -92,6 +96,43 @@ class Character(Base):
     def learned_abilities(self):
         """Alias for abilities relationship."""
         return self.abilities
+
+    # Helper properties for equipped items
+    @property
+    def equipped_weapon(self):
+        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'equipmenttype.weapon'), None)
+
+    @property
+    def equipped_armor(self):
+        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'equipmenttype.armor'), None)
+
+    @property
+    def equipped_accessory(self):
+        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'equipmenttype.accessory'), None)
+
+    @property
+    def total_health(self):
+        bonus = 0
+        for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
+            if item and item.equipment and hasattr(item.equipment, 'health_bonus'):
+                bonus += item.equipment.health_bonus
+        return self.health + bonus
+
+    @property
+    def total_strength(self):
+        bonus = 0
+        for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
+            if item and item.equipment and hasattr(item.equipment, 'strength_bonus'):
+                bonus += item.equipment.strength_bonus
+        return self.strength + bonus
+
+    @property
+    def total_defense(self):
+        bonus = 0
+        for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
+            if item and item.equipment and hasattr(item.equipment, 'defense_bonus'):
+                bonus += item.equipment.defense_bonus
+        return self.defense + bonus
 
 # Pydantic models for validation
 class CharacterBase(BaseModel):

@@ -32,9 +32,17 @@
         </form>
     {% elif preview_data %}
         <h4>Preview</h4>
+        {% set new_count = preview_data|selectattr('reassignable', 'equalto', False)|selectattr('error', 'none')|list|length %}
+        {% set reassign_count = preview_data|selectattr('reassignable')|list|length %}
+        {% set error_count = preview_data|selectattr('error')|list|length %}
+        <div class="mb-3">
+            <span class="badge bg-success me-2"><i class="fas fa-user-plus"></i> {{ new_count }} new</span>
+            <span class="badge bg-info text-dark me-2"><i class="fas fa-user-clock"></i> {{ reassign_count }} reassign</span>
+            <span class="badge bg-danger"><i class="fas fa-exclamation-triangle"></i> {{ error_count }} error</span>
+        </div>
         <form method="post">
             <input type="hidden" name="confirm_import" value="1">
-            <table class="table table-bordered">
+            <table class="table table-bordered align-middle">
                 <thead>
                     <tr>
                         <th>Username</th>
@@ -49,22 +57,34 @@
                         <tr {% if row.reassignable %}class="table-info"{% elif row.error %}class="table-danger"{% endif %}>
                             <td>{{ row.username }}</td>
                             <td>{{ row.email }}</td>
-                            <td>{{ row.first_name }}</td>
-                            <td>{{ row.last_name }}</td>
+                            <td>
+                                {% if row.reassignable %}
+                                    <input type="text" name="first_name_{{ loop.index0 }}" value="{{ row.first_name }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ row.first_name }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if row.reassignable %}
+                                    <input type="text" name="last_name_{{ loop.index0 }}" value="{{ row.last_name }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ row.last_name }}
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if row.error %}
-                                    <span class="text-danger">{{ row.error }}</span>
+                                    <span class="text-danger"><i class="fas fa-exclamation-triangle"></i> {{ row.error }}</span>
                                 {% elif row.reassignable %}
-                                    <span class="text-info">Will reassign unassigned student</span>
+                                    <span class="text-info" data-bs-toggle="tooltip" title="This student exists but is unassigned. They will be reassigned to your class."><i class="fas fa-user-clock"></i> Will reassign</span>
                                 {% else %}
-                                    <span class="text-success">Will create</span>
+                                    <span class="text-success"><i class="fas fa-user-plus"></i> Will create</span>
                                 {% endif %}
                             </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            <button type="submit" class="btn btn-primary">Confirm Import</button>
+            <button type="submit" class="btn btn-primary">Create and Reassign Students</button>
             <a href="{{ url_for('teacher.import_students') }}" class="btn btn-secondary">Cancel</a>
         </form>
     {% else %}
@@ -103,4 +123,10 @@
         </div>
     {% endif %}
 </div>
+<script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+      new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+</script>
 {% endblock %} 

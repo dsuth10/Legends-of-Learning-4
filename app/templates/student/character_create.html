@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Create Character{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Create Your Character</h2>
+    <form method="POST" action="" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="name" class="form-label">Name</label>
+            <input type="text" class="form-control" id="name" name="name" value="{{ form.name or '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="character_class" class="form-label">Class</label>
+            <select class="form-select" id="character_class" name="character_class" required>
+                <option value="">Select a class</option>
+                {% for cc in class_options %}
+                <option value="{{ cc }}" {% if form.character_class == cc %}selected{% endif %}>{{ cc }}</option>
+                {% endfor %}
+            </select>
+            <div class="form-text">
+                Warrior: High health/defense. Sorcerer: High magic. Druid: Balanced/support.
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="gender" class="form-label">Gender</label>
+            <select class="form-select" id="gender" name="gender" required>
+                <option value="">Select gender</option>
+                {% for g in gender_options %}
+                <option value="{{ g }}" {% if form.gender == g %}selected{% endif %}>{{ g }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Avatar</label>
+            <div class="d-flex flex-wrap gap-3">
+                {% for avatar in avatar_options %}
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="avatar_url" id="avatar_{{ loop.index }}" value="{{ avatar }}" {% if form.avatar_url == avatar %}checked{% endif %} required>
+                    <label class="form-check-label" for="avatar_{{ loop.index }}">
+                        <img src="{{ avatar }}" alt="Avatar {{ loop.index }}" style="width:64px;height:64px;border-radius:8px;">
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Character</button>
+    </form>
+</div>
+{% endblock %} 

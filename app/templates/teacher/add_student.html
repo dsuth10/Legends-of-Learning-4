@@ -6,24 +6,39 @@
 <div class="container mt-5">
     <h2>Add Student</h2>
     {% if reassignable_student %}
-        <div class="alert alert-info">
-            <h4>Unassigned Student Found</h4>
-            <p>A student with this email/username already exists but is currently unassigned. Would you like to reassign this student to the selected class?</p>
-            <ul>
-                <li><strong>Username:</strong> {{ reassignable_student.username }}</li>
-                <li><strong>Email:</strong> {{ reassignable_student.email }}</li>
-                <li><strong>First Name:</strong> {{ reassignable_student.first_name }}</li>
-                <li><strong>Last Name:</strong> {{ reassignable_student.last_name }}</li>
-            </ul>
-            <form method="post">
-                <input type="hidden" name="reassign_confirm" value="1">
-                <input type="hidden" name="user_id" value="{{ reassignable_student.user_id }}">
-                <input type="hidden" name="class_id" value="{{ reassignable_student.class_id }}">
-                <input type="hidden" name="first_name" value="{{ reassignable_student.first_name }}">
-                <input type="hidden" name="last_name" value="{{ reassignable_student.last_name }}">
-                <button type="submit" class="btn btn-primary">Reassign Student to Class</button>
-                <a href="{{ url_for('teacher.add_student') }}" class="btn btn-secondary">Cancel</a>
-            </form>
+        <div class="alert alert-info d-flex align-items-center">
+            <i class="fas fa-user-clock fa-2x me-3" aria-hidden="true"></i>
+            <div>
+                <h4 class="alert-heading">Unassigned Student Found</h4>
+                <p>
+                    <strong>Heads up!</strong> A student with this email/username already exists but is not currently assigned to any class.<br>
+                    <span data-bs-toggle="tooltip" title="Reassigning will move this student into your selected class and update their info.">
+                        <i class="fas fa-question-circle text-secondary"></i>
+                        What does 'reassign' mean?
+                    </span>
+                </p>
+                <table class="table table-sm table-bordered w-auto mb-3">
+                    <tr><th>Username</th><td>{{ reassignable_student.username }}</td></tr>
+                    <tr><th>Email</th><td>{{ reassignable_student.email }}</td></tr>
+                </table>
+                <form method="post" class="row g-2 align-items-end">
+                    <input type="hidden" name="reassign_confirm" value="1">
+                    <input type="hidden" name="user_id" value="{{ reassignable_student.user_id }}">
+                    <input type="hidden" name="class_id" value="{{ reassignable_student.class_id }}">
+                    <div class="col-md-6">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input type="text" class="form-control" name="first_name" id="first_name" value="{{ reassignable_student.first_name }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="last_name" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" name="last_name" id="last_name" value="{{ reassignable_student.last_name }}">
+                    </div>
+                    <div class="col-12 mt-2">
+                        <button type="submit" class="btn btn-primary me-2">Reassign Student to Class</button>
+                        <a href="{{ url_for('teacher.add_student') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
         </div>
     {% else %}
         <form method="POST">
@@ -60,4 +75,10 @@
         </form>
     {% endif %}
 </div>
+<script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+      new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+</script>
 {% endblock %} 
