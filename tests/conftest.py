@@ -122,6 +122,15 @@ def client(app):
 def truncate_tables(app):
     from app import db
     meta = db.metadata
-    for table in reversed(meta.sorted_tables):
-        db.session.execute(table.delete())
-    db.session.commit() 
+    engine = db.engine
+    # Disable foreign key checks for SQLite
+    if engine.dialect.name == 'sqlite':
+        db.session.execute(text('PRAGMA foreign_keys=OFF'))
+    try:
+        for table in reversed(meta.sorted_tables):
+            db.session.execute(table.delete())
+        db.session.commit()
+    finally:
+        # Re-enable foreign key checks for SQLite
+        if engine.dialect.name == 'sqlite':
+            db.session.execute(text('PRAGMA foreign_keys=ON')) 

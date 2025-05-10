@@ -1,8 +1,10 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 from .teacher import student_required
 from flask_sqlalchemy import SQLAlchemy
 from app.models.character import Character
+from app.models.equipment import Inventory, Equipment, EquipmentType, EquipmentSlot, TEST_ARMOR_IMAGE, TEST_RING_IMAGE, TEST_SWORD_IMAGE
+from app.models.student import Student
 
 student_bp = Blueprint('student', __name__, url_prefix='/student')
 db = SQLAlchemy()
@@ -12,11 +14,11 @@ db = SQLAlchemy()
 @student_required
 def dashboard():
     """Student dashboard main view."""
-    student_profile = getattr(current_user, 'student_profile', None)
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
     classes = list(getattr(current_user, 'classes', []))
-    main_character = getattr(current_user, 'characters', None)
-    if main_character is not None:
-        main_character = main_character.filter_by(is_active=True).first()
+    main_character = None
+    if student_profile:
+        main_character = student_profile.characters.filter_by(is_active=True).first()
     clan = getattr(student_profile, 'clan', None) if student_profile else None
     active_quests = main_character.quest_logs.filter_by(status='in_progress').all() if main_character else []
     recent_activities = list(current_user.audit_logs.order_by(db.desc('event_timestamp')).limit(10))
@@ -53,7 +55,10 @@ def clan():
 @login_required
 @student_required
 def character():
-    main_character = Character.query.filter_by(student_id=current_user.id, is_active=True).first()
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    main_character = None
+    if student_profile:
+        main_character = student_profile.characters.filter_by(is_active=True).first()
     return render_template('student/character.html', student=current_user, main_character=main_character)
 
 @student_bp.route('/shop')
@@ -80,9 +85,9 @@ def character_create():
         "Sorcerer":  {"health": 80,  "max_health": 80,  "strength": 20, "defense": 8,  "gold": 0},
         "Druid":     {"health": 100, "max_health": 100, "strength": 12, "defense": 12, "gold": 0},
     }
-    # Check if user already has a character
-    main_character = getattr(current_user, 'characters', None)
-    if main_character is not None and main_character.filter_by(is_active=True).first():
+    # Get the correct student_id from the Student table
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if student_profile and student_profile.characters.filter_by(is_active=True).first():
         flash('You already have a character.', 'info')
         return redirect(url_for('student.character'))
 
@@ -97,13 +102,16 @@ def character_create():
             return render_template('student/character_create.html', student=current_user, form=request.form)
         # Set base stats based on class
         base_stats = CLASS_BASE_STATS.get(character_class, CLASS_BASE_STATS["Warrior"])
+        if not student_profile:
+            flash('Student profile not found. Please contact your teacher or admin.', 'danger')
+            return redirect(url_for('student.dashboard'))
         # Create character
         new_character = Character(
             name=name,
             character_class=character_class,
             gender=gender,
             avatar_url=avatar_url,
-            student_id=current_user.id,
+            student_id=student_profile.id,
             health=base_stats["health"],
             max_health=base_stats["max_health"],
             strength=base_stats["strength"],
@@ -134,7 +142,11 @@ def character_create():
 def gain_xp():
     from flask import redirect, url_for, flash
     from app.models.character import Character
-    main_character = Character.query.filter_by(student_id=current_user.id, is_active=True).first()
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        flash('No student profile found.', 'danger')
+        return redirect(url_for('student.dashboard'))
+    main_character = student_profile.characters.filter_by(is_active=True).first()
     if not main_character:
         flash('No character found.', 'danger')
         return redirect(url_for('student.character'))
@@ -151,7 +163,11 @@ def add_test_weapon():
     from flask import redirect, url_for, flash
     from app.models.character import Character
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot, Inventory
-    main_character = Character.query.filter_by(student_id=current_user.id, is_active=True).first()
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        flash('No student profile found.', 'danger')
+        return redirect(url_for('student.dashboard'))
+    main_character = student_profile.characters.filter_by(is_active=True).first()
     if not main_character:
         flash('No character found.', 'danger')
         return redirect(url_for('student.character'))
@@ -166,7 +182,8 @@ def add_test_weapon():
             health_bonus=0,
             strength_bonus=5,
             defense_bonus=0,
-            cost=0
+            cost=0,
+            image_url=TEST_SWORD_IMAGE
         )
         from app.models import db
         db.session.add(weapon)
@@ -191,7 +208,11 @@ def add_test_armor():
     from flask import redirect, url_for, flash
     from app.models.character import Character
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot, Inventory
-    main_character = Character.query.filter_by(student_id=current_user.id, is_active=True).first()
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        flash('No student profile found.', 'danger')
+        return redirect(url_for('student.dashboard'))
+    main_character = student_profile.characters.filter_by(is_active=True).first()
     if not main_character:
         flash('No character found.', 'danger')
         return redirect(url_for('student.character'))
@@ -206,7 +227,8 @@ def add_test_armor():
             health_bonus=20,
             strength_bonus=0,
             defense_bonus=5,
-            cost=0
+            cost=0,
+            image_url=TEST_ARMOR_IMAGE
         )
         from app.models import db
         db.session.add(armor)
@@ -231,7 +253,11 @@ def add_test_accessory():
     from flask import redirect, url_for, flash
     from app.models.character import Character
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot, Inventory
-    main_character = Character.query.filter_by(student_id=current_user.id, is_active=True).first()
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        flash('No student profile found.', 'danger')
+        return redirect(url_for('student.dashboard'))
+    main_character = student_profile.characters.filter_by(is_active=True).first()
     if not main_character:
         flash('No character found.', 'danger')
         return redirect(url_for('student.character'))
@@ -246,7 +272,8 @@ def add_test_accessory():
             health_bonus=5,
             strength_bonus=2,
             defense_bonus=2,
-            cost=0
+            cost=0,
+            image_url=TEST_RING_IMAGE
         )
         from app.models import db
         db.session.add(accessory)
@@ -271,10 +298,11 @@ def unequip_weapon():
     from flask import redirect, url_for, flash
     from app.models.character import Character
     from app.models.equipment import EquipmentType
-    main_character = Character.query.filter_by(student_id=current_user.id, is_active=True).first()
-    if not main_character or not main_character.equipped_weapon:
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile or not student_profile.characters.filter_by(is_active=True).first().equipped_weapon:
         flash('No weapon equipped.', 'warning')
         return redirect(url_for('student.character'))
+    main_character = student_profile.characters.filter_by(is_active=True).first()
     main_character.equipped_weapon.is_equipped = False
     from app.models import db
     db.session.commit()
@@ -288,10 +316,11 @@ def unequip_armor():
     from flask import redirect, url_for, flash
     from app.models.character import Character
     from app.models.equipment import EquipmentType
-    main_character = Character.query.filter_by(student_id=current_user.id, is_active=True).first()
-    if not main_character or not main_character.equipped_armor:
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile or not student_profile.characters.filter_by(is_active=True).first().equipped_armor:
         flash('No armor equipped.', 'warning')
         return redirect(url_for('student.character'))
+    main_character = student_profile.characters.filter_by(is_active=True).first()
     main_character.equipped_armor.is_equipped = False
     from app.models import db
     db.session.commit()
@@ -305,38 +334,72 @@ def unequip_accessory():
     from flask import redirect, url_for, flash
     from app.models.character import Character
     from app.models.equipment import EquipmentType
-    main_character = Character.query.filter_by(student_id=current_user.id, is_active=True).first()
-    if not main_character or not main_character.equipped_accessory:
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile or not student_profile.characters.filter_by(is_active=True).first().equipped_accessory:
         flash('No accessory equipped.', 'warning')
         return redirect(url_for('student.character'))
+    main_character = student_profile.characters.filter_by(is_active=True).first()
     main_character.equipped_accessory.is_equipped = False
     from app.models import db
     db.session.commit()
     flash('Accessory unequipped and moved to inventory.', 'success')
     return redirect(url_for('student.character'))
 
-@student_bp.route('/character/equip/<int:item_id>', methods=['POST'])
+@student_bp.route('/equipment/equip', methods=['PATCH'])
 @login_required
 @student_required
-def equip_item(item_id):
-    from flask import redirect, url_for, flash
-    from app.models.character import Character
-    from app.models.equipment import Inventory, EquipmentSlot
-    main_character = Character.query.filter_by(student_id=current_user.id, is_active=True).first()
+def api_equip_item():
+    data = request.get_json()
+    inventory_id = data.get('inventory_id')
+    slot = data.get('slot')
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        return jsonify({'success': False, 'message': 'No student profile found.'}), 404
+    main_character = student_profile.characters.filter_by(is_active=True).first()
     if not main_character:
-        flash('No character found.', 'danger')
-        return redirect(url_for('student.character'))
-    item = Inventory.query.filter_by(id=item_id, character_id=main_character.id).first()
+        return jsonify({'success': False, 'message': 'No character found.'}), 404
+    item = Inventory.query.filter_by(id=inventory_id, character_id=main_character.id).first()
     if not item:
-        flash('Item not found.', 'danger')
-        return redirect(url_for('student.character'))
+        return jsonify({'success': False, 'message': 'Item not found.'}), 404
+    # Validate slot type
+    slot_map = {
+        'weapon': [EquipmentSlot.MAIN_HAND, EquipmentSlot.OFF_HAND],
+        'armor': [EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET],
+        'accessory': [EquipmentSlot.NECK, EquipmentSlot.RING],
+    }
+    # Map slot string to type
+    slot_type = None
+    for t, slots in slot_map.items():
+        if item.equipment.slot in slots and slot == t:
+            slot_type = t
+            break
+    if not slot_type or slot_type != item.equipment.type.value:
+        return jsonify({'success': False, 'message': f'Cannot equip {item.equipment.type.value} in {slot} slot.'}), 400
     # Unequip any currently equipped item in the same slot
     for inv in main_character.inventory_items:
         if inv.is_equipped and inv.equipment.slot == item.equipment.slot:
             inv.is_equipped = False
-    # Equip the selected item
     item.is_equipped = True
     from app.models import db
     db.session.commit()
-    flash(f'Equipped {item.equipment.name}!', 'success')
-    return redirect(url_for('student.character')) 
+    return jsonify({'success': True})
+
+@student_bp.route('/equipment/unequip', methods=['PATCH'])
+@login_required
+@student_required
+def api_unequip_item():
+    data = request.get_json()
+    inventory_id = data.get('inventory_id')
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        return jsonify({'success': False, 'message': 'No student profile found.'}), 404
+    main_character = student_profile.characters.filter_by(is_active=True).first()
+    if not main_character:
+        return jsonify({'success': False, 'message': 'No character found.'}), 404
+    item = Inventory.query.filter_by(id=inventory_id, character_id=main_character.id).first()
+    if not item or not item.is_equipped:
+        return jsonify({'success': False, 'message': 'Item not equipped or not found.'}), 404
+    item.is_equipped = False
+    from app.models import db
+    db.session.commit()
+    return jsonify({'success': True}) 

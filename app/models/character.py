@@ -29,11 +29,11 @@ class Character(Base):
     avatar_url = db.Column(db.String(256), nullable=True)
     
     # Foreign Keys
-    student_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id', ondelete='CASCADE'), nullable=False)
     clan_id = db.Column(db.Integer, db.ForeignKey('clans.id', ondelete='SET NULL'), nullable=True)
     
     # Relationships
-    student = db.relationship('User', backref=db.backref('characters', lazy='dynamic'))
+    student = db.relationship('Student', backref=db.backref('characters', lazy='dynamic', cascade='all, delete-orphan'))
     clan = db.relationship('Clan', foreign_keys=[clan_id], backref=db.backref('members', lazy='dynamic', foreign_keys='Character.clan_id'))
     # abilities = db.relationship('CharacterAbility', back_populates='character', lazy='dynamic')
     

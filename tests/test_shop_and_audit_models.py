@@ -6,7 +6,15 @@ import uuid
 @pytest.fixture
 def test_user(db_session):
     from app.models.user import User, UserRole
+    from app.models.student import Student
+    from app.models.classroom import Classroom
     unique = uuid.uuid4().hex[:8]
+    teacher = User(username=f'testteacher_{unique}', email=f'teacher_{unique}@test.com', role=UserRole.TEACHER, password='password123')
+    db_session.add(teacher)
+    db_session.commit()
+    classroom = Classroom(name=f'TestClass_{unique}', teacher_id=teacher.id, join_code=f'JC{unique}')
+    db_session.add(classroom)
+    db_session.commit()
     user = User(
         username=f'testuser_{unique}',
         email=f'test_{unique}@example.com',
@@ -15,14 +23,18 @@ def test_user(db_session):
     )
     db_session.add(user)
     db_session.commit()
-    return user
+    student_profile = Student(user_id=user.id, class_id=classroom.id, level=1, gold=0, xp=0, health=100, power=10)
+    db_session.add(student_profile)
+    db_session.commit()
+    return user, student_profile
 
 @pytest.fixture
 def test_character(db_session, test_user):
     from app.models.character import Character
+    user, student_profile = test_user
     character = Character(
         name='TestChar',
-        student_id=test_user.id,
+        student_id=student_profile.id,
         character_class='Warrior',
         level=1,
         gold=100
@@ -137,10 +149,11 @@ class TestShopPurchase:
 class TestAuditLog:
     def test_audit_log_creation(self, db_session, test_user, test_character):
         from app.models.audit import AuditLog, EventType
+        user, student_profile = test_user
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         log = AuditLog(
             event_type=EventType.CHARACTER_CREATE.value,
-            user=test_user,
+            user=user,
             character=test_character,
             event_data={'name': 'TestChar', 'class': 'Warrior'},
             ip_address='127.0.0.1'
@@ -151,15 +164,16 @@ class TestAuditLog:
         saved_log = AuditLog.query.first()
         assert saved_log is not None
         assert saved_log.event_type == EventType.CHARACTER_CREATE.value
-        assert saved_log.user_id == test_user.id
+        assert saved_log.user_id == user.id
 
     def test_audit_log_event_types(self, db_session, test_user, test_character):
         from app.models.audit import AuditLog, EventType
+        user, student_profile = test_user
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         for event_type in EventType:
             log = AuditLog(
                 event_type=event_type.value,
-                user=test_user,
+                user=user,
                 character=test_character,
                 event_data={'test': 'data'},
                 ip_address='127.0.0.1'
@@ -172,10 +186,11 @@ class TestAuditLog:
 
     def test_audit_log_repr(self, db_session, test_user, test_character):
         from app.models.audit import AuditLog, EventType
+        user, student_profile = test_user
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         log = AuditLog(
             event_type=EventType.CHARACTER_CREATE.value,
-            user=test_user,
+            user=user,
             character=test_character,
             event_data={'name': 'TestChar'},
             ip_address='127.0.0.1'
@@ -187,10 +202,11 @@ class TestAuditLog:
 
     def test_audit_log_event_data(self, db_session, test_user, test_character):
         from app.models.audit import AuditLog, EventType
+        user, student_profile = test_user
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         log = AuditLog(
             event_type=EventType.CHARACTER_CREATE.value,
-            user=test_user,
+            user=user,
             character=test_character,
             event_data={'foo': 'bar'},
             ip_address='127.0.0.1'
@@ -203,10 +219,11 @@ class TestAuditLog:
 
     def test_audit_log_ip_address(self, db_session, test_user, test_character):
         from app.models.audit import AuditLog, EventType
+        user, student_profile = test_user
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         log = AuditLog(
             event_type=EventType.CHARACTER_CREATE.value,
-            user=test_user,
+            user=user,
             character=test_character,
             event_data={'foo': 'bar'},
             ip_address='192.168.1.1'
@@ -219,10 +236,11 @@ class TestAuditLog:
 
     def test_invalid_event_type(self, db_session, test_user):
         from app.models.audit import AuditLog, EventType
+        user, student_profile = test_user
         with pytest.raises(ValueError):
             log = AuditLog(
                 event_type='INVALID_EVENT',
-                user=test_user,
+                user=user,
                 event_data={},
                 ip_address='127.0.0.1'
             )
@@ -231,17 +249,18 @@ class TestAuditLog:
 
     def test_get_user_events(self, db_session, test_user):
         from app.models.audit import AuditLog, EventType
+        user, student_profile = test_user
         # Create multiple events
         events = [
             AuditLog(
                 event_type=EventType.USER_LOGIN.value,
-                user=test_user,
+                user=user,
                 event_data={},
                 ip_address='127.0.0.1'
             ),
             AuditLog(
                 event_type=EventType.USER_LOGOUT.value,
-                user=test_user,
+                user=user,
                 event_data={},
                 ip_address='127.0.0.1'
             )
@@ -250,30 +269,31 @@ class TestAuditLog:
         db_session.commit()
 
         # Test retrieving all user events
-        user_events = AuditLog.get_user_events(test_user.id)
+        user_events = AuditLog.get_user_events(user.id)
         assert len(user_events) == 2
 
         # Test filtering by event type
         login_events = AuditLog.get_user_events(
-            test_user.id, event_type=EventType.USER_LOGIN.value
+            user.id, event_type=EventType.USER_LOGIN.value
         )
         assert len(login_events) == 1
         assert login_events[0].event_type == EventType.USER_LOGIN.value
 
-    def test_get_character_events(self, db_session, test_character):
+    def test_get_character_events(self, db_session, test_character, test_user):
         from app.models.audit import AuditLog, EventType
+        user, student_profile = test_user
         # Create multiple character events
         events = [
             AuditLog(
                 event_type=EventType.XP_GAIN.value,
-                user=test_character.student,
+                user=user,
                 character=test_character,
                 event_data={'xp': 100},
                 ip_address='127.0.0.1'
             ),
             AuditLog(
                 event_type=EventType.GOLD_TRANSACTION.value,
-                user=test_character.student,
+                user=user,
                 character=test_character,
                 event_data={'gold': 50},
                 ip_address='127.0.0.1'
@@ -295,19 +315,20 @@ class TestAuditLog:
 
     def test_get_recent_events(self, db_session, test_user):
         from app.models.audit import AuditLog, EventType
+        user, student_profile = test_user
         # Create events with different timestamps
         now = datetime.utcnow()
         events = [
             AuditLog(
                 event_type=EventType.USER_LOGIN.value,
-                user=test_user,
+                user=user,
                 event_data={},
                 ip_address='127.0.0.1',
                 event_timestamp=now - timedelta(hours=2)
             ),
             AuditLog(
                 event_type=EventType.USER_LOGOUT.value,
-                user=test_user,
+                user=user,
                 event_data={},
                 ip_address='127.0.0.1',
                 event_timestamp=now - timedelta(hours=1)

@@ -1,0 +1,254 @@
+<!-- TEST: student_characters.html is being rendered -->
+{% extends "teacher/base_dashboard.html" %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('teacher.dashboard') }}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('teacher.students') }}">Students</a></li>
+<li class="breadcrumb-item active" aria-current="page">Character Management</li>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="container mt-4">
+  <h2>Character Management</h2>
+  <form method="get" class="mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label for="class_id" class="form-label">Select Class</label>
+        <select class="form-select" id="class_id" name="class_id" required onchange="window.location.href='/teacher/students/' + this.value + '/characters'">
+          <option value="" disabled {% if not selected_class %}selected{% endif %}>Select a class</option>
+          {% for class in classes %}
+            <option value="{{ class.id }}" {% if selected_class and class.id == selected_class.id %}selected{% endif %}>{{ class.name }} (Join Code: {{ class.join_code }})</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </form>
+  {% if selected_class %}
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+      <div>
+        <input type="text" class="form-control" id="search" placeholder="Search by name or class..." style="width: 250px; display: inline-block;">
+      </div>
+      <div>
+        <!-- Batch Actions Dropdown -->
+        <div class="dropdown">
+          <button class="btn btn-outline-primary dropdown-toggle" type="button" id="batchActionDropdown" data-bs-toggle="dropdown" aria-expanded="false" disabled>
+            Batch Actions
+          </button>
+          <ul class="dropdown-menu" aria-labelledby="batchActionDropdown">
+            <li><a class="dropdown-item batch-action" href="#" data-action="reset-health">Reset Health</a></li>
+            <li><a class="dropdown-item batch-action" href="#" data-action="grant-item">Grant Item</a></li>
+            <li><a class="dropdown-item batch-action" href="#" data-action="set-status">Set Status</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <!-- Modal for confirmation -->
+    <div class="modal fade" id="batchActionModal" tabindex="-1" aria-labelledby="batchActionModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="batchActionModalLabel">Confirm Batch Action</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="batchActionModalBody">
+            <!-- Content set by JS -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirmBatchActionBtn">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% if students and students|length > 0 %}
+      <!-- Only render the card/list (accordion) UI for characters -->
+      <div class="accordion" id="characterAccordion">
+        {% for student in students %}
+        <div class="card mb-2">
+          <div class="card-header d-flex align-items-center" id="heading{{ loop.index }}">
+            <input type="checkbox" class="character-select me-2" data-student-id="{{ student.user.id }}" aria-label="Select {{ student.user.full_name }}">
+            <button class="btn btn-link flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
+              {% if student.character %}<span class="character-name">{{ student.character.name }}</span> {% endif %}
+              <strong>{% if student.character %}{{ student.character.name }} ({{ student.character.character_class }}){% else %}No Character{% endif %}</strong>
+              <span class="ms-2 text-muted">({{ student.user.full_name }})</span>
+              {% if student.character %}
+                <span class="badge bg-secondary ms-2">Lv {{ student.character.level }}</span>
+                <span class="badge bg-info ms-2">{{ student.character.character_class }}</span>
+                {% if student.character.health <= (student.character.max_health or 100) * 0.3 %}
+                  <span class="badge bg-danger ms-2">Low Health</span>
+                {% endif %}
+              {% endif %}
+            </button>
+            <a href="{{ url_for('teacher.edit_student', user_id=student.user.id) }}" class="btn btn-sm btn-outline-secondary ms-2" title="Edit Character"><i class="fas fa-edit"></i></a>
+          </div>
+          <div id="collapse{{ loop.index }}" class="collapse" aria-labelledby="heading{{ loop.index }}" data-bs-parent="#characterAccordion">
+            <div class="card-body">
+              {% if student.character %}
+              <div class="row">
+                <div class="col-md-3 text-center">
+                  <img src="{{ student.character.avatar_url or '/static/avatars/default.png' }}" alt="Avatar" class="img-thumbnail mb-2" style="width:96px;height:96px;">
+                  <div class="mt-2">
+                    <span class="badge bg-warning text-dark">Gold: {{ student.character.gold }}</span>
+                  </div>
+                </div>
+                <div class="col-md-5">
+                  <table class="table table-sm table-bordered w-auto mb-0">
+                    <tr><th>Level</th><td>{{ student.character.level }}</td></tr>
+                    <tr><th>XP</th><td>{{ student.character.experience }}</td></tr>
+                    <tr><th>Health</th><td>{{ student.character.health }}/{{ student.character.max_health }}</td></tr>
+                    <tr><th>Strength</th><td>{{ student.character.strength }}</td></tr>
+                    <tr><th>Defense</th><td>{{ student.character.defense }}</td></tr>
+                  </table>
+                </div>
+                <div class="col-md-4">
+                  <h6>Equipped Items</h6>
+                  <ul class="list-group mb-2">
+                    {% for item in student.equipped_items %}
+                      <li class="list-group-item d-flex align-items-center">
+                        <i class="fas fa-shield-alt me-2" title="{{ item.equipment.type.value.title() }}"></i>
+                        <span class="me-2">{{ item.equipment.name }}</span>
+                        <span class="badge bg-light text-dark ms-auto" title="Health: {{ item.equipment.health_bonus }}, Strength: {{ item.equipment.strength_bonus }}, Defense: {{ item.equipment.defense_bonus }}">
+                          +H:{{ item.equipment.health_bonus }} +S:{{ item.equipment.strength_bonus }} +D:{{ item.equipment.defense_bonus }}
+                        </span>
+                      </li>
+                    {% else %}
+                      <li class="list-group-item text-muted">No items equipped.</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+              {% else %}
+                <div class="alert alert-warning">No character created for this student.</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <!-- End card/list UI -->
+      <!-- Placeholder for pagination -->
+      <nav aria-label="Character pagination" class="mt-3">
+        <ul class="pagination justify-content-center">
+          <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
+          <li class="page-item active"><a class="page-link" href="#">1</a></li>
+          <li class="page-item disabled"><a class="page-link" href="#">Next</a></li>
+        </ul>
+      </nav>
+    {% else %}
+      <div class="alert alert-info mt-4">No students with characters found in this class.</div>
+    {% endif %}
+  {% else %}
+    <div class="alert alert-secondary mt-4">Select a class to view its characters.</div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block super_extra_js %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const checkboxes = document.querySelectorAll('.character-select');
+  const batchActionBtn = document.getElementById('batchActionDropdown');
+  let selectedCharacterIds = new Set();
+
+  function updateBatchActionDropdown() {
+    if (!batchActionBtn) return;
+    batchActionBtn.disabled = selectedCharacterIds.size === 0;
+  }
+
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      if (cb.checked) {
+        selectedCharacterIds.add(cb.dataset.studentId);
+      } else {
+        selectedCharacterIds.delete(cb.dataset.studentId);
+      }
+      updateBatchActionDropdown();
+    });
+  });
+
+  // Initial state
+  updateBatchActionDropdown();
+
+  // Batch action dropdown click handlers
+  const batchActionLinks = document.querySelectorAll('.batch-action');
+  let currentBatchAction = null;
+
+  batchActionLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (batchActionBtn.disabled) return;
+      currentBatchAction = this.dataset.action;
+      // Show modal with appropriate message
+      const modal = new bootstrap.Modal(document.getElementById('batchActionModal'));
+      const body = document.getElementById('batchActionModalBody');
+      let actionText = '';
+      if (currentBatchAction === 'reset-health') {
+        actionText = 'You are about to reset health for ' + selectedCharacterIds.size + ' selected characters. This action cannot be undone.';
+      } else if (currentBatchAction === 'grant-item') {
+        actionText = 'You are about to grant an item to ' + selectedCharacterIds.size + ' selected characters. (Item selection coming soon)';
+      } else if (currentBatchAction === 'set-status') {
+        actionText = 'You are about to set status for ' + selectedCharacterIds.size + ' selected characters.';
+      }
+      body.textContent = actionText;
+      modal.show();
+    });
+  });
+
+  // Confirm button handler (integrate backend)
+  document.getElementById('confirmBatchActionBtn').addEventListener('click', async function() {
+    const modalEl = document.getElementById('batchActionModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    const body = document.getElementById('batchActionModalBody');
+    // Show loading state
+    body.innerHTML = '<div class="text-center"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...</div>';
+    const action = currentBatchAction;
+    const characterIds = Array.from(selectedCharacterIds).map(Number);
+    try {
+      const resp = await fetch('/teacher/api/teacher/characters/batch-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, character_ids: characterIds })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        // Show per-character results
+        let html = `<div class='alert alert-success'>${data.message}</div><ul class='list-group mb-2'>`;
+        for (const [cid, result] of Object.entries(data.results || {})) {
+          html += `<li class='list-group-item'>Character ID ${cid}: `;
+          if (result.success) {
+            if (action === 'reset-health') {
+              html += `Health reset to ${result.new_health}`;
+            } else {
+              html += 'Success';
+            }
+          } else {
+            html += `<span class='text-danger'>Failed</span>`;
+          }
+          html += '</li>';
+        }
+        html += '</ul>';
+        body.innerHTML = html;
+        setTimeout(() => { modal.hide(); window.location.reload(); }, 1500);
+      } else {
+        body.innerHTML = `<div class='alert alert-danger'>${data.message || 'Batch action failed.'}</div>`;
+      }
+    } catch (err) {
+      body.innerHTML = `<div class='alert alert-danger'>Error: ${err.message || err}</div>`;
+    }
+  });
+
+  // Simple client-side search for character cards
+  const searchInput = document.getElementById('search');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      const query = this.value.toLowerCase();
+      document.querySelectorAll('.accordion .card').forEach(card => {
+        const text = card.innerText.toLowerCase();
+        card.style.display = text.includes(query) ? '' : 'none';
+      });
+    });
+  }
+});
+</script>
+{% endblock %} 

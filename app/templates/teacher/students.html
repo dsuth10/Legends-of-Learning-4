@@ -22,6 +22,11 @@
         </select>
       </div>
       {% if selected_class %}
+      <div class="col-md-3 d-flex align-items-end">
+        <a href="{{ url_for('teacher.student_characters', class_id=selected_class.id) }}" class="btn btn-outline-info ms-2">
+          <i class="fas fa-user-shield me-1"></i> Character Management
+        </a>
+      </div>
       <div class="col-md-2">
         <label for="search" class="form-label">Search</label>
         <input type="text" class="form-control" id="search" name="search" placeholder="Name or Email" value="{{ search }}">
@@ -95,6 +100,7 @@
               <th>{{ sort_link('XP', 'xp') }}</th>
               <th>{{ sort_link('Health', 'health') }}</th>
               <th>{{ sort_link('Power', 'power') }}</th>
+              <th>Character Name</th>
               <th>{{ sort_link('Character Class', 'character_class') }}</th>
               <th>{{ sort_link('Clan', 'clan') }}</th>
               <th>Status</th>
@@ -112,6 +118,7 @@
               <td>{{ student['student'].health }}</td>
               <td>{{ student['student'].power }}</td>
               <td>{% if student['character'] %}{{ student['character'].name }}{% else %}-{% endif %}</td>
+              <td>{% if student['character'] %}{{ student['character'].name }} ({{ student['character'].character_class }}){% else %}-{% endif %}</td>
               <td>{% if student['clan'] %}{{ student['clan'].name }}{% else %}-{% endif %}</td>
               <td>
                 <form method="post" action="{{ url_for('teacher.toggle_student_status', user_id=student['user'].id) }}" style="display:inline;">

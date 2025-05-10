@@ -22,86 +22,54 @@
                     <tr><th>Defense</th><td>{{ main_character.total_defense }} <span class="text-muted small">(Base: {{ main_character.defense }})</span></td></tr>
                     <tr><th>Gold</th><td>{{ main_character.gold }}</td></tr>
                 </table>
-                <h4>Equipped Items</h4>
-                <table class="table table-bordered w-auto">
-                    <tr>
-                        <th>Weapon</th>
-                        <td>
-                            {% if main_character.equipped_weapon %}
-                                {{ main_character.equipped_weapon.equipment.name }}
-                                <span class="text-muted small">
-                                    (Health: {{ main_character.equipped_weapon.equipment.health_bonus }},
-                                    Strength: {{ main_character.equipped_weapon.equipment.strength_bonus }},
-                                    Defense: {{ main_character.equipped_weapon.equipment.defense_bonus }})
-                                </span>
-                                <form method="POST" action="{{ url_for('student.unequip_weapon') }}" style="display:inline-block;margin-left:10px;">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Unequip</button>
-                                </form>
-                            {% else %}None{% endif %}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Armor</th>
-                        <td>
-                            {% if main_character.equipped_armor %}
-                                {{ main_character.equipped_armor.equipment.name }}
-                                <span class="text-muted small">
-                                    (Health: {{ main_character.equipped_armor.equipment.health_bonus }},
-                                    Strength: {{ main_character.equipped_armor.equipment.strength_bonus }},
-                                    Defense: {{ main_character.equipped_armor.equipment.defense_bonus }})
-                                </span>
-                                <form method="POST" action="{{ url_for('student.unequip_armor') }}" style="display:inline-block;margin-left:10px;">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Unequip</button>
-                                </form>
-                            {% else %}None{% endif %}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Accessory</th>
-                        <td>
-                            {% if main_character.equipped_accessory %}
-                                {{ main_character.equipped_accessory.equipment.name }}
-                                <span class="text-muted small">
-                                    (Health: {{ main_character.equipped_accessory.equipment.health_bonus }},
-                                    Strength: {{ main_character.equipped_accessory.equipment.strength_bonus }},
-                                    Defense: {{ main_character.equipped_accessory.equipment.defense_bonus }})
-                                </span>
-                                <form method="POST" action="{{ url_for('student.unequip_accessory') }}" style="display:inline-block;margin-left:10px;">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Unequip</button>
-                                </form>
-                            {% else %}None{% endif %}
-                        </td>
-                    </tr>
-                </table>
+                <h4>Equipment Slots</h4>
+                <div class="row mb-3">
+                  <div class="col-md-4">
+                    <h6>Weapon</h6>
+                    <ul class="equipment-slot-list list-group" id="weapon-slot" data-slot="weapon">
+                      {% if main_character.equipped_weapon %}
+                        <li class="equipment-item list-group-item" data-id="{{ main_character.equipped_weapon.id }}" data-slot="weapon" title="{{ main_character.equipped_weapon.equipment.description }} | +H:{{ main_character.equipped_weapon.equipment.health_bonus }} +S:{{ main_character.equipped_weapon.equipment.strength_bonus }} +D:{{ main_character.equipped_weapon.equipment.defense_bonus }}">
+                          <img src="{{ main_character.equipped_weapon.equipment.image_url or '/static/images/default_item.png' }}" alt="{{ main_character.equipped_weapon.equipment.name }}" style="width:32px;height:32px;margin-right:8px;vertical-align:middle;">
+                          {{ main_character.equipped_weapon.equipment.name }}
+                        </li>
+                      {% endif %}
+                    </ul>
+                  </div>
+                  <div class="col-md-4">
+                    <h6>Armor</h6>
+                    <ul class="equipment-slot-list list-group" id="armor-slot" data-slot="armor">
+                      {% if main_character.equipped_armor %}
+                        <li class="equipment-item list-group-item" data-id="{{ main_character.equipped_armor.id }}" data-slot="armor" title="{{ main_character.equipped_armor.equipment.description }} | +H:{{ main_character.equipped_armor.equipment.health_bonus }} +S:{{ main_character.equipped_armor.equipment.strength_bonus }} +D:{{ main_character.equipped_armor.equipment.defense_bonus }}">
+                          <img src="{{ main_character.equipped_armor.equipment.image_url or '/static/images/default_item.png' }}" alt="{{ main_character.equipped_armor.equipment.name }}" style="width:32px;height:32px;margin-right:8px;vertical-align:middle;">
+                          {{ main_character.equipped_armor.equipment.name }}
+                        </li>
+                      {% endif %}
+                    </ul>
+                  </div>
+                  <div class="col-md-4">
+                    <h6>Accessory</h6>
+                    <ul class="equipment-slot-list list-group" id="accessory-slot" data-slot="accessory">
+                      {% if main_character.equipped_accessory %}
+                        <li class="equipment-item list-group-item" data-id="{{ main_character.equipped_accessory.id }}" data-slot="accessory" title="{{ main_character.equipped_accessory.equipment.description }} | +H:{{ main_character.equipped_accessory.equipment.health_bonus }} +S:{{ main_character.equipped_accessory.equipment.strength_bonus }} +D:{{ main_character.equipped_accessory.equipment.defense_bonus }}">
+                          <img src="{{ main_character.equipped_accessory.equipment.image_url or '/static/images/default_item.png' }}" alt="{{ main_character.equipped_accessory.equipment.name }}" style="width:32px;height:32px;margin-right:8px;vertical-align:middle;">
+                          {{ main_character.equipped_accessory.equipment.name }}
+                        </li>
+                      {% endif %}
+                    </ul>
+                  </div>
+                </div>
                 <h4>Inventory (Unequipped Items)</h4>
-                <table class="table table-bordered w-auto">
-                    <tr>
-                        <th>Type</th>
-                        <th>Name</th>
-                        <th>Bonuses</th>
-                        <th>Action</th>
-                    </tr>
-                    {% for item in main_character.inventory_items if not item.is_equipped %}
-                        <tr>
-                            <td>{{ item.equipment.type.value.title() }}</td>
-                            <td>{{ item.equipment.name }}</td>
-                            <td>
-                                <span class="text-muted small">
-                                    Health: {{ item.equipment.health_bonus }},
-                                    Strength: {{ item.equipment.strength_bonus }},
-                                    Defense: {{ item.equipment.defense_bonus }}
-                                </span>
-                            </td>
-                            <td>
-                                <form method="POST" action="{{ url_for('student.equip_item', item_id=item.id) }}" style="display:inline;">
-                                    <button type="submit" class="btn btn-success btn-sm">Equip</button>
-                                </form>
-                            </td>
-                        </tr>
-                    {% else %}
-                        <tr><td colspan="4" class="text-muted">No unequipped items in inventory.</td></tr>
-                    {% endfor %}
-                </table>
+                <ul class="list-group mb-3" id="inventory-list">
+                  {% for item in main_character.inventory_items if not item.is_equipped %}
+                    <li class="equipment-item list-group-item" data-id="{{ item.id }}" data-slot="{{ item.equipment.type.value }}" title="{{ item.equipment.description }} | +H:{{ item.equipment.health_bonus }} +S:{{ item.equipment.strength_bonus }} +D:{{ item.equipment.defense_bonus }}">
+                      <img src="{{ item.equipment.image_url or '/static/images/default_item.png' }}" alt="{{ item.equipment.name }}" style="width:32px;height:32px;margin-right:8px;vertical-align:middle;">
+                      {{ item.equipment.name }}
+                    </li>
+                  {% else %}
+                    <li class="list-group-item text-muted">No unequipped items in inventory.</li>
+                  {% endfor %}
+                </ul>
+                <span id="inventory-msg"></span>
                 <div class="mb-3">
                     <form method="POST" action="{{ url_for('student.add_test_weapon') }}" style="display:inline-block">
                         <button type="submit" class="btn btn-outline-primary">Add Test Weapon</button>
@@ -125,4 +93,74 @@
         <a href="{{ url_for('student.character_create') }}" class="btn btn-success">Create Your Character</a>
     {% endif %}
 </div>
+<!-- Add SortableJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+function equipHandler(slot) {
+  return function(evt) {
+    const itemId = evt.item.dataset.id;
+    const itemSlot = evt.item.dataset.slot;
+    if (itemSlot !== slot) {
+      evt.from.appendChild(evt.item);
+      alert(`You can only equip ${slot} items in the ${slot} slot.`);
+      return;
+    }
+    fetch('/student/equipment/equip', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inventory_id: itemId, slot: slot })
+    })
+    .then(r => r.json())
+    .then(resp => {
+      if (!resp.success) {
+        evt.from.appendChild(evt.item);
+        alert(resp.message || 'Error equipping item');
+      } else {
+        window.location.reload();
+      }
+    });
+  }
+}
+function unequipHandler(evt) {
+  const itemId = evt.item.dataset.id;
+  fetch('/student/equipment/unequip', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inventory_id: itemId })
+  })
+  .then(r => r.json())
+  .then(resp => {
+    if (!resp.success) {
+      evt.from.appendChild(evt.item);
+      alert(resp.message || 'Error unequipping item');
+    } else {
+      window.location.reload();
+    }
+  });
+}
+Sortable.create(document.getElementById('inventory-list'), {
+  group: 'equipment',
+  animation: 150,
+  sort: false,
+  onAdd: unequipHandler
+});
+Sortable.create(document.getElementById('weapon-slot'), {
+  group: 'equipment',
+  animation: 150,
+  sort: false,
+  onAdd: equipHandler('weapon')
+});
+Sortable.create(document.getElementById('armor-slot'), {
+  group: 'equipment',
+  animation: 150,
+  sort: false,
+  onAdd: equipHandler('armor')
+});
+Sortable.create(document.getElementById('accessory-slot'), {
+  group: 'equipment',
+  animation: 150,
+  sort: false,
+  onAdd: equipHandler('accessory')
+});
+</script>
 {% endblock %} 

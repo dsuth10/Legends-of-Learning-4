@@ -8,7 +8,15 @@ import uuid
 @pytest.fixture
 def user(db_session):
     from app.models.user import User, UserRole
+    from app.models.student import Student
+    from app.models.classroom import Classroom
     unique = uuid.uuid4().hex[:8]
+    teacher = User(username=f'testteacher_{unique}', email=f'teacher_{unique}@test.com', role=UserRole.TEACHER, password='password123')
+    db_session.add(teacher)
+    db_session.commit()
+    classroom = Classroom(name=f'TestClass_{unique}', teacher_id=teacher.id, join_code=f'JC{unique}')
+    db_session.add(classroom)
+    db_session.commit()
     user = User(
         username=f"testuser_{unique}",
         email=f"test_{unique}@example.com",
@@ -17,7 +25,10 @@ def user(db_session):
     )
     db_session.add(user)
     db_session.commit()
-    return user
+    student_profile = Student(user_id=user.id, class_id=classroom.id, level=1, gold=0, xp=0, health=100, power=10)
+    db_session.add(student_profile)
+    db_session.commit()
+    return student_profile
 
 @pytest.fixture
 def character(db_session, user):

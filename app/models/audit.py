@@ -25,20 +25,33 @@ class EventType(Enum):
     LEVEL_UP = 'LEVEL_UP'
 
 class AuditLog(Base):
-    """Model for tracking important game events and changes."""
+    """Model for tracking important game events and changes.
+
+    For batch actions (e.g., batch character updates), use:
+      AuditLog.log_event(
+        EventType.CHARACTER_UPDATE,
+        event_data={
+          'action': 'batch-reset-health',
+          'character_ids': [1,2,3],
+          'by': <user_id>,
+          'results': {1: {...}, 2: {...}, ...}
+        },
+        user_id=<user_id>
+      )
+    """
     
     __tablename__ = 'audit_log'
     
     id = db.Column(db.Integer, primary_key=True)
     event_type = db.Column(db.String(50), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    character_id = db.Column(db.Integer, db.ForeignKey('characters.id'), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=True)
+    character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=True)
     event_data = db.Column(JSON, nullable=False)  # Stores event-specific data
     ip_address = db.Column(db.String(45), nullable=True)  # IPv4/IPv6 address
     event_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
     
     # Relationships
-    user = db.relationship('User', backref=db.backref('audit_logs', lazy='dynamic'))
+    user = db.relationship('User', back_populates='audit_logs')
     character = db.relationship('Character', backref=db.backref('audit_logs', lazy='dynamic'))
     
     EVENT_TYPES = {

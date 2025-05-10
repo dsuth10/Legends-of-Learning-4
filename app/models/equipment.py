@@ -39,6 +39,7 @@ class Equipment(Base):
     rarity = db.Column(db.Integer, default=1, nullable=False)  # 1=common, 2=uncommon, 3=rare, 4=epic, 5=legendary
     is_tradeable = db.Column(db.Boolean, default=True, nullable=False)
     cost = db.Column(db.Integer, default=0, nullable=False)  # Cost in gold to purchase
+    image_url = db.Column(db.String(256), nullable=True)
     
     def __init__(self, name, type, slot, cost=0, **kwargs):
         super().__init__(**kwargs)
@@ -63,7 +64,7 @@ class Inventory(Base):
     acquired_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     # Relationships
-    character = db.relationship('Character', backref=db.backref('inventory_items', lazy='dynamic'))
+    character = db.relationship('Character', backref=db.backref('inventory_items', lazy='dynamic', cascade='all, delete-orphan'))
     equipment = db.relationship('Equipment')
     
     __table_args__ = (
@@ -108,4 +109,9 @@ class Inventory(Base):
     
     def __repr__(self):
         status = "equipped" if self.is_equipped else "in inventory"
-        return f'<Inventory {self.equipment.name} ({status})>' 
+        return f'<Inventory {self.equipment.name} ({status})>'
+
+# Default image filenames for test items
+TEST_ARMOR_IMAGE = '/static/images/test_armor.png'
+TEST_RING_IMAGE = '/static/images/test_ring.png'
+TEST_SWORD_IMAGE = '/static/images/test_sword.png' 

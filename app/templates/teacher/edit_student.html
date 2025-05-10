@@ -29,5 +29,208 @@
     <button type="submit" class="btn btn-success">Save Changes</button>
     <a href="{{ url_for('teacher.students', class_id=student.classes[0].id if student.classes else None) }}" class="btn btn-secondary ms-2">Cancel</a>
   </form>
+  {% if character %}
+  <hr>
+  <h3>Character Stats</h3>
+  <form id="character-stats-form">
+    <div class="row">
+      <div class="col-md-2 mb-2">
+        <label class="form-label">Level</label>
+        <input type="number" class="form-control" name="level" value="{{ character.level }}">
+      </div>
+      <div class="col-md-2 mb-2">
+        <label class="form-label">XP</label>
+        <input type="number" class="form-control" name="experience" value="{{ character.experience }}">
+      </div>
+      <div class="col-md-2 mb-2">
+        <label class="form-label">Health</label>
+        <input type="number" class="form-control" name="health" value="{{ character.health }}">
+      </div>
+      <div class="col-md-2 mb-2">
+        <label class="form-label">Max Health</label>
+        <input type="number" class="form-control" name="max_health" value="{{ character.max_health }}">
+      </div>
+      <div class="col-md-2 mb-2">
+        <label class="form-label">Strength</label>
+        <input type="number" class="form-control" name="strength" value="{{ character.strength }}">
+      </div>
+      <div class="col-md-2 mb-2">
+        <label class="form-label">Defense</label>
+        <input type="number" class="form-control" name="defense" value="{{ character.defense }}">
+      </div>
+      <div class="col-md-2 mb-2">
+        <label class="form-label">Gold</label>
+        <input type="number" class="form-control" name="gold" value="{{ character.gold }}">
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary mt-2" id="save-stats-btn">Save Character Stats</button>
+    <span id="stats-msg" class="ms-2"></span>
+  </form>
+  <hr>
+  <h3>Equipment Slots</h3>
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <h6>Weapon</h6>
+      <ul class="equipment-slot-list list-group" id="weapon-slot" data-slot="weapon">
+        {% for item in equipped_items if item.equipment.slot == 'weapon' %}
+          <li class="equipment-item list-group-item" data-id="{{ item.id }}">{{ item.equipment.name }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="col-md-4">
+      <h6>Armor</h6>
+      <ul class="equipment-slot-list list-group" id="armor-slot" data-slot="armor">
+        {% for item in equipped_items if item.equipment.slot == 'armor' %}
+          <li class="equipment-item list-group-item" data-id="{{ item.id }}">{{ item.equipment.name }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="col-md-4">
+      <h6>Accessory</h6>
+      <ul class="equipment-slot-list list-group" id="accessory-slot" data-slot="accessory">
+        {% for item in equipped_items if item.equipment.slot == 'accessory' %}
+          <li class="equipment-item list-group-item" data-id="{{ item.id }}">{{ item.equipment.name }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <h3>Inventory</h3>
+  <ul class="list-group mb-3" id="inventory-list">
+    {% for item in unequipped_items %}
+      <li class="equipment-item list-group-item" data-id="{{ item.id }}">{{ item.equipment.name }}</li>
+    {% else %}
+      <li class="list-group-item text-muted">No unequipped items in inventory.</li>
+    {% endfor %}
+  </ul>
+  <span id="inventory-msg"></span>
+  {% endif %}
 </div>
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+// AJAX for character stats
+const statsForm = document.getElementById('character-stats-form');
+const saveStatsBtn = document.getElementById('save-stats-btn');
+const statsMsg = document.getElementById('stats-msg');
+if (saveStatsBtn) {
+  saveStatsBtn.addEventListener('click', function() {
+    if (!confirm('Are you sure you want to save these character stats?')) return;
+    const data = {};
+    statsForm.querySelectorAll('input').forEach(input => {
+      data[input.name] = input.value;
+    });
+    fetch('/teacher/api/teacher/student/{{ student.id }}/stats', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(resp => {
+      statsMsg.textContent = resp.success ? 'Saved!' : (resp.message || 'Error');
+      statsMsg.className = resp.success ? 'text-success ms-2' : 'text-danger ms-2 fw-bold';
+    })
+    .catch(() => { statsMsg.textContent = 'Error'; statsMsg.className = 'text-danger ms-2 fw-bold'; });
+  });
+}
+// AJAX for equip/unequip/remove
+function inventoryAction(url, method, itemId, msgElem) {
+  if (url.includes('remove')) {
+    if (!confirm('Are you sure you want to remove this item?')) return;
+  }
+  fetch(url, {
+    method: method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inventory_id: itemId })
+  })
+  .then(r => r.json())
+  .then(resp => {
+    msgElem.textContent = resp.success ? 'Success!' : (resp.message || 'Error');
+    msgElem.className = resp.success ? 'text-success ms-2' : 'text-danger ms-2 fw-bold';
+    if (resp.success) setTimeout(() => window.location.reload(), 700);
+  })
+  .catch(() => { msgElem.textContent = 'Error'; msgElem.className = 'text-danger ms-2 fw-bold'; });
+}
+document.querySelectorAll('.equip-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const msgElem = document.getElementById('inventory-msg');
+    inventoryAction('/teacher/api/teacher/student/{{ student.id }}/equipment/equip', 'PATCH', this.dataset.itemId, msgElem);
+  });
+});
+document.querySelectorAll('.unequip-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const msgElem = document.getElementById('inventory-msg');
+    inventoryAction('/teacher/api/teacher/student/{{ student.id }}/equipment/unequip', 'PATCH', this.dataset.itemId, msgElem);
+  });
+});
+document.querySelectorAll('.remove-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const msgElem = document.getElementById('inventory-msg');
+    inventoryAction('/teacher/api/teacher/student/{{ student.id }}/inventory/remove', 'POST', this.dataset.itemId, msgElem);
+  });
+});
+// Drag-and-drop with SortableJS
+function equipHandler(slot) {
+  return function(evt) {
+    const itemId = evt.item.dataset.id;
+    fetch('/teacher/api/teacher/student/{{ student.id }}/equipment/equip', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inventory_id: itemId })
+    })
+    .then(r => r.json())
+    .then(resp => {
+      if (!resp.success) {
+        evt.from.appendChild(evt.item);
+        alert(resp.message || 'Error equipping item');
+      } else {
+        // Optionally update stats or show a message
+        window.location.reload();
+      }
+    });
+  }
+}
+function unequipHandler(evt) {
+  const itemId = evt.item.dataset.id;
+  fetch('/teacher/api/teacher/student/{{ student.id }}/equipment/unequip', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inventory_id: itemId })
+  })
+  .then(r => r.json())
+  .then(resp => {
+    if (!resp.success) {
+      evt.from.appendChild(evt.item);
+      alert(resp.message || 'Error unequipping item');
+    } else {
+      window.location.reload();
+    }
+  });
+}
+Sortable.create(document.getElementById('inventory-list'), {
+  group: 'equipment',
+  animation: 150,
+  sort: false,
+  onAdd: unequipHandler
+});
+Sortable.create(document.getElementById('weapon-slot'), {
+  group: 'equipment',
+  animation: 150,
+  sort: false,
+  onAdd: equipHandler('weapon')
+});
+Sortable.create(document.getElementById('armor-slot'), {
+  group: 'equipment',
+  animation: 150,
+  sort: false,
+  onAdd: equipHandler('armor')
+});
+Sortable.create(document.getElementById('accessory-slot'), {
+  group: 'equipment',
+  animation: 150,
+  sort: false,
+  onAdd: equipHandler('accessory')
+});
+</script>
+{% endblock %}
 {% endblock %} 

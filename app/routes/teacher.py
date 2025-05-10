@@ -19,6 +19,9 @@ from app.models.student import Student
 import io
 import json
 import logging
+from app.models.equipment import Equipment, Inventory, EquipmentType, EquipmentSlot
+from app.models.audit import EventType
+from sqlalchemy.exc import SQLAlchemyError
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher')
 
@@ -545,7 +548,7 @@ def students():
         if selected_class:
             students_query = db.session.query(User, Student, Character, Clan)
             students_query = students_query.join(Student, Student.user_id == User.id)
-            students_query = students_query.outerjoin(Character, (Character.student_id == User.id) & (Character.is_active == True))
+            students_query = students_query.outerjoin(Character, (Character.student_id == Student.id) & (Character.is_active == True))
             students_query = students_query.outerjoin(Clan, Student.clan_id == Clan.id)
             students_query = students_query.filter(Student.class_id == class_id)
             if search:
@@ -568,7 +571,7 @@ def students():
             if clan_id:
                 students_query = students_query.filter(Student.clan_id == clan_id)
             if character_class:
-                students_query = students_query.filter(Character.name.ilike(f'%{character_class}%'))
+                students_query = students_query.filter(Character.character_class.ilike(f'%{character_class}%'))
             # Sorting logic
             sort_map = {
                 'username': User.username,
@@ -631,6 +634,14 @@ def edit_student(user_id):
     class_ids = [c.id for c in user.classes if c.teacher_id == current_user.id]
     if not class_ids:
         abort(403)
+    # Fetch character and inventory
+    character = None
+    equipped_items = []
+    unequipped_items = []
+    character = Character.query.filter_by(student_id=user.id, is_active=True).first()
+    if character:
+        equipped_items = [item for item in character.inventory_items if item.is_equipped]
+        unequipped_items = [item for item in character.inventory_items if not item.is_equipped]
     if request.method == 'POST':
         user.first_name = request.form.get('first_name', user.first_name)
         user.last_name = request.form.get('last_name', user.last_name)
@@ -639,8 +650,7 @@ def edit_student(user_id):
         db.session.commit()
         flash('Student information updated.', 'success')
         return redirect(url_for('teacher.students', class_id=class_ids[0]))
-    # TODO: Render edit student form in template
-    return render_template('teacher/edit_student.html', student=user)
+    return render_template('teacher/edit_student.html', student=user, character=character, equipped_items=equipped_items, unequipped_items=unequipped_items)
 
 @teacher_bp.route('/students/<int:user_id>/remove', methods=['POST'])
 @login_required
@@ -869,4 +879,280 @@ def delete_unassigned_student(user_id):
     db.session.delete(user)
     db.session.commit()
     flash('Unassigned student permanently deleted.', 'success')
-    return redirect(url_for('teacher.unassigned_students')) 
+    return redirect(url_for('teacher.unassigned_students'))
+
+# --- Teacher Character Stat and Equipment Modification Endpoints ---
+
+# Helper: Check teacher owns the student
+
+def teacher_owns_student(teacher_id, student_id):
+    student = User.query.filter_by(id=student_id, role=UserRole.STUDENT).first()
+    if not student:
+        return False
+    # Check if student is in any class owned by teacher
+    return any(c.teacher_id == teacher_id for c in student.classes)
+
+# PATCH /api/teacher/student/<student_id>/stats
+@teacher_bp.route('/api/teacher/student/<int:student_id>/stats', methods=['PATCH'])
+@login_required
+@teacher_required
+def update_student_stats(student_id):
+    if not teacher_owns_student(current_user.id, student_id):
+        return {"success": False, "message": "Unauthorized: Not your student."}, 403
+    character = Character.query.filter_by(student_id=student_id).first()
+    if not character:
+        return {"success": False, "message": "Character not found."}, 404
+    data = request.get_json() or {}
+    allowed_stats = ["health", "max_health", "strength", "defense", "gold", "level", "experience"]
+    changes = {}
+    for stat in allowed_stats:
+        if stat in data:
+            old = getattr(character, stat)
+            # Convert to int for numeric stats
+            if stat in ["health", "max_health", "strength", "defense", "gold", "level", "experience"]:
+                try:
+                    new = int(data[stat])
+                except (ValueError, TypeError):
+                    return {"success": False, "message": f"{stat} must be an integer."}, 400
+            else:
+                new = data[stat]
+            # Example validation: stat ranges
+            if stat == "health" and not (0 <= new <= character.max_health):
+                return {"success": False, "message": f"Health must be 0-{character.max_health}"}, 400
+            if stat == "strength" and not (1 <= new <= 100):
+                return {"success": False, "message": "Strength must be 1-100"}, 400
+            if stat == "defense" and not (1 <= new <= 100):
+                return {"success": False, "message": "Defense must be 1-100"}, 400
+            if stat == "gold" and not (0 <= new <= 10000):
+                return {"success": False, "message": "Gold must be 0-10000"}, 400
+            setattr(character, stat, new)
+            changes[stat] = {"old": old, "new": new}
+    try:
+        db.session.commit()
+        # Audit log
+        AuditLog.log_event(
+            EventType.CHARACTER_UPDATE,
+            event_data={"changes": changes, "by": current_user.id},
+            user_id=current_user.id,
+            character_id=character.id
+        )
+        return {"success": True, "message": "Character stats updated.", "character": character.id, "audit_log": changes}
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return {"success": False, "message": str(e)}, 500
+
+# POST /api/teacher/student/<student_id>/inventory/add
+@teacher_bp.route('/api/teacher/student/<int:student_id>/inventory/add', methods=['POST'])
+@login_required
+@teacher_required
+def add_item_to_inventory(student_id):
+    if not teacher_owns_student(current_user.id, student_id):
+        return {"success": False, "message": "Unauthorized: Not your student."}, 403
+    character = Character.query.filter_by(student_id=student_id).first()
+    if not character:
+        return {"success": False, "message": "Character not found."}, 404
+    data = request.get_json() or {}
+    equipment_id = data.get("equipment_id")
+    if not equipment_id:
+        return {"success": False, "message": "Missing equipment_id."}, 400
+    equipment = Equipment.query.get(equipment_id)
+    if not equipment:
+        return {"success": False, "message": "Equipment not found."}, 404
+    # Check inventory capacity (example: max 20 items)
+    if character.inventory_items.count() >= 20:
+        return {"success": False, "message": "Inventory full."}, 400
+    inv = Inventory(character_id=character.id, equipment_id=equipment.id)
+    db.session.add(inv)
+    try:
+        db.session.commit()
+        AuditLog.log_event(
+            EventType.EQUIPMENT_CHANGE,
+            event_data={"action": "add", "equipment_id": equipment.id, "by": current_user.id},
+            user_id=current_user.id,
+            character_id=character.id
+        )
+        return {"success": True, "message": "Item added.", "inventory_id": inv.id}
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return {"success": False, "message": str(e)}, 500
+
+# POST /api/teacher/student/<student_id>/inventory/remove
+@teacher_bp.route('/api/teacher/student/<int:student_id>/inventory/remove', methods=['POST'])
+@login_required
+@teacher_required
+def remove_item_from_inventory(student_id):
+    if not teacher_owns_student(current_user.id, student_id):
+        return {"success": False, "message": "Unauthorized: Not your student."}, 403
+    character = Character.query.filter_by(student_id=student_id).first()
+    if not character:
+        return {"success": False, "message": "Character not found."}, 404
+    data = request.get_json() or {}
+    inventory_id = data.get("inventory_id")
+    inv = Inventory.query.filter_by(id=inventory_id, character_id=character.id).first()
+    if not inv:
+        return {"success": False, "message": "Inventory item not found."}, 404
+    db.session.delete(inv)
+    try:
+        db.session.commit()
+        AuditLog.log_event(
+            EventType.EQUIPMENT_CHANGE,
+            event_data={"action": "remove", "inventory_id": inventory_id, "by": current_user.id},
+            user_id=current_user.id,
+            character_id=character.id
+        )
+        return {"success": True, "message": "Item removed."}
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return {"success": False, "message": str(e)}, 500
+
+# PATCH /api/teacher/student/<student_id>/equipment/equip
+@teacher_bp.route('/api/teacher/student/<int:student_id>/equipment/equip', methods=['PATCH'])
+@login_required
+@teacher_required
+def equip_item(student_id):
+    if not teacher_owns_student(current_user.id, student_id):
+        return {"success": False, "message": "Unauthorized: Not your student."}, 403
+    character = Character.query.filter_by(student_id=student_id).first()
+    if not character:
+        return {"success": False, "message": "Character not found."}, 404
+    data = request.get_json() or {}
+    inventory_id = data.get("inventory_id")
+    inv = Inventory.query.filter_by(id=inventory_id, character_id=character.id).first()
+    if not inv:
+        return {"success": False, "message": "Inventory item not found."}, 404
+    # Validate equipment slot
+    slot = inv.equipment.slot
+    # Unequip any item in the same slot
+    for item in character.inventory_items:
+        if item.is_equipped and item.equipment.slot == slot:
+            item.is_equipped = False
+    inv.is_equipped = True
+    try:
+        db.session.commit()
+        AuditLog.log_event(
+            EventType.EQUIPMENT_CHANGE,
+            event_data={"action": "equip", "inventory_id": inventory_id, "by": current_user.id},
+            user_id=current_user.id,
+            character_id=character.id
+        )
+        return {"success": True, "message": "Item equipped."}
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return {"success": False, "message": str(e)}, 500
+
+# PATCH /api/teacher/student/<student_id>/equipment/unequip
+@teacher_bp.route('/api/teacher/student/<int:student_id>/equipment/unequip', methods=['PATCH'])
+@login_required
+@teacher_required
+def unequip_item(student_id):
+    if not teacher_owns_student(current_user.id, student_id):
+        return {"success": False, "message": "Unauthorized: Not your student."}, 403
+    character = Character.query.filter_by(student_id=student_id).first()
+    if not character:
+        return {"success": False, "message": "Character not found."}, 404
+    data = request.get_json() or {}
+    inventory_id = data.get("inventory_id")
+    # Debug logging
+    print(f"[DEBUG] Unequip request: student_id={student_id}, inventory_id={inventory_id}")
+    print(f"[DEBUG] Character ID: {character.id if character else 'None'}")
+    inv = Inventory.query.filter_by(id=inventory_id, character_id=character.id).first()
+    print(f"[DEBUG] Inventory found: {inv}")
+    if not inv or not inv.is_equipped:
+        print(f"[DEBUG] Inventory not found or not equipped. inv={inv}")
+        return {"success": False, "message": "Item not equipped."}, 404
+    inv.is_equipped = False
+    try:
+        db.session.commit()
+        AuditLog.log_event(
+            EventType.EQUIPMENT_CHANGE,
+            event_data={"action": "unequip", "inventory_id": inventory_id, "by": current_user.id},
+            user_id=current_user.id,
+            character_id=character.id
+        )
+        print(f"[DEBUG] Item unequipped successfully. inv={inv}")
+        return {"success": True, "message": "Item unequipped."}
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"[DEBUG] Exception during unequip: {e}")
+        return {"success": False, "message": str(e)}, 500
+
+@teacher_bp.route('/students/<int:class_id>/characters', methods=['GET'])
+@login_required
+@teacher_required
+def student_characters(class_id):
+    # Fetch all classes for sidebar/class selector
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+    if not selected_class:
+        flash('Class not found or you do not have permission.', 'danger')
+        return redirect(url_for('teacher.students'))
+
+    # Fetch students and their characters for this class
+    students_query = db.session.query(User, Student, Character).\
+        join(Student, Student.user_id == User.id).\
+        outerjoin(Character, (Character.student_id == Student.id) & (Character.is_active == True)).\
+        filter(Student.class_id == class_id)
+    student_tuples = students_query.all()
+    students = []
+    for user, student, character in student_tuples:
+        equipped_items = []
+        if character:
+            equipped_items = [item for item in getattr(character, 'inventory_items', []) if getattr(item, 'is_equipped', False)]
+        students.append({
+            'user': user,
+            'student': student,
+            'character': character,
+            'equipped_items': equipped_items
+        })
+
+    return render_template(
+        'teacher/student_characters.html',
+        classes=classes,
+        selected_class=selected_class,
+        students=students,
+        active_page='student_characters'
+    )
+
+@teacher_bp.route('/api/teacher/characters/batch-action', methods=['POST'])
+@login_required
+@teacher_required
+def batch_character_action():
+    data = request.get_json() or {}
+    action = data.get('action')
+    character_ids = data.get('character_ids', [])
+    # Optional: item_id, status_value, etc.
+    if not action or not character_ids or not isinstance(character_ids, list):
+        return {"success": False, "message": "Missing or invalid action/character_ids."}, 400
+    # Fetch all characters and check permissions
+    characters = Character.query.filter(Character.id.in_(character_ids)).all()
+    if len(characters) != len(character_ids):
+        return {"success": False, "message": "One or more characters not found."}, 404
+    # Check teacher owns all students
+    for c in characters:
+        student = Student.query.get(c.student_id)
+        if not student or student.classroom.teacher_id != current_user.id:
+            return {"success": False, "message": f"Unauthorized for character {c.id}."}, 403
+    results = {}
+    try:
+        if action == 'reset-health':
+            for c in characters:
+                old = c.health
+                c.health = c.max_health
+                results[c.id] = {"old_health": old, "new_health": c.max_health, "success": True}
+            db.session.commit()
+            # Log batch event
+            AuditLog.log_event(
+                EventType.CHARACTER_UPDATE,
+                event_data={"action": "batch-reset-health", "character_ids": character_ids, "by": current_user.id},
+                user_id=current_user.id
+            )
+            return {"success": True, "message": "Health reset for selected characters.", "results": results}
+        elif action == 'grant-item':
+            return {"success": False, "message": "Grant item batch action not implemented yet."}, 501
+        elif action == 'set-status':
+            return {"success": False, "message": "Set status batch action not implemented yet."}, 501
+        else:
+            return {"success": False, "message": "Unknown batch action."}, 400
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return {"success": False, "message": str(e)}, 500 

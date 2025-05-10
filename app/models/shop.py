@@ -15,7 +15,7 @@ class ShopPurchase(Base):
     __tablename__ = 'shop_purchases'
     
     id = db.Column(db.Integer, primary_key=True)
-    character_id = db.Column(db.Integer, db.ForeignKey('characters.id'), nullable=False)
+    character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=False)
     gold_spent = db.Column(db.Integer, nullable=False)
     purchase_type = db.Column(db.String(20), nullable=False)  # 'equipment' or 'ability'
     item_id = db.Column(db.Integer, nullable=False)  # ID of the purchased equipment or ability

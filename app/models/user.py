@@ -38,6 +38,8 @@ class User(UserMixin, Base):
         overlaps="classes,students"
     )
     
+    audit_logs = db.relationship('AuditLog', back_populates='user', lazy='dynamic')
+    
     __table_args__ = (
         db.Index('idx_user_role_active', 'role', 'is_active'),  # For filtering active users by role
     )

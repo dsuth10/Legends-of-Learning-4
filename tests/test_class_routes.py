@@ -183,7 +183,8 @@ def test_student_roster_listing_filtering_sorting(client, db_session, teacher_us
         Character = __import__('app.models.character', fromlist=['Character']).Character
         character = Character(
             name=char_class,
-            student_id=user.id,
+            character_class=char_class,
+            student_id=student.id,
             level=level,
             experience=xp,
             health=health,
@@ -194,51 +195,51 @@ def test_student_roster_listing_filtering_sorting(client, db_session, teacher_us
         db.session.commit()
         students.append((user, student, character, clan))
     resp = client.get(f'/teacher/students?class_id={class_obj.id}')
-    assert b'Alice' in resp.data and b'Bob' in resp.data and b'Charlie' in resp.data
+    assert b'Alice Test' in resp.data and b'Bob Test' in resp.data and b'Charlie Test' in resp.data
 
     # Filter by name
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&search=Alice')
-    assert b'Alice' in resp.data and b'Bob' not in resp.data and b'Charlie' not in resp.data
+    assert b'Alice Test' in resp.data and b'Bob Test' not in resp.data and b'Charlie Test' not in resp.data
 
     # Filter by email
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&search={bob_email}')
-    assert b'Bob' in resp.data and b'Alice' not in resp.data and b'Charlie' not in resp.data
+    assert b'Bob Test' in resp.data and b'Alice Test' not in resp.data and b'Charlie Test' not in resp.data
 
     # Filter by level
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&level=3')
-    assert b'Bob' in resp.data and b'Alice' not in resp.data and b'Charlie' not in resp.data
+    assert b'Bob Test' in resp.data and b'Alice Test' not in resp.data and b'Charlie Test' not in resp.data
 
     # Filter by gold
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&gold=50')
-    assert b'Charlie' in resp.data and b'Alice' not in resp.data and b'Bob' not in resp.data
+    assert b'Charlie Test' in resp.data and b'Alice Test' not in resp.data and b'Bob Test' not in resp.data
 
     # Filter by xp
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&xp=500')
-    assert b'Alice' in resp.data and b'Bob' not in resp.data and b'Charlie' not in resp.data
+    assert b'Alice Test' in resp.data and b'Bob Test' not in resp.data and b'Charlie Test' not in resp.data
 
     # Filter by health
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&health=70')
-    assert b'Charlie' in resp.data and b'Alice' not in resp.data and b'Bob' not in resp.data
+    assert b'Charlie Test' in resp.data and b'Alice Test' not in resp.data and b'Bob Test' not in resp.data
 
     # Filter by power
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&power=90')
-    assert b'Bob' in resp.data and b'Alice' not in resp.data and b'Charlie' not in resp.data
+    assert b'Bob Test' in resp.data and b'Alice Test' not in resp.data and b'Charlie Test' not in resp.data
 
     # Filter by clan
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&clan_id={clan1.id}')
-    assert b'Alice' in resp.data and b'Bob' not in resp.data and b'Charlie' not in resp.data
+    assert b'Alice Test' in resp.data and b'Bob Test' not in resp.data and b'Charlie Test' not in resp.data
 
     # Filter by character class
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&character_class=Mage')
-    assert b'Bob' in resp.data and b'Alice' not in resp.data and b'Charlie' not in resp.data
+    assert b'Bob Test' in resp.data and b'Alice Test' not in resp.data and b'Charlie Test' not in resp.data
 
     # Sorting by level desc
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&sort=level&direction=desc')
-    assert resp.data.find(b'Bob') < resp.data.find(b'Alice') < resp.data.find(b'Charlie')
+    assert resp.data.find(b'Bob Test') < resp.data.find(b'Alice Test') < resp.data.find(b'Charlie Test')
 
     # Sorting by gold asc
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&sort=gold&direction=asc')
-    assert resp.data.find(b'Charlie') < resp.data.find(b'Alice') < resp.data.find(b'Bob')
+    assert resp.data.find(b'Charlie Test') < resp.data.find(b'Alice Test') < resp.data.find(b'Bob Test')
 
     # Edge case: no students
     empty_class = Classroom(name='Empty Class', teacher_id=teacher_user.id, join_code='EMPTY123')
