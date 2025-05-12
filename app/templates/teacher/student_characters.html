@@ -37,7 +37,7 @@
           <ul class="dropdown-menu" aria-labelledby="batchActionDropdown">
             <li><a class="dropdown-item batch-action" href="#" data-action="reset-health">Reset Health</a></li>
             <li><a class="dropdown-item batch-action" href="#" data-action="grant-item">Grant Item</a></li>
-            <li><a class="dropdown-item batch-action" href="#" data-action="set-status">Set Status</a></li>
+            <li><a class="dropdown-item batch-action" href="#" data-action="reset-character">Reset Character</a></li>
           </ul>
         </div>
       </div>
@@ -58,6 +58,15 @@
                 {% for item in all_equipment %}
                   <option value="{{ item.id }}">{{ item.name }} ({{ item.type.value.title() }}, {{ item.slot.value.title() }})</option>
                 {% endfor %}
+              </select>
+            </div>
+            <!-- Status selector for set-status batch action -->
+            <div id="setStatusDropdownContainer" style="display:none;">
+              <label for="setStatusSelect" class="form-label">Select Status:</label>
+              <select id="setStatusSelect" class="form-select" aria-label="Select status for batch action">
+                <option value="">-- Select --</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
               </select>
             </div>
           </div>
@@ -197,12 +206,15 @@ document.addEventListener('DOMContentLoaded', function() {
       if (currentBatchAction === 'reset-health') {
         actionText = 'You are about to reset health for ' + selectedCharacterIds.size + ' selected characters. This action cannot be undone.';
         document.getElementById('grantItemDropdownContainer').style.display = 'none';
+        document.getElementById('setStatusDropdownContainer').style.display = 'none';
       } else if (currentBatchAction === 'grant-item') {
         actionText = 'You are about to grant an item to ' + selectedCharacterIds.size + ' selected characters.';
         document.getElementById('grantItemDropdownContainer').style.display = '';
-      } else if (currentBatchAction === 'set-status') {
-        actionText = 'You are about to set status for ' + selectedCharacterIds.size + ' selected characters.';
+        document.getElementById('setStatusDropdownContainer').style.display = 'none';
+      } else if (currentBatchAction === 'reset-character') {
+        actionText = 'You are about to reset the character for ' + selectedCharacterIds.size + ' selected students. This will delete their character and all progress. The student will be able to create a new character from scratch. This action cannot be undone.';
         document.getElementById('grantItemDropdownContainer').style.display = 'none';
+        document.getElementById('setStatusDropdownContainer').style.display = 'none';
       }
       // Only update the text node, don't clear the whole body
       let textElem = body.querySelector('.batch-action-text');
@@ -241,6 +253,18 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       bodyData.item_id = parseInt(itemSelect.value);
     }
+    // Handle set-status validation and payload
+    if (action === 'set-status') {
+      const statusSelect = document.getElementById('setStatusSelect');
+      if (!statusSelect || !statusSelect.value) {
+        errorElem = document.createElement('div');
+        errorElem.className = 'alert alert-danger set-status-error';
+        errorElem.textContent = 'Please select a status.';
+        body.prepend(errorElem);
+        return;
+      }
+      bodyData.status_value = statusSelect.value === 'true';
+    }
     // Show spinner only if validation passes
     spinnerElem = document.createElement('div');
     spinnerElem.className = 'text-center batch-action-spinner';
@@ -261,6 +285,8 @@ document.addEventListener('DOMContentLoaded', function() {
           if (result.success) {
             if (action === 'reset-health') {
               html += `Health reset to ${result.new_health}`;
+            } else if (action === 'reset-character') {
+              html += `Character deleted. Student can create a new character.`;
             } else {
               html += 'Success';
             }

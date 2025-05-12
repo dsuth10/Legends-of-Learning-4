@@ -1187,7 +1187,53 @@ def batch_character_action():
                 db.session.rollback()
                 return {"success": False, "message": str(e)}, 500
         elif action == 'set-status':
-            return {"success": False, "message": "Set status batch action not implemented yet."}, 501
+            status_value = data.get('status_value')
+            if status_value not in [True, False]:
+                return {"success": False, "message": "Missing or invalid status_value."}, 400
+            for c in characters:
+                old = c.is_active
+                c.is_active = status_value
+                results[c.id] = {"old_status": old, "new_status": status_value, "success": True}
+            try:
+                db.session.commit()
+                AuditLog.log_event(
+                    EventType.CHARACTER_UPDATE,
+                    event_data={
+                        "action": "batch-set-status",
+                        "character_ids": character_ids,
+                        "status_value": status_value,
+                        "by": current_user.id,
+                        "results": results
+                    },
+                    user_id=current_user.id
+                )
+                return {"success": True, "message": "Status updated for selected characters.", "results": results}
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                return {"success": False, "message": str(e)}, 500
+        elif action == 'reset-character':
+            for c in characters:
+                try:
+                    db.session.delete(c)
+                    results[c.id] = {"success": True}
+                except Exception as e:
+                    results[c.id] = {"success": False, "error": str(e)}
+            try:
+                db.session.commit()
+                AuditLog.log_event(
+                    EventType.CHARACTER_UPDATE,
+                    event_data={
+                        "action": "batch-reset-character",
+                        "character_ids": character_ids,
+                        "by": current_user.id,
+                        "results": results
+                    },
+                    user_id=current_user.id
+                )
+                return {"success": True, "message": "Characters reset for selected students.", "results": results}
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                return {"success": False, "message": str(e)}, 500
         else:
             return {"success": False, "message": "Unknown batch action."}, 400
     except SQLAlchemyError as e:
