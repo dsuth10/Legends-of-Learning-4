@@ -26,6 +26,7 @@ class User(UserMixin, Base):
     first_name = db.Column(db.String(64))
     last_name = db.Column(db.String(64))
     display_name = db.Column(db.String(64))  # For in-game display
+    avatar_url = db.Column(db.String(255), nullable=True)  # Path to avatar image
     
     # Relationships will be added by other models (class membership, characters, etc.)
     

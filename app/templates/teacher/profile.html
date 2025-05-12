@@ -1,0 +1,75 @@
+{% extends "teacher/base_dashboard.html" %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Profile</li>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="container mt-4">
+  <h2>Teacher Profile</h2>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  <div class="mb-4 text-center">
+    {% if avatar_url %}
+      <img src="{{ avatar_url }}" alt="Avatar" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover; border: 2px solid #ccc;">
+    {% else %}
+      <div class="rounded-circle bg-secondary d-inline-block" style="width: 120px; height: 120px; line-height: 120px; color: #fff; font-size: 48px;">?
+      </div>
+    {% endif %}
+  </div>
+  <form method="post" enctype="multipart/form-data">
+    <div class="mb-3">
+      <label for="avatar" class="form-label">Avatar</label>
+      <input type="file" class="form-control" id="avatar" name="avatar" accept="image/png, image/jpeg, image/jpg, image/gif">
+      <div class="form-text">Allowed types: png, jpg, jpeg, gif. Max size: 2MB.</div>
+    </div>
+    <div class="mb-3">
+      <label for="username" class="form-label">Username</label>
+      <input type="text" class="form-control" id="username" name="username" value="{{ teacher.username }}" required maxlength="64">
+    </div>
+    <div class="mb-3">
+      <label for="email" class="form-label">Email</label>
+      <input type="email" class="form-control" id="email" name="email" value="{{ teacher.email }}" required maxlength="120">
+    </div>
+    <div class="mb-3">
+      <label for="first_name" class="form-label">First Name</label>
+      <input type="text" class="form-control" id="first_name" name="first_name" value="{{ teacher.first_name }}" maxlength="64">
+    </div>
+    <div class="mb-3">
+      <label for="last_name" class="form-label">Last Name</label>
+      <input type="text" class="form-control" id="last_name" name="last_name" value="{{ teacher.last_name }}" maxlength="64">
+    </div>
+    <div class="mb-3">
+      <label for="display_name" class="form-label">Display Name</label>
+      <input type="text" class="form-control" id="display_name" name="display_name" value="{{ teacher.display_name }}" maxlength="64">
+    </div>
+    <button type="submit" class="btn btn-success">Save Changes</button>
+  </form>
+  <hr>
+  <h4>Change Password</h4>
+  <form method="post">
+    <div class="mb-3">
+      <label for="current_password" class="form-label">Current Password</label>
+      <input type="password" class="form-control" id="current_password" name="current_password" autocomplete="current-password">
+      <div class="form-text">Enter your current password to change your password.</div>
+    </div>
+    <div class="mb-3">
+      <label for="new_password" class="form-label">New Password</label>
+      <input type="password" class="form-control" id="new_password" name="new_password" autocomplete="new-password">
+    </div>
+    <div class="mb-3">
+      <label for="confirm_password" class="form-label">Confirm New Password</label>
+      <input type="password" class="form-control" id="confirm_password" name="confirm_password" autocomplete="new-password">
+    </div>
+    <button type="submit" class="btn btn-primary">Change Password</button>
+  </form>
+</div>
+{% endblock %} 
