@@ -52,6 +52,14 @@
           </div>
           <div class="modal-body" id="batchActionModalBody">
             <!-- Content set by JS -->
+            <div id="grantItemDropdownContainer" style="display:none;">
+              <label for="grantItemSelect" class="form-label">Select Item to Grant:</label>
+              <select id="grantItemSelect" class="form-select">
+                {% for item in all_equipment %}
+                  <option value="{{ item.id }}">{{ item.name }} ({{ item.type.value.title() }}, {{ item.slot.value.title() }})</option>
+                {% endfor %}
+              </select>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -60,13 +68,16 @@
         </div>
       </div>
     </div>
+    <!-- DEBUG: all_equipment = {{ all_equipment|length }} items -->
     {% if students and students|length > 0 %}
       <!-- Only render the card/list (accordion) UI for characters -->
       <div class="accordion" id="characterAccordion">
         {% for student in students %}
         <div class="card mb-2">
           <div class="card-header d-flex align-items-center" id="heading{{ loop.index }}">
-            <input type="checkbox" class="character-select me-2" data-student-id="{{ student.user.id }}" aria-label="Select {{ student.user.full_name }}">
+            {% if student.character %}
+            <input type="checkbox" class="character-select me-2" data-character-id="{{ student.character.id }}" aria-label="Select {{ student.user.full_name }}">
+            {% endif %}
             <button class="btn btn-link flex-grow-1 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
               {% if student.character %}<span class="character-name">{{ student.character.name }}</span> {% endif %}
               <strong>{% if student.character %}{{ student.character.name }} ({{ student.character.character_class }}){% else %}No Character{% endif %}</strong>
@@ -159,9 +170,9 @@ document.addEventListener('DOMContentLoaded', function() {
   checkboxes.forEach(cb => {
     cb.addEventListener('change', function() {
       if (cb.checked) {
-        selectedCharacterIds.add(cb.dataset.studentId);
+        selectedCharacterIds.add(cb.dataset.characterId);
       } else {
-        selectedCharacterIds.delete(cb.dataset.studentId);
+        selectedCharacterIds.delete(cb.dataset.characterId);
       }
       updateBatchActionDropdown();
     });
@@ -185,12 +196,22 @@ document.addEventListener('DOMContentLoaded', function() {
       let actionText = '';
       if (currentBatchAction === 'reset-health') {
         actionText = 'You are about to reset health for ' + selectedCharacterIds.size + ' selected characters. This action cannot be undone.';
+        document.getElementById('grantItemDropdownContainer').style.display = 'none';
       } else if (currentBatchAction === 'grant-item') {
-        actionText = 'You are about to grant an item to ' + selectedCharacterIds.size + ' selected characters. (Item selection coming soon)';
+        actionText = 'You are about to grant an item to ' + selectedCharacterIds.size + ' selected characters.';
+        document.getElementById('grantItemDropdownContainer').style.display = '';
       } else if (currentBatchAction === 'set-status') {
         actionText = 'You are about to set status for ' + selectedCharacterIds.size + ' selected characters.';
+        document.getElementById('grantItemDropdownContainer').style.display = 'none';
       }
-      body.textContent = actionText;
+      // Only update the text node, don't clear the whole body
+      let textElem = body.querySelector('.batch-action-text');
+      if (!textElem) {
+        textElem = document.createElement('div');
+        textElem.className = 'batch-action-text';
+        body.prepend(textElem);
+      }
+      textElem.textContent = actionText;
       modal.show();
     });
   });
@@ -200,15 +221,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalEl = document.getElementById('batchActionModal');
     const modal = bootstrap.Modal.getInstance(modalEl);
     const body = document.getElementById('batchActionModalBody');
-    // Show loading state
-    body.innerHTML = '<div class="text-center"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...</div>';
+    // Remove any previous error or spinner
+    let errorElem = body.querySelector('.grant-item-error');
+    if (errorElem) errorElem.remove();
+    let spinnerElem = body.querySelector('.batch-action-spinner');
+    if (spinnerElem) spinnerElem.remove();
     const action = currentBatchAction;
     const characterIds = Array.from(selectedCharacterIds).map(Number);
+    let bodyData = { action, character_ids: characterIds };
+    if (action === 'grant-item') {
+      const itemSelect = document.getElementById('grantItemSelect');
+      if (!itemSelect || !itemSelect.value) {
+        // Show error above the dropdown, do not clear the modal body
+        errorElem = document.createElement('div');
+        errorElem.className = 'alert alert-danger grant-item-error';
+        errorElem.textContent = 'Please select an item to grant.';
+        body.prepend(errorElem);
+        return;
+      }
+      bodyData.item_id = parseInt(itemSelect.value);
+    }
+    // Show spinner only if validation passes
+    spinnerElem = document.createElement('div');
+    spinnerElem.className = 'text-center batch-action-spinner';
+    spinnerElem.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+    body.appendChild(spinnerElem);
     try {
       const resp = await fetch('/teacher/api/teacher/characters/batch-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, character_ids: characterIds })
+        body: JSON.stringify(bodyData)
       });
       const data = await resp.json();
       if (data.success) {

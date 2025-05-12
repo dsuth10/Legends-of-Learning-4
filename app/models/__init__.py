@@ -21,6 +21,7 @@ def init_db(app):
     from app.models.ability import Ability, AbilityType, CharacterAbility
     from app.models.student import Student
     from app.models.assist_log import AssistLog
+    from app.models.clan_progress import ClanProgressHistory
     
     # Create tables
     # with app.app_context():

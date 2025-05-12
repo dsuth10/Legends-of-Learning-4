@@ -112,4 +112,43 @@ def test_batch_reset_health(client, db_session):
     assert character2.health == character2.max_health
     # Check audit log
     logs = AuditLog.query.filter_by(event_type=EventType.CHARACTER_UPDATE.value).order_by(AuditLog.event_timestamp.desc()).all()
-    assert any('batch-reset-health' in (log.event_data.get('action') or '') for log in logs) 
+    assert any('batch-reset-health' in (log.event_data.get('action') or '') for log in logs)
+
+def test_batch_grant_item(client, db_session):
+    from app.models.user import User
+    from app.models.character import Character
+    from app.models.audit import AuditLog, EventType
+    from app.models.equipment import Equipment, EquipmentType, EquipmentSlot, Inventory
+    # Setup
+    teacher, classroom = create_teacher_and_class(db_session)
+    student1, student_profile1, character1 = create_student_with_character(db_session, classroom.id, name='StudentA', char_name='HeroA')
+    student2, student_profile2, character2 = create_student_with_character(db_session, classroom.id, name='StudentB', char_name='HeroB')
+    # Create equipment item
+    equipment = Equipment(
+        name='Test Sword',
+        type=EquipmentType.WEAPON,
+        slot=EquipmentSlot.MAIN_HAND,
+        cost=100
+    )
+    db_session.add(equipment)
+    db_session.commit()
+    login(client, teacher.username, 'password123')
+    # Perform batch grant-item
+    resp = client.post('/teacher/api/teacher/characters/batch-action', json={
+        'action': 'grant-item',
+        'character_ids': [character1.id, character2.id],
+        'item_id': equipment.id
+    })
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['success']
+    assert str(character1.id) in data['results']
+    assert str(character2.id) in data['results']
+    # Check inventory for both characters
+    inv1 = Inventory.query.filter_by(character_id=character1.id, equipment_id=equipment.id).first()
+    inv2 = Inventory.query.filter_by(character_id=character2.id, equipment_id=equipment.id).first()
+    assert inv1 is not None
+    assert inv2 is not None
+    # Check audit log
+    logs = AuditLog.query.filter_by(event_type=EventType.EQUIPMENT_CHANGE.value).order_by(AuditLog.event_timestamp.desc()).all()
+    assert any('batch-grant-item' in (log.event_data.get('action') or '') for log in logs) 

@@ -21,7 +21,7 @@ import json
 import logging
 from app.models.equipment import Equipment, Inventory, EquipmentType, EquipmentSlot
 from app.models.audit import EventType
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher')
 
@@ -1105,11 +1105,15 @@ def student_characters(class_id):
             'equipped_items': equipped_items
         })
 
+    # Fetch all equipment for dropdown
+    all_equipment = Equipment.query.order_by(Equipment.name.asc()).all()
+
     return render_template(
         'teacher/student_characters.html',
         classes=classes,
         selected_class=selected_class,
         students=students,
+        all_equipment=all_equipment,
         active_page='student_characters'
     )
 
@@ -1117,8 +1121,10 @@ def student_characters(class_id):
 @login_required
 @teacher_required
 def batch_character_action():
+    import logging
     data = request.get_json() or {}
     action = data.get('action')
+    logging.warning(f"[DEBUG] batch_character_action called. Data: {data}")
     character_ids = data.get('character_ids', [])
     # Optional: item_id, status_value, etc.
     if not action or not character_ids or not isinstance(character_ids, list):
@@ -1148,11 +1154,239 @@ def batch_character_action():
             )
             return {"success": True, "message": "Health reset for selected characters.", "results": results}
         elif action == 'grant-item':
-            return {"success": False, "message": "Grant item batch action not implemented yet."}, 501
+            item_id = data.get('item_id')
+            if not item_id:
+                return {"success": False, "message": "Missing item_id."}, 400
+            from app.models.equipment import Equipment, Inventory
+            equipment = Equipment.query.get(item_id)
+            if not equipment:
+                return {"success": False, "message": "Equipment not found."}, 404
+            for c in characters:
+                # Check inventory capacity (max 20 items)
+                if c.inventory_items.count() >= 20:
+                    results[c.id] = {"success": False, "reason": "Inventory full"}
+                    continue
+                inv = Inventory(character_id=c.id, equipment_id=equipment.id)
+                db.session.add(inv)
+                results[c.id] = {"success": True, "inventory_id": inv.id}
+            try:
+                db.session.commit()
+                AuditLog.log_event(
+                    EventType.EQUIPMENT_CHANGE,
+                    event_data={
+                        "action": "batch-grant-item",
+                        "item_id": item_id,
+                        "character_ids": character_ids,
+                        "by": current_user.id,
+                        "results": results
+                    },
+                    user_id=current_user.id
+                )
+                return {"success": True, "message": "Item granted to selected characters.", "results": results}
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                return {"success": False, "message": str(e)}, 500
         elif action == 'set-status':
             return {"success": False, "message": "Set status batch action not implemented yet."}, 501
         else:
             return {"success": False, "message": "Unknown batch action."}, 400
     except SQLAlchemyError as e:
         db.session.rollback()
-        return {"success": False, "message": str(e)}, 500 
+        return {"success": False, "message": str(e)}, 500
+
+# --- Clan Management API Endpoints ---
+
+@teacher_bp.route('/api/teacher/clans', methods=['GET'])
+@login_required
+@teacher_required
+def api_list_clans():
+    class_id = request.args.get('class_id', type=int)
+    if not class_id:
+        return {"success": False, "message": "Missing class_id."}, 400
+    classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+    if not classroom:
+        return {"success": False, "message": "Class not found or unauthorized."}, 404
+    clans = Clan.query.filter_by(class_id=class_id).all()
+    result = []
+    for clan in clans:
+        members = [
+            {
+                "id": c.id,
+                "name": c.name,
+                "student_id": c.student_id,
+                "user_id": c.student.user_id if c.student else None,
+                "avatar_url": c.avatar_url,
+                "level": c.level,
+            }
+            for c in clan.members
+        ]
+        result.append({
+            "id": clan.id,
+            "name": clan.name,
+            "description": clan.description,
+            "emblem": clan.emblem,
+            "level": clan.level,
+            "experience": clan.experience,
+            "is_active": clan.is_active,
+            "created_at": clan.created_at,
+            "updated_at": clan.updated_at,
+            "members": members,
+        })
+    return {"success": True, "clans": result}
+
+@teacher_bp.route('/api/teacher/clans', methods=['POST'])
+@login_required
+@teacher_required
+def api_create_clan():
+    data = request.get_json() or {}
+    class_id = data.get('class_id')
+    name = data.get('name')
+    description = data.get('description')
+    emblem = data.get('emblem')
+    if not class_id or not name:
+        return {"success": False, "message": "Missing class_id or name."}, 400
+    classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+    if not classroom:
+        return {"success": False, "message": "Class not found or unauthorized."}, 404
+    clan = Clan(name=name, class_id=class_id, description=description, emblem=emblem)
+    db.session.add(clan)
+    try:
+        db.session.commit()
+        return {"success": True, "clan_id": clan.id}
+    except IntegrityError:
+        db.session.rollback()
+        return {"success": False, "message": "Clan name must be unique within the class."}, 400
+    except Exception as e:
+        db.session.rollback()
+        return {"success": False, "message": str(e)}, 500
+
+@teacher_bp.route('/api/teacher/clans/<int:clan_id>', methods=['PUT'])
+@login_required
+@teacher_required
+def api_edit_clan(clan_id):
+    data = request.get_json() or {}
+    clan = Clan.query.get(clan_id)
+    if not clan or clan.class_.teacher_id != current_user.id:
+        return {"success": False, "message": "Clan not found or unauthorized."}, 404
+    name = data.get('name')
+    description = data.get('description')
+    emblem = data.get('emblem')
+    if name:
+        clan.name = name
+    if description is not None:
+        clan.description = description
+    if emblem is not None:
+        clan.emblem = emblem
+    try:
+        db.session.commit()
+        return {"success": True}
+    except IntegrityError:
+        db.session.rollback()
+        return {"success": False, "message": "Clan name must be unique within the class."}, 400
+    except Exception as e:
+        db.session.rollback()
+        return {"success": False, "message": str(e)}, 500
+
+@teacher_bp.route('/api/teacher/clans/<int:clan_id>', methods=['DELETE'])
+@login_required
+@teacher_required
+def api_delete_clan(clan_id):
+    clan = Clan.query.get(clan_id)
+    if not clan or clan.class_.teacher_id != current_user.id:
+        return {"success": False, "message": "Clan not found or unauthorized."}, 404
+    db.session.delete(clan)
+    try:
+        db.session.commit()
+        return {"success": True}
+    except Exception as e:
+        db.session.rollback()
+        return {"success": False, "message": str(e)}, 500
+
+@teacher_bp.route('/api/teacher/clans/<int:clan_id>/add_member', methods=['POST'])
+@login_required
+@teacher_required
+def api_add_clan_member(clan_id):
+    data = request.get_json() or {}
+    character_id = data.get('character_id')
+    clan = Clan.query.get(clan_id)
+    if not clan or clan.class_.teacher_id != current_user.id:
+        return {"success": False, "message": "Clan not found or unauthorized."}, 404
+    character = Character.query.get(character_id)
+    if not character or character.clan_id == clan_id:
+        return {"success": False, "message": "Character not found or already in this clan."}, 400
+    try:
+        clan.add_member(character)
+        return {"success": True}
+    except Exception as e:
+        db.session.rollback()
+        return {"success": False, "message": str(e)}, 400
+
+@teacher_bp.route('/api/teacher/clans/<int:clan_id>/remove_member', methods=['POST'])
+@login_required
+@teacher_required
+def api_remove_clan_member(clan_id):
+    data = request.get_json() or {}
+    character_id = data.get('character_id')
+    clan = Clan.query.get(clan_id)
+    if not clan or clan.class_.teacher_id != current_user.id:
+        return {"success": False, "message": "Clan not found or unauthorized."}, 404
+    character = Character.query.get(character_id)
+    if not character or character.clan_id != clan_id:
+        return {"success": False, "message": "Character not found or not in this clan."}, 400
+    try:
+        clan.remove_member(character)
+        return {"success": True}
+    except Exception as e:
+        db.session.rollback()
+        return {"success": False, "message": str(e)}, 400
+
+@teacher_bp.route('/api/teacher/class/<int:class_id>/students', methods=['GET'])
+@login_required
+@teacher_required
+def api_list_class_students(class_id):
+    classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+    if not classroom:
+        return {"success": False, "message": "Class not found or unauthorized."}, 404
+    # Get all students in the class
+    students = Student.query.filter_by(class_id=class_id).all()
+    result = []
+    for student in students:
+        user = User.query.get(student.user_id)
+        # Get all characters for this student
+        characters = Character.query.filter_by(student_id=student.id).all()
+        char_list = [
+            {
+                "id": c.id,
+                "name": c.name,
+                "level": c.level,
+                "clan_id": c.clan_id,
+                "avatar_url": c.avatar_url,
+            }
+            for c in characters
+        ]
+        result.append({
+            "student_id": student.id,
+            "user_id": student.user_id,
+            "username": user.username if user else None,
+            "first_name": user.first_name if user else None,
+            "last_name": user.last_name if user else None,
+            "status": student.status,
+            "characters": char_list,
+        })
+    return {"success": True, "students": result}
+
+@teacher_bp.route('/api/teacher/classes', methods=['GET'])
+@login_required
+@teacher_required
+def api_list_teacher_classes():
+    import logging
+    logging.warning(f"[DEBUG] /api/teacher/classes called by user: {current_user} (id={getattr(current_user, 'id', None)})")
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    logging.warning(f"[DEBUG] Classes found: {[{'id': c.id, 'name': c.name} for c in classes]}")
+    return {
+        "success": True,
+        "classes": [
+            {"id": c.id, "name": c.name}
+            for c in classes
+        ]
+    } 
