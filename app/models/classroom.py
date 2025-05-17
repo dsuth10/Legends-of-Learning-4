@@ -65,4 +65,21 @@ class Classroom(Base):
         return cls.query.filter_by(teacher_id=teacher_id, is_active=True).all()
 
     def __repr__(self):
-        return f'<Classroom {self.name}>' 
+        return f'<Classroom {self.name}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'join_code': self.join_code,
+            'is_active': self.is_active,
+            'max_students': self.max_students,
+            'max_clans': self.max_clans,
+            'min_clan_size': self.min_clan_size,
+            'max_clan_size': self.max_clan_size,
+            'teacher_id': self.teacher_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'student_count': self.get_student_count(),
+        } 

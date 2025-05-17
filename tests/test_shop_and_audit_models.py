@@ -66,8 +66,13 @@ def test_ability(db_session):
 
 @pytest.fixture
 def test_shop_purchase(db_session, test_character):
-    from app.models.shop import ShopPurchase
-    purchase = ShopPurchase(character_id=test_character.id, item_name='Test Item', cost=100)
+    from app.models.shop import ShopPurchase, PurchaseType
+    purchase = ShopPurchase(
+        character_id=test_character.id,
+        purchase_type=PurchaseType.EQUIPMENT.value,
+        item_id=1,
+        gold_spent=100
+    )
     db_session.add(purchase)
     db_session.commit()
     return purchase
@@ -161,7 +166,8 @@ class TestShopPurchase:
 class TestAuditLog:
     def test_audit_log_creation(self, db_session, test_user, test_character):
         from app.models.audit import AuditLog, EventType
-        user, student_profile = test_user
+        user = test_user
+        student_profile = user.student_profile
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         log = AuditLog(
             event_type=EventType.CHARACTER_CREATE.value,
@@ -183,7 +189,8 @@ class TestAuditLog:
         # Clear AuditLog table
         AuditLog.query.delete()
         db_session.commit()
-        user, student_profile = test_user
+        user = test_user
+        student_profile = user.student_profile
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         for event_type in EventType:
             log = AuditLog(
@@ -201,7 +208,8 @@ class TestAuditLog:
 
     def test_audit_log_repr(self, db_session, test_user, test_character):
         from app.models.audit import AuditLog, EventType
-        user, student_profile = test_user
+        user = test_user
+        student_profile = user.student_profile
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         log = AuditLog(
             event_type=EventType.CHARACTER_CREATE.value,
@@ -217,7 +225,8 @@ class TestAuditLog:
 
     def test_audit_log_event_data(self, db_session, test_user, test_character):
         from app.models.audit import AuditLog, EventType
-        user, student_profile = test_user
+        user = test_user
+        student_profile = user.student_profile
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         log = AuditLog(
             event_type=EventType.CHARACTER_CREATE.value,
@@ -234,7 +243,8 @@ class TestAuditLog:
 
     def test_audit_log_ip_address(self, db_session, test_user, test_character):
         from app.models.audit import AuditLog, EventType
-        user, student_profile = test_user
+        user = test_user
+        student_profile = user.student_profile
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         log = AuditLog(
             event_type=EventType.CHARACTER_CREATE.value,
@@ -251,7 +261,8 @@ class TestAuditLog:
 
     def test_invalid_event_type(self, db_session, test_user):
         from app.models.audit import AuditLog, EventType
-        user, student_profile = test_user
+        user = test_user
+        student_profile = user.student_profile
         with pytest.raises(ValueError):
             log = AuditLog(
                 event_type='INVALID_EVENT',
@@ -264,7 +275,8 @@ class TestAuditLog:
 
     def test_get_user_events(self, db_session, test_user):
         from app.models.audit import AuditLog, EventType
-        user, student_profile = test_user
+        user = test_user
+        student_profile = user.student_profile
         # Create multiple events
         events = [
             AuditLog(
@@ -296,7 +308,8 @@ class TestAuditLog:
 
     def test_get_character_events(self, db_session, test_character, test_user):
         from app.models.audit import AuditLog, EventType
-        user, student_profile = test_user
+        user = test_user
+        student_profile = user.student_profile
         # Create multiple character events
         events = [
             AuditLog(
@@ -330,7 +343,8 @@ class TestAuditLog:
 
     def test_get_recent_events(self, db_session, test_user):
         from app.models.audit import AuditLog, EventType
-        user, student_profile = test_user
+        user = test_user
+        student_profile = user.student_profile
         # Clear AuditLog table
         AuditLog.query.delete()
         db_session.commit()
@@ -384,10 +398,9 @@ def test_shop_and_audit_logic(db_session, test_clan, test_character):
 
 def test_shop_purchase_creation(test_shop_purchase):
     assert test_shop_purchase.id is not None
-    assert test_shop_purchase.item_name == 'Test Item'
-    # Debug print if assertion fails
-    if test_shop_purchase.item_name != 'Test Item':
-        print('[DEBUG] ShopPurchase item_name:', test_shop_purchase.item_name)
+    assert test_shop_purchase.purchase_type == 'equipment'
+    assert test_shop_purchase.item_id == 1
+    assert test_shop_purchase.gold_spent == 100
 
 def test_audit_log_creation(test_audit_log):
     assert test_audit_log.id is not None

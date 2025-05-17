@@ -3,6 +3,7 @@ from app.models import db  # Use the single db instance from app.models
 from flask_login import LoginManager
 from flask_migrate import Migrate
 import os
+from flask_jwt_extended import JWTManager
 
 from app.models.db_config import get_sqlalchemy_config
 from app.models.db_maintenance import check_db_version, start_weekly_integrity_check
@@ -44,6 +45,7 @@ def create_app(config=None):
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
+    jwt = JWTManager(app)
     
     # Configure login
     login_manager.login_view = 'auth.login'
