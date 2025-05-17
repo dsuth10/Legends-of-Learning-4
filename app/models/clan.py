@@ -77,4 +77,24 @@ class Clan(Base):
         return self.members.count()
     
     def __repr__(self):
-        return f'<Clan {self.name} (Level {self.level})>' 
+        return f'<Clan {self.name} (Level {self.level})>'
+
+    def to_dict(self, include_members=False, include_metrics=False):
+        from app.models.clan_progress import ClanProgressHistory
+        data = {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "emblem": self.emblem,
+            "level": self.level,
+            "experience": self.experience,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_members:
+            data["members"] = [member.to_dict() for member in self.members]
+        if include_metrics:
+            latest = self.progress_history.order_by(ClanProgressHistory.timestamp.desc()).first()
+            data["metrics"] = latest.to_dict() if latest else {}
+        return data 

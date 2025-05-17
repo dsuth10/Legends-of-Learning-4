@@ -555,10 +555,8 @@ def students():
     if class_id:
         selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
         if selected_class:
-            students_query = db.session.query(User, Student, Character, Clan)
+            students_query = db.session.query(User, Student)
             students_query = students_query.join(Student, Student.user_id == User.id)
-            students_query = students_query.outerjoin(Character, (Character.student_id == Student.id) & (Character.is_active == True))
-            students_query = students_query.outerjoin(Clan, Student.clan_id == Clan.id)
             students_query = students_query.filter(Student.class_id == class_id)
             if search:
                 students_query = students_query.filter(
@@ -577,11 +575,7 @@ def students():
                 students_query = students_query.filter(Student.health == health)
             if power is not None:
                 students_query = students_query.filter(Student.power == power)
-            if clan_id:
-                students_query = students_query.filter(Student.clan_id == clan_id)
-            if character_class:
-                students_query = students_query.filter(Character.character_class.ilike(f'%{character_class}%'))
-            # Sorting logic
+            # Sorting logic (basic, can be improved)
             sort_map = {
                 'username': User.username,
                 'email': User.email,
@@ -590,8 +584,6 @@ def students():
                 'xp': Student.xp,
                 'health': Student.health,
                 'power': Student.power,
-                'character_class': Character.name,
-                'clan': Clan.name,
             }
             sort_col = sort_map.get(sort, User.username)
             if direction == 'desc':
@@ -599,18 +591,20 @@ def students():
             else:
                 sort_col = sort_col.asc()
             students_query = students_query.order_by(sort_col)
-            # Get all results as tuples (User, Student, Character, Clan)
             student_tuples = students_query.all()
             students = []
-            for user, student, character, clan in student_tuples:
+            for user, student in student_tuples:
+                main_character = Character.query.filter_by(student_id=student.id, is_active=True).first()
+                clan = main_character.clan if main_character and main_character.clan else None
                 students.append({
                     'user': user,
                     'student': student,
-                    'character': character,
+                    'character': main_character,
                     'clan': clan
                 })
             clans = Clan.query.filter_by(class_id=class_id).all()
-            character_classes = db.session.query(Character.name).filter(Character.student_id.in_([u.id for u,_,_,_ in student_tuples if u])).distinct().all()
+            # Character classes for filter dropdown
+            character_classes = db.session.query(Character.character_class).filter(Character.student_id.in_([s.id for _,s in student_tuples])).distinct().all()
             character_classes = [cc[0] for cc in character_classes if cc[0]]
         else:
             flash('Class not found or you do not have permission.', 'danger')
@@ -1367,9 +1361,14 @@ def api_add_clan_member(clan_id):
     if not clan or clan.class_.teacher_id != current_user.id:
         return {"success": False, "message": "Clan not found or unauthorized."}, 404
     character = Character.query.get(character_id)
-    if not character or character.clan_id == clan_id:
-        return {"success": False, "message": "Character not found or already in this clan."}, 400
+    if not character:
+        return {"success": False, "message": "Character not found."}, 400
     try:
+        # If character is already in a different clan, remove from previous clan first
+        if character.clan_id and character.clan_id != clan_id:
+            prev_clan = Clan.query.get(character.clan_id)
+            if prev_clan:
+                prev_clan.remove_member(character)
         clan.add_member(character)
         return {"success": True}
     except Exception as e:

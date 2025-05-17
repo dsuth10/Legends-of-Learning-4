@@ -134,6 +134,16 @@ class Character(Base):
                 bonus += item.equipment.defense_bonus
         return self.defense + bonus
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "level": self.level,
+            "avatar_url": self.avatar_url,
+            "character_class": self.character_class,
+            "is_active": self.is_active,
+        }
+
 # Pydantic models for validation
 class CharacterBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=64)

@@ -24,4 +24,16 @@ class ClanProgressHistory(Base):
     clan = db.relationship('Clan', backref=db.backref('progress_history', lazy='dynamic'))
 
     def __repr__(self):
-        return f'<ClanProgressHistory clan_id={self.clan_id} timestamp={self.timestamp}>' 
+        return f'<ClanProgressHistory clan_id={self.clan_id} timestamp={self.timestamp}>'
+
+    def to_dict(self):
+        return {
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "avg_completion_rate": self.avg_completion_rate,
+            "total_points": self.total_points,
+            "active_members": self.active_members,
+            "avg_daily_points": self.avg_daily_points,
+            "quest_completion_rate": self.quest_completion_rate,
+            "avg_member_level": self.avg_member_level,
+            "percentile_rank": self.percentile_rank,
+        } 

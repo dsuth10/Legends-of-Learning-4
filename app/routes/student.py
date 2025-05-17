@@ -19,7 +19,7 @@ def dashboard():
     main_character = None
     if student_profile:
         main_character = student_profile.characters.filter_by(is_active=True).first()
-    clan = getattr(student_profile, 'clan', None) if student_profile else None
+    clan = main_character.clan if main_character and main_character.clan else None
     active_quests = main_character.quest_logs.filter_by(status='in_progress').all() if main_character else []
     recent_activities = list(current_user.audit_logs.order_by(db.desc('event_timestamp')).limit(10))
     return render_template(
@@ -402,4 +402,19 @@ def api_unequip_item():
     item.is_equipped = False
     from app.models import db
     db.session.commit()
-    return jsonify({'success': True}) 
+    return jsonify({'success': True})
+
+@student_bp.route('/api/clan', methods=['GET'])
+@login_required
+@student_required
+def api_get_student_clan():
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        return jsonify({"clan": None}), 200
+    main_character = student_profile.characters.filter_by(is_active=True).first()
+    if not main_character or not main_character.clan:
+        return jsonify({"clan": None}), 200
+    clan = main_character.clan
+    return jsonify({
+        "clan": clan.to_dict(include_members=True, include_metrics=True)
+    }) 
