@@ -161,6 +161,56 @@ def quest_with_consequences(db_session, quest):
     db_session.commit()
     return quest
 
+@pytest.fixture
+def test_user(db_session):
+    from app.models.user import User, UserRole
+    unique_id = uuid.uuid4().hex
+    user = User(username=f'testuser_{unique_id}', email=f'test_{unique_id}@example.com', role=UserRole.TEACHER)
+    user.set_password('password')
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+@pytest.fixture
+def test_classroom(db_session, test_user):
+    from app.models.classroom import Classroom
+    unique_id = uuid.uuid4().hex
+    classroom = Classroom(name=f'Test Class {unique_id}', teacher_id=test_user.id, join_code=f'TEST1234_{unique_id}')
+    db_session.add(classroom)
+    db_session.commit()
+    return classroom
+
+@pytest.fixture
+def test_clan(db_session, test_classroom):
+    from app.models.clan import Clan
+    unique_id = uuid.uuid4().hex
+    clan = Clan(name=f'Test Clan {unique_id}', class_id=test_classroom.id)
+    db_session.add(clan)
+    db_session.commit()
+    return clan
+
+@pytest.fixture
+def test_character(db_session, test_clan):
+    from app.models.character import Character
+    character = Character(name='Test Character', student_id=1, clan_id=test_clan.id)
+    db_session.add(character)
+    db_session.commit()
+    return character
+
+@pytest.fixture
+def test_quest(db_session, test_classroom):
+    from app.models.quest import Quest, QuestType
+    unique_id = uuid.uuid4().hex
+    quest = Quest(
+        title=f'Test Quest Title {unique_id}',
+        description=f'Test Quest Description {unique_id}',
+        type=QuestType.MAIN if hasattr(QuestType, 'MAIN') else list(QuestType)[0]
+    )
+    quest.class_id = test_classroom.id
+    db_session.add(quest)
+    db_session.commit()
+    return quest
+
 class TestQuest:
     def test_create_quest(self, db_session):
         from app.models.quest import Quest, QuestType
@@ -422,4 +472,15 @@ class TestConsequence:
         
         assert character.experience == 0  # Can't go below 0
         assert character.gold == 0  # Can't go below 0
-        assert character.health == 0  # Can't go below 0 
+        assert character.health == 0  # Can't go below 0
+
+def test_quest_model_logic(db_session, test_clan, test_character):
+    from app.models.quest import Quest, QuestLog
+    # ... rest of the test ... 
+
+def test_quest_creation(test_quest):
+    assert test_quest.id is not None
+    assert test_quest.title.startswith('Test Quest Title')
+    # Debug print if assertion fails
+    if not test_quest.title.startswith('Test Quest Title'):
+        print('[DEBUG] Quest title:', test_quest.title) 

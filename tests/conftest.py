@@ -80,6 +80,12 @@ def test_db_file():
         print(f"[DEBUG] alembic_version table: {version}")
     else:
         print("[DEBUG] alembic_version table does not exist.")
+    # Print clan_progress_history schema
+    try:
+        schema = conn.execute("PRAGMA table_info(clan_progress_history);").fetchall()
+        print(f"[DEBUG] clan_progress_history schema: {schema}")
+    except Exception as e:
+        print(f"[DEBUG] Error fetching clan_progress_history schema: {e}")
     conn.close()
     # Check for cost column in equipment
     check_equipment_cost_column(db_path)
@@ -102,7 +108,7 @@ def app(test_db_file):
         print(f"[ERROR] Alembic DB URI and SQLAlchemy DB URI do not match! {test_db_file} != {app.config['SQLALCHEMY_DATABASE_URI']}")
     with app.app_context():
         db.metadata.clear()  # Drop all old SQLAlchemy metadata
-        db.reflect()  # Ensure SQLAlchemy metadata is in sync with DB schema
+        # db.reflect()  # Ensure SQLAlchemy metadata is in sync with DB schema (REMOVED - causes NoSuchTableError)
         yield app
         db.session.remove()
         db.engine.dispose()

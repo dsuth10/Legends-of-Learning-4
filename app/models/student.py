@@ -12,6 +12,7 @@ class Student(Base):
     health = db.Column(db.Integer, default=100, nullable=False)
     power = db.Column(db.Integer, default=100, nullable=False)
     gold = db.Column(db.Integer, default=0, nullable=False)
+    last_activity = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     status = db.Column(db.String(32), nullable=False, default='active')

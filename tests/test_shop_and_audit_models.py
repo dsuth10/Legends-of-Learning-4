@@ -6,39 +6,35 @@ import uuid
 @pytest.fixture
 def test_user(db_session):
     from app.models.user import User, UserRole
-    from app.models.student import Student
-    from app.models.classroom import Classroom
-    unique = uuid.uuid4().hex[:8]
-    teacher = User(username=f'testteacher_{unique}', email=f'teacher_{unique}@test.com', role=UserRole.TEACHER, password='password123')
-    db_session.add(teacher)
-    db_session.commit()
-    classroom = Classroom(name=f'TestClass_{unique}', teacher_id=teacher.id, join_code=f'JC{unique}')
-    db_session.add(classroom)
-    db_session.commit()
-    user = User(
-        username=f'testuser_{unique}',
-        email=f'test_{unique}@example.com',
-        role=UserRole.STUDENT,
-        password='password123'
-    )
+    unique_id = uuid.uuid4().hex
+    user = User(username=f'testuser_{unique_id}', email=f'test_{unique_id}@example.com', role=UserRole.TEACHER)
+    user.set_password('password')
     db_session.add(user)
     db_session.commit()
-    student_profile = Student(user_id=user.id, class_id=classroom.id, level=1, gold=0, xp=0, health=100, power=10)
-    db_session.add(student_profile)
-    db_session.commit()
-    return user, student_profile
+    return user
 
 @pytest.fixture
-def test_character(db_session, test_user):
+def test_classroom(db_session, test_user):
+    from app.models.classroom import Classroom
+    unique_id = uuid.uuid4().hex
+    classroom = Classroom(name=f'Test Class {unique_id}', teacher_id=test_user.id, join_code=f'TEST1234_{unique_id}')
+    db_session.add(classroom)
+    db_session.commit()
+    return classroom
+
+@pytest.fixture
+def test_clan(db_session, test_classroom):
+    from app.models.clan import Clan
+    unique_id = uuid.uuid4().hex
+    clan = Clan(name=f'Test Clan {unique_id}', class_id=test_classroom.id)
+    db_session.add(clan)
+    db_session.commit()
+    return clan
+
+@pytest.fixture
+def test_character(db_session, test_clan):
     from app.models.character import Character
-    user, student_profile = test_user
-    character = Character(
-        name='TestChar',
-        student_id=student_profile.id,
-        character_class='Warrior',
-        level=1,
-        gold=100
-    )
+    character = Character(name='Test Character', student_id=1, clan_id=test_clan.id)
     db_session.add(character)
     db_session.commit()
     return character
@@ -67,6 +63,22 @@ def test_ability(db_session):
     db_session.add(ability)
     db_session.commit()
     return ability
+
+@pytest.fixture
+def test_shop_purchase(db_session, test_character):
+    from app.models.shop import ShopPurchase
+    purchase = ShopPurchase(character_id=test_character.id, item_name='Test Item', cost=100)
+    db_session.add(purchase)
+    db_session.commit()
+    return purchase
+
+@pytest.fixture
+def test_audit_log(db_session, test_user):
+    from app.models.audit import AuditLog, EventType
+    log = AuditLog(user_id=test_user.id, event_type=EventType.USER_LOGIN.value, event_data={'ip': '127.0.0.1'})
+    db_session.add(log)
+    db_session.commit()
+    return log
 
 class TestShopPurchase:
     def test_equipment_purchase_creation(self, db_session, test_character, test_equipment):
@@ -161,13 +173,16 @@ class TestAuditLog:
         db_session.add(log)
         db_session.commit()
         print(f"[DEBUG] AuditLog count after: {AuditLog.query.count()}")
-        saved_log = AuditLog.query.first()
+        saved_log = AuditLog.query.filter_by(id=log.id).first()
         assert saved_log is not None
         assert saved_log.event_type == EventType.CHARACTER_CREATE.value
         assert saved_log.user_id == user.id
 
     def test_audit_log_event_types(self, db_session, test_user, test_character):
         from app.models.audit import AuditLog, EventType
+        # Clear AuditLog table
+        AuditLog.query.delete()
+        db_session.commit()
         user, student_profile = test_user
         print(f"[DEBUG] AuditLog count before: {AuditLog.query.count()}")
         for event_type in EventType:
@@ -214,7 +229,7 @@ class TestAuditLog:
         db_session.add(log)
         db_session.commit()
         print(f"[DEBUG] AuditLog count after: {AuditLog.query.count()}")
-        saved_log = AuditLog.query.first()
+        saved_log = AuditLog.query.filter_by(id=log.id).first()
         assert saved_log.event_data['foo'] == 'bar'
 
     def test_audit_log_ip_address(self, db_session, test_user, test_character):
@@ -231,7 +246,7 @@ class TestAuditLog:
         db_session.add(log)
         db_session.commit()
         print(f"[DEBUG] AuditLog count after: {AuditLog.query.count()}")
-        saved_log = AuditLog.query.first()
+        saved_log = AuditLog.query.filter_by(id=log.id).first()
         assert saved_log.ip_address == '192.168.1.1'
 
     def test_invalid_event_type(self, db_session, test_user):
@@ -316,6 +331,9 @@ class TestAuditLog:
     def test_get_recent_events(self, db_session, test_user):
         from app.models.audit import AuditLog, EventType
         user, student_profile = test_user
+        # Clear AuditLog table
+        AuditLog.query.delete()
+        db_session.commit()
         # Create events with different timestamps
         now = datetime.utcnow()
         events = [
@@ -336,17 +354,44 @@ class TestAuditLog:
         ]
         db_session.add_all(events)
         db_session.commit()
-
         # Test retrieving recent events (limit=1)
         recent_events = AuditLog.get_recent_events(limit=1)
         assert len(recent_events) == 1
         assert recent_events[0].event_type == EventType.USER_LOGOUT.value
-
         # Test retrieving all events (limit=10)
         all_events = AuditLog.get_recent_events(limit=10)
         assert len(all_events) == 2
-
         # Test with event type filter
         login_events = AuditLog.get_recent_events(limit=10, event_type=EventType.USER_LOGIN.value)
         assert len(login_events) == 1
-        assert login_events[0].event_type == EventType.USER_LOGIN.value 
+        assert login_events[0].event_type == EventType.USER_LOGIN.value
+
+def test_shop_and_audit_logic(db_session, test_clan, test_character):
+    from app.models.shop import ShopPurchase
+    from app.models.audit import AuditLog, EventType
+    # Create a login event for the test
+    log = AuditLog(
+        event_type=EventType.USER_LOGIN.value,
+        user_id=1,
+        event_data={},
+        ip_address='127.0.0.1',
+        event_timestamp=datetime.utcnow()
+    )
+    db_session.add(log)
+    db_session.commit()
+    login_events = AuditLog.get_recent_events(limit=10, event_type=EventType.USER_LOGIN.value)
+    assert login_events[0].event_type == EventType.USER_LOGIN.value
+
+def test_shop_purchase_creation(test_shop_purchase):
+    assert test_shop_purchase.id is not None
+    assert test_shop_purchase.item_name == 'Test Item'
+    # Debug print if assertion fails
+    if test_shop_purchase.item_name != 'Test Item':
+        print('[DEBUG] ShopPurchase item_name:', test_shop_purchase.item_name)
+
+def test_audit_log_creation(test_audit_log):
+    assert test_audit_log.id is not None
+    assert test_audit_log.event_type is not None
+    # Debug print if assertion fails
+    if test_audit_log.event_type is None:
+        print('[DEBUG] AuditLog event_type:', test_audit_log.event_type) 

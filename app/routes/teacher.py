@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, abort, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, abort, request, redirect, url_for, flash, session, jsonify, send_from_directory
 from flask_login import login_required, current_user
 from functools import wraps
 from datetime import datetime, timedelta
@@ -23,6 +23,9 @@ from app.models.equipment import Equipment, Inventory, EquipmentType, EquipmentS
 from app.models.audit import EventType
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import os
+from flask_jwt_extended import jwt_required
+from app.models.clan_progress import ClanProgressHistory
+from app.services.clan_metrics import calculate_clan_metrics
 
 teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher')
 
@@ -352,21 +355,26 @@ def import_students():
                     failed += 1
                     errors.append(f'Row {i}: Username or email already exists.')
                     continue
-                new_user = User(
-                    username=username,
-                    email=email,
-                    role=UserRole.STUDENT,
-                    first_name=first_name,
-                    last_name=last_name
-                )
-                new_user.set_password(password)
-                db.session.add(new_user)
-                db.session.commit()
-                classroom.add_student(new_user)
-                student_profile = Student(user_id=new_user.id, class_id=classroom.id)
-                db.session.add(student_profile)
-                db.session.commit()
-                created += 1
+                try:
+                    new_user = User(
+                        username=username,
+                        email=email,
+                        role=UserRole.STUDENT,
+                        first_name=first_name,
+                        last_name=last_name
+                    )
+                    new_user.set_password(password)
+                    db.session.add(new_user)
+                    db.session.commit()
+                    classroom.add_student(new_user)
+                    student_profile = Student(user_id=new_user.id, class_id=classroom.id)
+                    db.session.add(student_profile)
+                    db.session.commit()
+                    created += 1
+                except IntegrityError:
+                    db.session.rollback()
+                    failed += 1
+                    errors.append(f'Row {i}: Username or email already exists (detected at DB level).')
             results = {'created': created, 'reassigned': reassigned, 'failed': failed}
             if created or reassigned:
                 flash(f'Successfully created {created} students, reassigned {reassigned} unassigned students.', 'success')
@@ -1515,4 +1523,50 @@ def profile():
         except Exception as e:
             db.session.rollback()
             flash(f'Error updating profile: {e}', 'danger')
-    return render_template('teacher/profile.html', teacher=teacher, avatar_url=teacher.avatar_url) 
+    return render_template('teacher/profile.html', teacher=teacher, avatar_url=teacher.avatar_url)
+
+@teacher_bp.route('/api/clans/<int:clan_id>/metrics', methods=['GET'], endpoint='api_get_clan_metrics')
+@jwt_required
+def api_get_clan_metrics(clan_id):
+    """Get current metrics for a clan"""
+    metrics = calculate_clan_metrics(clan_id)
+    if not metrics:
+        return jsonify({'error': 'Clan not found'}), 404
+    return jsonify(metrics)
+
+@teacher_bp.route('/api/clans/<int:clan_id>/history', methods=['GET'], endpoint='api_get_clan_history')
+@jwt_required
+def api_get_clan_history(clan_id):
+    """Get historical metrics for a clan"""
+    days = request.args.get('days', 30, type=int)
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    history = ClanProgressHistory.query.filter(
+        ClanProgressHistory.clan_id == clan_id,
+        ClanProgressHistory.timestamp >= cutoff
+    ).order_by(ClanProgressHistory.timestamp).all()
+    return jsonify([
+        {
+            'timestamp': h.timestamp.isoformat(),
+            'avg_completion_rate': h.avg_completion_rate,
+            'total_points': h.total_points,
+            'active_members': h.active_members,
+            'avg_daily_points': h.avg_daily_points,
+            'quest_completion_rate': h.quest_completion_rate,
+            'avg_member_level': h.avg_member_level,
+            'percentile_rank': h.percentile_rank
+        } for h in history
+    ])
+
+@teacher_bp.route('/api/teacher/clan-icons', methods=['GET'])
+@login_required
+@teacher_required
+def api_list_clan_icons():
+    icon_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../static/images/clan_icons')
+    icon_dir = os.path.normpath(icon_dir)
+    try:
+        icons = [f for f in os.listdir(icon_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.svg'))]
+        # Return URLs for frontend use
+        icon_urls = [f'/static/images/clan_icons/{icon}' for icon in icons]
+        return {"success": True, "icons": icon_urls}
+    except Exception as e:
+        return {"success": False, "message": str(e)}, 500 

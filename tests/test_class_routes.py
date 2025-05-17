@@ -75,18 +75,20 @@ def test_edit_class_empty_name(client, db_session, teacher_user):
     client.post('/teacher/classes', data={
         'name': 'Class to Edit',
         'description': 'desc',
-        'max_students': 10
+        'max_students': 10,
+        'teacher_id': teacher_user.id
     }, follow_redirects=True)
-    class_obj = Classroom.query.filter_by(name='Class to Edit').first()
+    class_obj = Classroom.query.filter_by(name='Class to Edit', teacher_id=teacher_user.id).first()
     resp = client.post(f'/teacher/classes/{class_obj.id}/edit', data={
         'name': '',
         'description': 'desc',
-        'max_students': 10
+        'max_students': 10,
+        'teacher_id': teacher_user.id
     }, follow_redirects=True)
     if b'Class name is required.' not in resp.data:
         print('[DEBUG] Response HTML for empty name validation:', resp.data.decode())
     assert b'Class name is required.' in resp.data
-    class_obj = Classroom.query.get(class_obj.id)
+    db_session.refresh(class_obj)
     assert class_obj.name == 'Class to Edit'
 
 def test_unauthenticated_redirects(client, db_session, teacher_user):
@@ -118,10 +120,12 @@ def test_archived_class_not_in_list(client, db_session, teacher_user):
     client.post('/teacher/classes', data={
         'name': 'Class to Archive',
         'description': 'desc',
-        'max_students': 10
+        'max_students': 10,
+        'teacher_id': teacher_user.id
     }, follow_redirects=True)
-    class_obj = Classroom.query.filter_by(name='Class to Archive').first()
+    class_obj = Classroom.query.filter_by(name='Class to Archive', teacher_id=teacher_user.id).first()
     client.post(f'/teacher/classes/{class_obj.id}/archive', follow_redirects=True)
+    db_session.refresh(class_obj)
     resp = client.get('/teacher/classes')
     if b'Class to Archive' in resp.data:
         print('[DEBUG] Response HTML for archived class filtering:', resp.data.decode())
@@ -136,10 +140,11 @@ def test_student_roster_listing_filtering_sorting(client, db_session, teacher_us
     resp = client.post('/teacher/classes', data={
         'name': 'Roster Test Class',
         'description': 'Class for roster testing.',
-        'max_students': 10
+        'max_students': 10,
+        'teacher_id': teacher_user.id
     }, follow_redirects=True)
     assert b'Class created successfully!' in resp.data
-    class_obj = Classroom.query.filter_by(name='Roster Test Class').first()
+    class_obj = Classroom.query.filter_by(name='Roster Test Class', teacher_id=teacher_user.id).first()
     assert class_obj is not None
     unique1 = uuid.uuid4().hex[:8]
     unique2 = uuid.uuid4().hex[:8]
@@ -195,6 +200,8 @@ def test_student_roster_listing_filtering_sorting(client, db_session, teacher_us
         db.session.commit()
         students.append((user, student, character, clan))
     resp = client.get(f'/teacher/students?class_id={class_obj.id}')
+    if not (b'Alice Test' in resp.data and b'Bob Test' in resp.data and b'Charlie Test' in resp.data):
+        print('[DEBUG] Response HTML for student roster:', resp.data.decode())
     assert b'Alice Test' in resp.data and b'Bob Test' in resp.data and b'Charlie Test' in resp.data
 
     # Filter by name
@@ -242,7 +249,8 @@ def test_student_roster_listing_filtering_sorting(client, db_session, teacher_us
     assert resp.data.find(b'Charlie Test') < resp.data.find(b'Alice Test') < resp.data.find(b'Bob Test')
 
     # Edge case: no students
-    empty_class = Classroom(name='Empty Class', teacher_id=teacher_user.id, join_code='EMPTY123')
+    empty_join_code = f'EMPTY{uuid.uuid4().hex[:8]}'
+    empty_class = Classroom(name='Empty Class', teacher_id=teacher_user.id, join_code=empty_join_code)
     db.session.add(empty_class)
     db.session.commit()
     resp = client.get(f'/teacher/students?class_id={empty_class.id}')
@@ -250,4 +258,46 @@ def test_student_roster_listing_filtering_sorting(client, db_session, teacher_us
 
     # Edge case: filter matches no students
     resp = client.get(f'/teacher/students?class_id={class_obj.id}&search=Nonexistent')
-    assert b'No students found in this class.' in resp.data 
+    assert b'No students found in this class.' in resp.data
+
+@pytest.fixture
+def test_user(db_session):
+    from app.models.user import User, UserRole
+    unique_id = uuid.uuid4().hex
+    user = User(username=f'testuser_{unique_id}', email=f'test_{unique_id}@example.com', role=UserRole.TEACHER)
+    user.set_password('password')
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+@pytest.fixture
+def test_classroom(db_session, test_user):
+    from app.models.classroom import Classroom
+    unique_id = uuid.uuid4().hex
+    classroom = Classroom(name=f'Test Class {unique_id}', teacher_id=test_user.id, join_code=f'TEST1234_{unique_id}')
+    db_session.add(classroom)
+    db_session.commit()
+    return classroom
+
+@pytest.fixture
+def test_clan(db_session, test_classroom):
+    from app.models.clan import Clan
+    unique_id = uuid.uuid4().hex
+    clan = Clan(name=f'Test Clan {unique_id}', class_id=test_classroom.id)
+    db_session.add(clan)
+    db_session.commit()
+    return clan
+
+@pytest.fixture
+def test_student(db_session, test_classroom):
+    from app.models.student import Student
+    student = Student(user_id=1, class_id=test_classroom.id)
+    db_session.add(student)
+    db_session.commit()
+    return student
+
+def test_class_route_logic(db_session, test_classroom, test_clan, test_student):
+    from app.models.classroom import Classroom
+    from app.models.clan import Clan
+    from app.models.student import Student
+    # ... rest of the test ... 

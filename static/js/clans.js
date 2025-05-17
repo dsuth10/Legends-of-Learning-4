@@ -262,12 +262,51 @@ document.addEventListener('DOMContentLoaded', function () {
       .finally(() => showSpinner(false));
   }
 
+  // Icon picker logic
+  function loadClanIcons(selectedIconUrl) {
+    const picker = document.getElementById('clan-icon-picker');
+    const preview = document.getElementById('clan-icon-preview');
+    const hiddenInput = document.getElementById('clan-emblem');
+    picker.innerHTML = '';
+    preview.innerHTML = '';
+    fetch('/teacher/api/teacher/clan-icons')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success) throw new Error('Failed to load clan icons');
+        data.icons.forEach(url => {
+          const img = document.createElement('img');
+          img.src = url;
+          img.className = 'clan-icon-option rounded border';
+          img.style.width = '48px';
+          img.style.height = '48px';
+          img.style.cursor = 'pointer';
+          img.style.objectFit = 'cover';
+          img.onclick = () => {
+            document.querySelectorAll('.clan-icon-option').forEach(i => i.classList.remove('border-primary'));
+            img.classList.add('border-primary');
+            hiddenInput.value = url;
+            preview.innerHTML = `<img src='${url}' width='48' height='48' class='rounded border border-primary' />`;
+          };
+          if (selectedIconUrl && url === selectedIconUrl) {
+            img.classList.add('border-primary');
+            hiddenInput.value = url;
+            preview.innerHTML = `<img src='${url}' width='48' height='48' class='rounded border border-primary' />`;
+          }
+          picker.appendChild(img);
+        });
+      })
+      .catch(() => {
+        picker.innerHTML = '<span class="text-danger">Failed to load icons</span>';
+      });
+  }
+
   // Open clan form modal for create/edit
   function openClanForm(clan) {
     document.getElementById('clan-id').value = clan ? clan.id : '';
     document.getElementById('clan-name').value = clan ? clan.name : '';
     document.getElementById('clan-description').value = clan ? clan.description || '' : '';
-    document.getElementById('clan-emblem').value = clan ? clan.emblem || '' : '';
+    // clan-emblem is now a hidden input, set its value and load icons
+    loadClanIcons(clan ? clan.emblem || '' : '');
     clanFormModal.show();
   }
 
@@ -318,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function () {
   confirmDeleteClanBtn.addEventListener('click', function () {
     if (!clanToDelete) return;
     showSpinner(true);
-    fetch(`/api/teacher/clans/${clanToDelete.id}`, {
+    fetch(`/teacher/api/teacher/clans/${clanToDelete.id}`, {
       method: 'DELETE'
     })
       .then(r => r.json())
