@@ -35,7 +35,6 @@ __all__ = [
 ]
 
 from . import classes  # noqa: F401
-from . import students  # noqa: F401
 from . import profile  # noqa: F401
 from . import clan  # noqa: F401
 from . import misc  # noqa: F401
