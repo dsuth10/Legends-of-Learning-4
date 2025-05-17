@@ -39,6 +39,12 @@ from . import students  # noqa: F401
 from . import profile  # noqa: F401
 from . import clan  # noqa: F401
 from . import misc  # noqa: F401
+from . import students_list  # noqa: F401
+from . import students_crud  # noqa: F401
+from . import students_import  # noqa: F401
+from . import students_unassigned  # noqa: F401
+from . import students_characters  # noqa: F401
+from . import students_api  # noqa: F401
 
 # All duplicated route blocks have been removed from this file.
 # All teacher routes are now handled in their respective submodules.
