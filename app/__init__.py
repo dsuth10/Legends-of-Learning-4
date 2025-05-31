@@ -57,6 +57,12 @@ def create_app(config=None):
     def load_user(user_id):
         return User.query.get(int(user_id))
     
+    # Register user lookup loader for JWT
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        identity = jwt_data["sub"]
+        return User.query.get(identity)
+    
     # Register blueprints
     from app.routes import init_app
     init_app(app)

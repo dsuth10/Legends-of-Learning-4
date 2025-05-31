@@ -121,12 +121,12 @@ def batch_character_action():
                 results.append({'student_id': student_id, 'status': 'item_not_found'})
                 continue
             # Check if already in inventory
-            existing = Inventory.query.filter_by(character_id=character.id, equipment_id=equipment.id).first()
+            existing = Inventory.query.filter_by(character_id=character.id, item_id=equipment.id).first()
             if existing:
                 results.append({'student_id': student_id, 'status': 'already_has_item'})
                 continue
             # Add to inventory as unequipped
-            new_inv = Inventory(character_id=character.id, equipment_id=equipment.id, is_equipped=False)
+            new_inv = Inventory(character_id=character.id, item_id=equipment.id, is_equipped=False)
             db.session.add(new_inv)
             db.session.commit()
             # Add audit log
@@ -145,3 +145,67 @@ def batch_character_action():
         else:
             results.append({'student_id': student_id, 'status': 'unknown_action'})
     return jsonify({'results': results})
+
+@teacher_bp.route('/api/teacher/student/<int:student_id>/award-gold', methods=['POST'])
+@login_required
+@teacher_required
+def api_award_gold(student_id):
+    if not teacher_owns_student(current_user.id, student_id):
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    data = request.get_json()
+    amount = data.get('amount')
+    reason = data.get('reason', '')
+    if not isinstance(amount, int) or amount <= 0 or amount > 100000:
+        return jsonify({'success': False, 'message': 'Invalid gold amount'}), 400
+    student = Student.query.filter_by(id=student_id).first_or_404()
+    character = Character.query.filter_by(student_id=student.id, is_active=True).first()
+    if not character:
+        return jsonify({'success': False, 'message': 'No active character found'}), 404
+    character.gold += amount
+    db.session.commit()
+    # Audit log
+    audit = AuditLog(
+        character_id=character.id,
+        event_type=EventType.GOLD_TRANSACTION.value,
+        event_data={
+            'action': 'award-gold',
+            'amount': amount,
+            'reason': reason,
+            'teacher_id': current_user.id
+        }
+    )
+    db.session.add(audit)
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Awarded {amount} gold.', 'gold': character.gold})
+
+@teacher_bp.route('/api/teacher/student/<int:student_id>/award-xp', methods=['POST'])
+@login_required
+@teacher_required
+def api_award_xp(student_id):
+    if not teacher_owns_student(current_user.id, student_id):
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    data = request.get_json()
+    amount = data.get('amount')
+    reason = data.get('reason', '')
+    if not isinstance(amount, int) or amount <= 0 or amount > 100000:
+        return jsonify({'success': False, 'message': 'Invalid XP amount'}), 400
+    student = Student.query.filter_by(id=student_id).first_or_404()
+    character = Character.query.filter_by(student_id=student.id, is_active=True).first()
+    if not character:
+        return jsonify({'success': False, 'message': 'No active character found'}), 404
+    character.gain_experience(amount)
+    db.session.commit()
+    # Audit log
+    audit = AuditLog(
+        character_id=character.id,
+        event_type=EventType.XP_TRANSACTION.value,
+        event_data={
+            'action': 'award-xp',
+            'amount': amount,
+            'reason': reason,
+            'teacher_id': current_user.id
+        }
+    )
+    db.session.add(audit)
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Awarded {amount} XP.', 'xp': character.experience, 'level': character.level})

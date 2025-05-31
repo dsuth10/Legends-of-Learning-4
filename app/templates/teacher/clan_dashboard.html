@@ -1,0 +1,194 @@
+{% extends "teacher/base_dashboard.html" %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Clans Dashboard</li>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="container-fluid mt-4">
+  <!-- Filter Bar -->
+  <form class="row mb-3" method="get">
+    <div class="col-md-3">
+      <label for="class_id" class="form-label">Class</label>
+      <select name="class_id" id="class_id" class="form-select" onchange="this.form.submit()">
+        <option value="">All Classes</option>
+        {% for c in classes %}
+          <option value="{{ c.id }}" {% if selected_class_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label for="period" class="form-label">Period</label>
+      <select name="period" id="period" class="form-select" onchange="this.form.submit()">
+        <option value="7d" {% if request.args.get('period') == '7d' %}selected{% endif %}>Last 7 days</option>
+        <option value="30d" {% if request.args.get('period') == '30d' or not request.args.get('period') %}selected{% endif %}>Last 30 days</option>
+        <option value="all" {% if request.args.get('period') == 'all' %}selected{% endif %}>All time</option>
+      </select>
+    </div>
+  </form>
+
+  <!-- Metrics Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-left-primary shadow h-100 py-2">
+        <div class="card-body">
+          <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Clans</div>
+          <div class="h5 mb-0 font-weight-bold text-gray-800">{{ clans|length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-left-success shadow h-100 py-2">
+        <div class="card-body">
+          <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Average Clan Size</div>
+          <div class="h5 mb-0 font-weight-bold text-gray-800">
+            {{ clans|map(attribute='member_count')|sum // (clans|length if clans|length else 1) }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Add more cards for other metrics as needed -->
+  </div>
+
+  <!-- Clan Comparison Chart -->
+  <div class="row mb-4">
+    <div class="col-md-12">
+      <div class="card shadow">
+        <div class="card-header">
+          <h5 class="mb-0">Clan Comparison</h5>
+        </div>
+        <div class="card-body">
+          <canvas id="clanComparisonChart" height="100"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clan Table -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Clans</h5>
+    </div>
+    <div class="card-body table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Level</th>
+            <th>Members</th>
+            <th>Leader</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for clan in clans %}
+          <tr>
+            <td>
+              {% if clan.emblem %}
+                <img src="{{ clan.emblem }}" alt="Emblem" style="width:24px;height:24px;margin-right:4px;">
+              {% endif %}
+              {{ clan.name }}
+            </td>
+            <td>{{ clan.level }}</td>
+            <td>{{ clan.member_count }}</td>
+            <td>{{ clan.leader or '—' }}</td>
+            <td>{{ clan.created_at.strftime('%Y-%m-%d') }}</td>
+            <td>
+              <button class="btn btn-sm btn-info" data-bs-toggle="collapse" data-bs-target="#clan-details-{{ clan.id }}">Details</button>
+            </td>
+          </tr>
+          <tr class="collapse" id="clan-details-{{ clan.id }}">
+            <td colspan="6">
+              <strong>Recent Activity:</strong>
+              <ul>
+                {% for act in clan.activity_log %}
+                  <li>{{ act.timestamp.strftime('%Y-%m-%d %H:%M') }}: {{ act.type }} - {{ act.description }}</li>
+                {% endfor %}
+              </ul>
+              <canvas id="clanChart-{{ clan.id }}" height="60"></canvas>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Export/Print Button -->
+  <div class="mb-3 text-end">
+    <button class="btn btn-outline-secondary" onclick="window.print()">
+      <i class="bi bi-printer"></i> Print Dashboard
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Chart data from backend (passed as JSON)
+  const chartData = {{ chart_data|tojson }};
+  const ctx = document.getElementById('clanComparisonChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: chartData.labels,
+      datasets: chartData.datasets
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        title: { display: true, text: 'Clan Performance Comparison' }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+
+  // Per-clan charts
+  const perClanCharts = {};
+  {% for clan in clans %}
+    perClanCharts["{{ clan.id }}"] = {
+      dates: {{ clan.chart.dates|tojson }},
+      total_points: {{ clan.chart.total_points|tojson }},
+      active_members: {{ clan.chart.active_members|tojson }}
+    };
+  {% endfor %}
+  Object.keys(perClanCharts).forEach(function(clanId) {
+    var chartElem = document.getElementById('clanChart-' + clanId);
+    if (chartElem && typeof Chart !== 'undefined') {
+      new Chart(chartElem.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: perClanCharts[clanId].dates,
+          datasets: [
+            {
+              label: 'Total Points',
+              data: perClanCharts[clanId].total_points,
+              borderColor: '#4e73df',
+              fill: false
+            },
+            {
+              label: 'Active Members',
+              data: perClanCharts[clanId].active_members,
+              borderColor: '#1cc88a',
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+  });
+});
+</script>
+{% endblock %} 

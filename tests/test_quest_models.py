@@ -139,7 +139,7 @@ def quest_with_rewards(db_session, quest, equipment, ability):
     rewards = [
         Reward(quest_id=quest.id, type=RewardType.EXPERIENCE, amount=100),
         Reward(quest_id=quest.id, type=RewardType.GOLD, amount=50),
-        Reward(quest_id=quest.id, type=RewardType.EQUIPMENT, equipment_id=equipment.id),
+        Reward(quest_id=quest.id, type=RewardType.EQUIPMENT, item_id=equipment.id),
         Reward(quest_id=quest.id, type=RewardType.ABILITY, ability_id=ability.id),
         Reward(quest_id=quest.id, type=RewardType.CLAN_EXPERIENCE, amount=75)
     ]
@@ -192,7 +192,12 @@ def test_clan(db_session, test_classroom):
 @pytest.fixture
 def test_character(db_session, test_clan):
     from app.models.character import Character
-    character = Character(name='Test Character', student_id=1, clan_id=test_clan.id)
+    from app.models.student import Student
+    # Create a student for the character
+    student = Student(user_id=1, class_id=test_clan.class_id, level=1, gold=0, xp=0, health=100, power=10)
+    db_session.add(student)
+    db_session.commit()
+    character = Character(name='Test Character', student_id=student.id, clan_id=test_clan.id)
     db_session.add(character)
     db_session.commit()
     return character
@@ -210,6 +215,37 @@ def test_quest(db_session, test_classroom):
     db_session.add(quest)
     db_session.commit()
     return quest
+
+@pytest.fixture
+def equipment_with_item(db_session):
+    from app.models.equipment import Equipment, EquipmentType, EquipmentSlot
+    from app.models.item import Item
+    equipment = Equipment(
+        name="TestSword",
+        description="A test sword",
+        type=EquipmentType.WEAPON,
+        slot=EquipmentSlot.MAIN_HAND,
+        cost=100
+    )
+    db_session.add(equipment)
+    db_session.commit()
+    # Create a matching Item row with the same ID if it doesn't exist
+    if not Item.query.get(equipment.id):
+        item = Item(
+            id=equipment.id,
+            name=equipment.name,
+            description="A test sword.",
+            type="weapon",
+            tier=1,
+            slot="main_hand",
+            class_restriction=None,
+            level_requirement=1,
+            price=equipment.cost,
+            image_path=None
+        )
+        db_session.add(item)
+        db_session.commit()
+    return equipment
 
 class TestQuest:
     def test_create_quest(self, db_session):
@@ -379,16 +415,15 @@ class TestReward:
         db_session.refresh(character)
         assert character.gold == initial_gold + 50
     
-    def test_equipment_reward(self, db_session, quest, character, equipment):
+    def test_equipment_reward(self, db_session, quest, character, equipment_with_item):
         from app.models.quest import Reward, RewardType
         reward = Reward(
             quest_id=quest.id,
             type=RewardType.EQUIPMENT,
-            equipment_id=equipment.id
+            item_id=equipment_with_item.id
         )
         db_session.add(reward)
         db_session.commit()
-        # print(f"reward.equipment: {reward.equipment}")
         initial_inventory_count = character.inventory_items.count()
         reward.distribute(character, session=db_session)
         db_session.refresh(character)
@@ -476,7 +511,34 @@ class TestConsequence:
 
 def test_quest_model_logic(db_session, test_clan, test_character):
     from app.models.quest import Quest, QuestLog
-    # ... rest of the test ... 
+    from app.models.equipment import Equipment, EquipmentType, EquipmentSlot
+    from app.models.item import Item
+    # Create equipment and matching item
+    equipment = Equipment(
+        name='Test Sword',
+        type=EquipmentType.WEAPON,
+        slot=EquipmentSlot.MAIN_HAND,
+        cost=100
+    )
+    db_session.add(equipment)
+    db_session.commit()
+    # Create a matching Item row with the same ID if it doesn't exist
+    if not Item.query.get(equipment.id):
+        item = Item(
+            id=equipment.id,
+            name=equipment.name,
+            description="A test sword.",
+            type="weapon",
+            tier=1,
+            slot="main_hand",
+            class_restriction=None,
+            level_requirement=1,
+            price=equipment.cost,
+            image_path=None
+        )
+        db_session.add(item)
+        db_session.commit()
+    # ... rest of the test ...
 
 def test_quest_creation(test_quest):
     assert test_quest.id is not None

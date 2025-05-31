@@ -70,17 +70,6 @@
                   {% endfor %}
                 </ul>
                 <span id="inventory-msg"></span>
-                <div class="mb-3">
-                    <form method="POST" action="{{ url_for('student.add_test_weapon') }}" style="display:inline-block">
-                        <button type="submit" class="btn btn-outline-primary">Add Test Weapon</button>
-                    </form>
-                    <form method="POST" action="{{ url_for('student.add_test_armor') }}" style="display:inline-block">
-                        <button type="submit" class="btn btn-outline-secondary">Add Test Armor</button>
-                    </form>
-                    <form method="POST" action="{{ url_for('student.add_test_accessory') }}" style="display:inline-block">
-                        <button type="submit" class="btn btn-outline-success">Add Test Accessory</button>
-                    </form>
-                </div>
                 <form method="POST" action="{{ url_for('student.gain_xp') }}">
                     <button type="submit" class="btn btn-warning">Gain 500 XP (Test Level Up)</button>
                 </form>

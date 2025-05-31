@@ -113,8 +113,8 @@
               <td>{{ student['user'].full_name }}</td>
               <td>{{ student['user'].email }}</td>
               <td>{{ student['student'].level }}</td>
-              <td>{{ student['student'].gold }}</td>
-              <td>{{ student['student'].xp }}</td>
+              <td>{{ student['character'].gold if student['character'] else '-' }}</td>
+              <td>{{ student['character'].experience if student['character'] else '-' }}</td>
               <td>{{ student['student'].health }}</td>
               <td>{{ student['student'].power }}</td>
               <td>{% if student['character'] %}{{ student['character'].name }}{% else %}-{% endif %}</td>
@@ -133,6 +133,8 @@
                   <input type="hidden" name="class_id" value="{{ selected_class.id }}">
                   <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this student from the class?');">Remove</button>
                 </form>
+                <button type="button" class="btn btn-warning btn-sm give-gold-btn" data-student-id="{{ student['student'].id }}" data-student-name="{{ student['user'].full_name }}">Gold</button>
+                <button type="button" class="btn btn-info btn-sm give-xp-btn" data-student-id="{{ student['student'].id }}" data-student-name="{{ student['user'].full_name }}">XP</button>
               </td>
             </tr>
             {% endfor %}
@@ -146,4 +148,95 @@
     <div class="alert alert-secondary mt-4">Select a class to view its students.</div>
   {% endif %}
 </div>
+{% endblock %}
+{% block extra_js %}
+<!-- Gold/XP Award Modal -->
+<div class="modal fade" id="awardModal" tabindex="-1" aria-labelledby="awardModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="awardModalLabel">Award <span id="awardTypeLabel"></span> to <span id="awardStudentName"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="awardForm">
+          <input type="hidden" id="awardStudentId">
+          <input type="hidden" id="awardType">
+          <div class="mb-3">
+            <label for="awardAmount" class="form-label">Amount</label>
+            <input type="number" class="form-control" id="awardAmount" min="1" max="100000" required>
+          </div>
+          <div class="mb-3">
+            <label for="awardReason" class="form-label">Reason (optional)</label>
+            <input type="text" class="form-control" id="awardReason">
+          </div>
+        </form>
+        <div id="awardFeedback" class="alert d-none mt-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" form="awardForm" class="btn btn-primary">Award</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  let awardModal = new bootstrap.Modal(document.getElementById('awardModal'));
+  let awardType = '';
+  let awardStudentId = null;
+  let awardStudentName = '';
+  document.querySelectorAll('.give-gold-btn, .give-xp-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      awardType = btn.classList.contains('give-gold-btn') ? 'gold' : 'xp';
+      awardStudentId = btn.getAttribute('data-student-id');
+      awardStudentName = btn.getAttribute('data-student-name');
+      document.getElementById('awardTypeLabel').textContent = awardType.toUpperCase();
+      document.getElementById('awardStudentName').textContent = awardStudentName;
+      document.getElementById('awardStudentId').value = awardStudentId;
+      document.getElementById('awardType').value = awardType;
+      document.getElementById('awardAmount').value = '';
+      document.getElementById('awardReason').value = '';
+      document.getElementById('awardFeedback').classList.add('d-none');
+      awardModal.show();
+    });
+  });
+  document.getElementById('awardForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const studentId = document.getElementById('awardStudentId').value;
+    const type = document.getElementById('awardType').value;
+    const amount = parseInt(document.getElementById('awardAmount').value, 10);
+    const reason = document.getElementById('awardReason').value;
+    const url = `/teacher/api/teacher/student/${studentId}/award-${type}`;
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': (window.csrf_token || '')
+      },
+      body: JSON.stringify({ amount, reason })
+    })
+    .then(response => response.json())
+    .then(data => {
+      const feedback = document.getElementById('awardFeedback');
+      if (data.success) {
+        feedback.className = 'alert alert-success mt-2';
+        feedback.textContent = data.message;
+        feedback.classList.remove('d-none');
+        setTimeout(() => { awardModal.hide(); window.location.reload(); }, 1200);
+      } else {
+        feedback.className = 'alert alert-danger mt-2';
+        feedback.textContent = data.message || 'Error.';
+        feedback.classList.remove('d-none');
+      }
+    })
+    .catch(() => {
+      const feedback = document.getElementById('awardFeedback');
+      feedback.className = 'alert alert-danger mt-2';
+      feedback.textContent = 'Request failed.';
+      feedback.classList.remove('d-none');
+    });
+  });
+});
+</script>
 {% endblock %} 

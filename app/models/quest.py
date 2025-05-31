@@ -174,7 +174,7 @@ class Reward(Base):
     amount = db.Column(db.Integer, nullable=False, default=0)  # For XP, gold, etc.
     
     # Optional foreign keys for specific rewards
-    equipment_id = db.Column(db.Integer, db.ForeignKey('equipment.id', ondelete='SET NULL'), nullable=True)
+    item_id = db.Column(db.Integer, db.ForeignKey('equipment.id', ondelete='SET NULL'), nullable=True)
     ability_id = db.Column(db.Integer, db.ForeignKey('abilities.id', ondelete='SET NULL'), nullable=True)
     
     def distribute(self, character, session=None):
@@ -188,11 +188,11 @@ class Reward(Base):
             character.gold += self.amount
             character.save()
             session.commit()
-        elif self.type == RewardType.EQUIPMENT and self.equipment_id:
+        elif self.type == RewardType.EQUIPMENT and self.item_id:
             from app.models.equipment import Inventory
             inventory = Inventory(
                 character_id=character.id,
-                equipment_id=self.equipment_id
+                item_id=self.item_id
             )
             session.add(inventory)
             session.commit()

@@ -151,7 +151,11 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="card clan-card" data-clan-id="${clan.id}">
           <div class="card-header d-flex justify-content-between align-items-center">
             <span><img src="${clan.emblem || '/static/avatars/default.png'}" width="32" height="32" class="me-2"> <strong>${clan.name}</strong></span>
+            <div class="d-flex flex-wrap gap-1 mt-1">
+              ${(clan.badges || []).map(b => `<img src='${b.icon}' title='${b.name}: ${b.description}' alt='${b.name}' style='width:28px;height:28px;' class='badge-icon'>`).join('')}
+            </div>
             <span>
+              <button class="btn btn-sm btn-outline-success ms-2 award-badge-btn" data-clan-id="${clan.id}"><i class="fas fa-medal"></i> Award Badge</button>
               <button class="btn btn-sm btn-outline-secondary edit-clan-btn" data-clan-id="${clan.id}"><i class="fas fa-edit"></i></button>
               <button class="btn btn-sm btn-outline-danger delete-clan-btn" data-clan-id="${clan.id}"><i class="fas fa-trash"></i></button>
             </span>
@@ -187,6 +191,8 @@ document.addEventListener('DOMContentLoaded', function () {
       col.querySelectorAll('.draggable-student').forEach(li => {
         li.addEventListener('dragstart', handleStudentDragStart);
       });
+      // Award badge button
+      col.querySelector('.award-badge-btn').addEventListener('click', () => openAwardBadgeModal(clan.id));
       clanColumns.appendChild(col);
     });
   }
@@ -263,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Icon picker logic
-  function loadClanIcons(selectedIconUrl) {
+  function loadClanIcons(selectedIconUrl, usedEmblems = [], currentClanEmblem = null) {
     const picker = document.getElementById('clan-icon-picker');
     const preview = document.getElementById('clan-icon-preview');
     const hiddenInput = document.getElementById('clan-emblem');
@@ -281,12 +287,20 @@ document.addEventListener('DOMContentLoaded', function () {
           img.style.height = '48px';
           img.style.cursor = 'pointer';
           img.style.objectFit = 'cover';
-          img.onclick = () => {
-            document.querySelectorAll('.clan-icon-option').forEach(i => i.classList.remove('border-primary'));
-            img.classList.add('border-primary');
-            hiddenInput.value = url;
-            preview.innerHTML = `<img src='${url}' width='48' height='48' class='rounded border border-primary' />`;
-          };
+          // Disable if used by another clan (not the current clan)
+          const isUsed = usedEmblems.includes(url) && url !== currentClanEmblem;
+          if (isUsed) {
+            img.classList.add('opacity-50');
+            img.style.pointerEvents = 'none';
+            img.title = 'Already used by another clan in this class';
+          } else {
+            img.onclick = () => {
+              document.querySelectorAll('.clan-icon-option').forEach(i => i.classList.remove('border-primary'));
+              img.classList.add('border-primary');
+              hiddenInput.value = url;
+              preview.innerHTML = `<img src='${url}' width='48' height='48' class='rounded border border-primary' />`;
+            };
+          }
           if (selectedIconUrl && url === selectedIconUrl) {
             img.classList.add('border-primary');
             hiddenInput.value = url;
@@ -300,13 +314,58 @@ document.addEventListener('DOMContentLoaded', function () {
       });
   }
 
+  // Banner picker logic
+  function loadClanBanners(selectedBannerUrl) {
+    const picker = document.getElementById('clan-banner-picker');
+    const preview = document.getElementById('clan-banner-preview');
+    const hiddenInput = document.getElementById('clan-banner');
+    picker.innerHTML = '';
+    preview.innerHTML = '';
+    // Hardcoded banners for now; in production, fetch from server or scan directory
+    const banners = [
+      '/static/images/clan_banners/banner1.png',
+      '/static/images/clan_banners/banner2.png',
+      '/static/images/clan_banners/banner3.png',
+      '/static/images/clan_banners/banner4.png',
+      '/static/images/clan_banners/banner5.png'
+    ];
+    banners.forEach(url => {
+      const img = document.createElement('img');
+      img.src = url;
+      img.className = 'clan-banner-option rounded border';
+      img.style.width = '96px';
+      img.style.height = '32px';
+      img.style.cursor = 'pointer';
+      img.style.objectFit = 'cover';
+      img.onclick = () => {
+        document.querySelectorAll('.clan-banner-option').forEach(i => i.classList.remove('border-primary'));
+        img.classList.add('border-primary');
+        hiddenInput.value = url;
+        preview.innerHTML = `<img src='${url}' width='192' height='64' class='rounded border border-primary' />`;
+      };
+      if (selectedBannerUrl && url === selectedBannerUrl) {
+        img.classList.add('border-primary');
+        hiddenInput.value = url;
+        preview.innerHTML = `<img src='${url}' width='192' height='64' class='rounded border border-primary' />`;
+      }
+      picker.appendChild(img);
+    });
+  }
+
   // Open clan form modal for create/edit
   function openClanForm(clan) {
     document.getElementById('clan-id').value = clan ? clan.id : '';
     document.getElementById('clan-name').value = clan ? clan.name : '';
     document.getElementById('clan-description').value = clan ? clan.description || '' : '';
-    // clan-emblem is now a hidden input, set its value and load icons
-    loadClanIcons(clan ? clan.emblem || '' : '');
+    // Gather used emblems (excluding current clan's emblem)
+    const currentClanEmblem = clan ? clan.emblem || '' : '';
+    const usedEmblems = clans
+      .filter(c => c.emblem && (!clan || c.id !== clan.id))
+      .map(c => c.emblem);
+    loadClanIcons(currentClanEmblem, usedEmblems, currentClanEmblem);
+    loadClanBanners(clan ? clan.banner || '' : '');
+    document.getElementById('clan-banner').value = clan ? clan.banner || '' : '';
+    document.getElementById('clan-theme-color').value = clan ? clan.theme_color || '#2470dc' : '#2470dc';
     clanFormModal.show();
   }
 
@@ -317,6 +376,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const name = document.getElementById('clan-name').value.trim();
     const description = document.getElementById('clan-description').value.trim();
     const emblem = document.getElementById('clan-emblem').value.trim();
+    const banner = document.getElementById('clan-banner').value.trim();
+    const theme_color = document.getElementById('clan-theme-color').value.trim();
     if (!name) {
       showError('Clan name is required.');
       return;
@@ -328,6 +389,8 @@ document.addEventListener('DOMContentLoaded', function () {
       name,
       description,
       emblem,
+      banner,
+      theme_color,
       class_id: selectedClassId
     };
     fetch(url, {
@@ -378,6 +441,72 @@ document.addEventListener('DOMContentLoaded', function () {
   classSelect.addEventListener('change', function () {
     selectedClassId = classSelect.value;
     fetchClansAndStudents();
+  });
+
+  // Award Badge Modal logic
+  const awardBadgeModal = new bootstrap.Modal(document.getElementById('awardBadgeModal'));
+  const badgeList = document.getElementById('badge-list');
+  const awardBadgeBtn = document.getElementById('award-badge-btn');
+  const badgeAwardError = document.getElementById('badge-award-error');
+  let selectedBadgeId = null;
+  let awardBadgeClanId = null;
+
+  function openAwardBadgeModal(clanId) {
+    awardBadgeClanId = clanId;
+    selectedBadgeId = null;
+    awardBadgeBtn.disabled = true;
+    badgeAwardError.classList.add('d-none');
+    badgeList.innerHTML = '<div>Loading badges...</div>';
+    fetch('/teacher/api/badges')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success) throw new Error('Failed to load badges');
+        badgeList.innerHTML = '';
+        data.badges.filter(b => b.is_clan).forEach(badge => {
+          const img = document.createElement('img');
+          img.src = badge.icon;
+          img.title = badge.name + ': ' + badge.description;
+          img.alt = badge.name;
+          img.style.width = '48px';
+          img.style.height = '48px';
+          img.className = 'badge-icon border rounded m-1';
+          img.style.cursor = 'pointer';
+          img.onclick = () => {
+            document.querySelectorAll('#badge-list .badge-icon').forEach(i => i.classList.remove('border-primary'));
+            img.classList.add('border-primary');
+            selectedBadgeId = badge.id;
+            awardBadgeBtn.disabled = false;
+          };
+          badgeList.appendChild(img);
+        });
+      })
+      .catch(() => {
+        badgeList.innerHTML = '<span class="text-danger">Failed to load badges</span>';
+      });
+    awardBadgeModal.show();
+  }
+
+  awardBadgeBtn.addEventListener('click', function() {
+    if (!selectedBadgeId || !awardBadgeClanId) return;
+    awardBadgeBtn.disabled = true;
+    badgeAwardError.classList.add('d-none');
+    fetch(`/teacher/api/clans/${awardBadgeClanId}/badges`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ badge_id: selectedBadgeId })
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (!res.success) throw new Error(res.message);
+        awardBadgeModal.hide();
+        showSuccess('Badge awarded!');
+        fetchClansAndStudents();
+      })
+      .catch(e => {
+        badgeAwardError.textContent = e.message || 'Failed to award badge.';
+        badgeAwardError.classList.remove('d-none');
+        awardBadgeBtn.disabled = false;
+      });
   });
 
   // Initial load

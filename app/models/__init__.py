@@ -2,6 +2,8 @@ from flask_sqlalchemy import SQLAlchemy
 
 from app.models.base import Base  # <-- Re-export Base
 from .db_config import db
+from app.models.achievement_badge import AchievementBadge
+from app.models.item import Item
 
 __all__ = [
     'db',

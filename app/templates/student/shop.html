@@ -2,10 +2,155 @@
 
 {% block title %}Shop{% endblock %}
 
+{% macro item_card(item) %}
+<div class="card h-100 shop-item-card" 
+     data-category="{{ item.category }}" 
+     data-tier="{{ item.tier }}" 
+     data-unlocked="{{ 'true' if item.unlocked else 'false' }}"
+     data-name="{{ item.name|lower }}"
+     data-description="{{ item.description|lower }}"
+     style="display:block;"
+     data-item-id="{{ item.id }}">
+    <img src="{{ item.image }}" class="card-img-top" alt="{{ item.name }}" style="height:120px;object-fit:contain;">
+    <div class="card-body d-flex flex-column">
+        <h5 class="card-title">{{ item.name }}</h5>
+        <span class="badge bg-success mb-2">Price: {{ item.price }} gold</span>
+        {% if item.owned %}
+            <span class="badge bg-info mb-2">Owned</span>
+        {% endif %}
+        {% if not item.can_afford and not item.owned %}
+            <span class="badge bg-danger mb-2">Not enough gold</span>
+        {% endif %}
+        {% if not item.unlocked and not item.owned %}
+            <span class="badge bg-secondary mb-2">Locked</span>
+        {% endif %}
+        <button class="btn btn-primary w-100" {% if not item.can_buy %}disabled{% endif %}>Buy</button>
+    </div>
+</div>
+{% endmacro %}
+
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">Shop</h2>
-    <p>Browse and purchase equipment and abilities with your gold here.</p>
-    <!-- Add shop items and purchase actions here -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Shop</h2>
+        <span class="badge bg-warning text-dark fs-5">Gold: {{ main_character.gold if main_character else 0 }}</span>
+    </div>
+    <!-- Filters row -->
+    <div class="row mb-3">
+        <div class="col-md-4 mb-2">
+            <select class="form-select" id="filter-category">
+                <option value="">All Categories</option>
+                <option value="equipment">Equipment</option>
+                <option value="consumable">Consumables</option>
+                <option value="ability">Abilities</option>
+            </select>
+        </div>
+        <div class="col-md-4 mb-2">
+            <select class="form-select" id="filter-tier">
+                <option value="">All Tiers</option>
+                <option value="1">Tier 1</option>
+                <option value="2">Tier 2</option>
+                <option value="3">Tier 3</option>
+            </select>
+        </div>
+        <div class="col-md-4 mb-2">
+            <input type="text" class="form-control" id="search-items" placeholder="Search items...">
+        </div>
+    </div>
+    <!-- Item grid -->
+    <div class="row" id="shop-items-grid">
+        {% for item in items %}
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 shop-item-col">
+            {{ item_card(item) }}
+        </div>
+        {% endfor %}
+    </div>
+    <div id="no-items-message" class="text-center text-muted mt-4" style="display:none;">No items found for the selected filters.</div>
 </div>
+<script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    function filterShopItems() {
+        var category = document.getElementById('filter-category').value;
+        var tier = document.getElementById('filter-tier').value;
+        var search = document.getElementById('search-items').value.trim().toLowerCase();
+        var cards = document.querySelectorAll('.shop-item-col');
+        var anyVisible = false;
+        cards.forEach(function(col) {
+            var card = col.querySelector('.shop-item-card');
+            var matchesCategory = !category || card.getAttribute('data-category') === category;
+            var matchesTier = !tier || card.getAttribute('data-tier') === tier;
+            var matchesSearch = !search || card.getAttribute('data-name').includes(search) || card.getAttribute('data-description').includes(search);
+            var isUnlocked = card.getAttribute('data-unlocked') === 'true';
+            if (matchesCategory && matchesTier && matchesSearch && isUnlocked) {
+                col.style.display = '';
+                anyVisible = true;
+            } else {
+                col.style.display = 'none';
+            }
+        });
+        document.getElementById('no-items-message').style.display = anyVisible ? 'none' : '';
+    }
+    document.getElementById('filter-category').addEventListener('change', filterShopItems);
+    document.getElementById('filter-tier').addEventListener('change', filterShopItems);
+    document.getElementById('search-items').addEventListener('input', filterShopItems);
+
+    // --- Buy button logic ---
+    function showShopMessage(msg, isError) {
+        var msgDiv = document.getElementById('shop-message');
+        if (!msgDiv) {
+            msgDiv = document.createElement('div');
+            msgDiv.id = 'shop-message';
+            msgDiv.className = 'alert mt-3';
+            document.querySelector('.container.mt-5').prepend(msgDiv);
+        }
+        msgDiv.textContent = msg;
+        msgDiv.classList.toggle('alert-success', !isError);
+        msgDiv.classList.toggle('alert-danger', !!isError);
+        msgDiv.style.display = '';
+        setTimeout(function() { msgDiv.style.display = 'none'; }, 3000);
+    }
+
+    document.querySelectorAll('.shop-item-card .btn.btn-primary').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            var card = btn.closest('.shop-item-card');
+            var itemId = card.getAttribute('data-item-id');
+            var itemType = card.getAttribute('data-category');
+            btn.disabled = true;
+            fetch('/student/shop/buy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ item_id: itemId, item_type: itemType })
+            })
+            .then(res => res.json().then(data => ({ status: res.status, data })))
+            .then(function(res) {
+                if (res.data.success) {
+                    // Update gold display
+                    var goldBadge = document.querySelector('.badge.bg-warning');
+                    if (goldBadge) goldBadge.textContent = 'Gold: ' + res.data.character.gold;
+                    // Mark as owned
+                    var badge = document.createElement('span');
+                    badge.className = 'badge bg-info mb-2';
+                    badge.textContent = 'Owned';
+                    btn.parentNode.insertBefore(badge, btn);
+                    btn.disabled = true;
+                    btn.textContent = 'Owned';
+                    card.setAttribute('data-unlocked', 'true');
+                    card.setAttribute('data-owned', 'true');
+                    showShopMessage('Purchase successful!', false);
+                } else {
+                    btn.disabled = false;
+                    showShopMessage(res.data.message || 'Purchase failed.', true);
+                }
+            })
+            .catch(function(err) {
+                btn.disabled = false;
+                showShopMessage('Error: Could not complete purchase.', true);
+            });
+        });
+    });
+</script>
 {% endblock %} 

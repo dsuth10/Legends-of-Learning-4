@@ -3,11 +3,13 @@ from sqlalchemy.orm import validates
 from app.models import db
 from app.models.base import Base
 from app.models.character import Character
+from app.models.student import Student
 from enum import Enum
 
 class PurchaseType(Enum):
     EQUIPMENT = 'equipment'
     ABILITY = 'ability'
+    SHOP = 'shop'  # Added to support shop purchases
 
 class ShopPurchase(Base):
     """Model for tracking purchases made in the game shop."""
@@ -16,6 +18,7 @@ class ShopPurchase(Base):
     
     id = db.Column(db.Integer, primary_key=True)
     character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id', ondelete='CASCADE'), nullable=False)
     gold_spent = db.Column(db.Integer, nullable=False)
     purchase_type = db.Column(db.String(20), nullable=False)  # 'equipment' or 'ability'
     item_id = db.Column(db.Integer, nullable=False)  # ID of the purchased equipment or ability
@@ -23,14 +26,15 @@ class ShopPurchase(Base):
     
     # Relationships
     character = db.relationship('Character', back_populates='purchases')
+    student = db.relationship('Student', back_populates='purchases')
     
     @validates('purchase_type')
     def validate_purchase_type(self, key, value):
         """Validate that purchase_type is either 'equipment' or 'ability'."""
         if isinstance(value, PurchaseType):
             value = value.value
-        if value not in [PurchaseType.EQUIPMENT.value, PurchaseType.ABILITY.value]:
-            raise ValueError("purchase_type must be either 'equipment' or 'ability'")
+        if value not in [PurchaseType.EQUIPMENT.value, PurchaseType.ABILITY.value, PurchaseType.SHOP.value]:
+            raise ValueError("purchase_type must be either 'equipment', 'ability', or 'shop'")
         return value
     
     @validates('gold_spent')
@@ -64,5 +68,8 @@ class ShopPurchase(Base):
 
 # At the end of the file, after both classes are defined:
 from app.models.character import Character
+from app.models.student import Student
 ShopPurchase.character = db.relationship('Character', back_populates='purchases')
-Character.purchases = db.relationship('ShopPurchase', back_populates='character', cascade='all, delete-orphan') 
+ShopPurchase.student = db.relationship('Student', back_populates='purchases')
+Character.purchases = db.relationship('ShopPurchase', back_populates='character', cascade='all, delete-orphan')
+Student.purchases = db.relationship('ShopPurchase', back_populates='student', cascade='all, delete-orphan') 

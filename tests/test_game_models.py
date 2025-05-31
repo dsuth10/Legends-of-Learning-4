@@ -52,7 +52,12 @@ def test_class(db_session, teacher_user):
 @pytest.fixture
 def test_character(db_session, test_clan):
     from app.models.character import Character
-    character = Character(name='Test Character', student_id=1)
+    from app.models.student import Student
+    # Create a student for the character
+    student = Student(user_id=1, class_id=test_clan.class_id, level=1, gold=0, xp=0, health=100, power=10)
+    db_session.add(student)
+    db_session.commit()
+    character = Character(name='Test Character', student_id=student.id, character_class='Warrior')
     db_session.add(character)
     db_session.commit()
     return character
@@ -67,8 +72,9 @@ def test_clan(db_session, test_classroom):
     return clan
 
 @pytest.fixture
-def test_equipment(db_session):
+def equipment_with_item(db_session):
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot
+    from app.models.item import Item
     equipment = Equipment(
         name='Test Sword',
         type=EquipmentType.WEAPON,
@@ -76,7 +82,24 @@ def test_equipment(db_session):
         strength_bonus=5,
         cost=100
     )
-    equipment.save()
+    db_session.add(equipment)
+    db_session.commit()
+    # Create a matching Item row with the same ID if it doesn't exist
+    if not Item.query.get(equipment.id):
+        item = Item(
+            id=equipment.id,
+            name=equipment.name,
+            description="A test sword.",
+            type="weapon",
+            tier=1,
+            slot="main_hand",
+            class_restriction=None,
+            level_requirement=1,
+            price=equipment.cost,
+            image_path=None
+        )
+        db_session.add(item)
+        db_session.commit()
     return equipment
 
 @pytest.fixture
@@ -154,7 +177,7 @@ def test_clan_management(test_clan, test_character):
     if test_character.clan_id is not None:
         print('[DEBUG] Character clan_id after removal:', test_character.clan_id)
 
-def test_equipment_and_inventory(test_character, test_equipment):
+def test_equipment_and_inventory(test_character, equipment_with_item):
     from app.models.equipment import Inventory, Equipment, EquipmentType, EquipmentSlot
     from app.models import db
     # Debug: print equipment table columns
@@ -168,7 +191,7 @@ def test_equipment_and_inventory(test_character, test_equipment):
     conn.close()
     inventory_item = Inventory(
         character_id=test_character.id,
-        equipment_id=test_equipment.id
+        item_id=equipment_with_item.id
     )
     inventory_item.save()
     assert inventory_item in test_character.inventory_items.all()
@@ -180,10 +203,27 @@ def test_equipment_and_inventory(test_character, test_equipment):
         type=EquipmentType.WEAPON,
         slot=EquipmentSlot.MAIN_HAND
     )
-    another_weapon.save()
+    db.session.add(another_weapon)
+    db.session.commit()
+    # Create a matching Item for the new weapon
+    from app.models.item import Item
+    item2 = Item(
+        id=another_weapon.id,
+        name=another_weapon.name,
+        description="Another test sword.",
+        type="weapon",
+        tier=1,
+        slot="main_hand",
+        class_restriction=None,
+        level_requirement=1,
+        price=100,
+        image_path=None
+    )
+    db.session.add(item2)
+    db.session.commit()
     another_inventory = Inventory(
         character_id=test_character.id,
-        equipment_id=another_weapon.id
+        item_id=another_weapon.id
     )
     another_inventory.save()
     another_inventory.equip()

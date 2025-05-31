@@ -59,23 +59,24 @@ class Inventory(Base):
     from app.models import db
     id = db.Column(db.Integer, primary_key=True)
     character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=False)
-    equipment_id = db.Column(db.Integer, db.ForeignKey('equipment.id', ondelete='CASCADE'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('equipment.id', ondelete='CASCADE'), nullable=False)
     is_equipped = db.Column(db.Boolean, default=False, nullable=False)
     acquired_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     # Relationships
     character = db.relationship('Character', backref=db.backref('inventory_items', lazy='dynamic', cascade='all, delete-orphan'))
-    equipment = db.relationship('Equipment')
+    item = db.relationship('Equipment')
+    equipment = db.relationship('Equipment', primaryjoin='Inventory.item_id == Equipment.id', foreign_keys='Inventory.item_id')
     
     __table_args__ = (
         db.Index('idx_inventory_character', 'character_id'),  # For looking up character's inventory
         db.Index('idx_inventory_equipped', 'character_id', 'is_equipped'),  # For equipped items
     )
     
-    def __init__(self, character_id, equipment_id, **kwargs):
+    def __init__(self, character_id, item_id, **kwargs):
         super().__init__(**kwargs)
         self.character_id = character_id
-        self.equipment_id = equipment_id
+        self.item_id = item_id
     
     @classmethod
     def get_equipped_items(cls, character_id):
@@ -90,7 +91,7 @@ class Inventory(Base):
             current_equipped = Inventory.query.join(Equipment).filter(
                 Inventory.character_id == self.character_id,
                 Inventory.is_equipped == True,
-                Equipment.slot == self.equipment.slot
+                Equipment.slot == self.item.slot
             ).first()
             
             if current_equipped:
@@ -109,7 +110,7 @@ class Inventory(Base):
     
     def __repr__(self):
         status = "equipped" if self.is_equipped else "in inventory"
-        return f'<Inventory {self.equipment.name} ({status})>'
+        return f'<Inventory {self.item.name} ({status})>'
 
 # Default image filenames for test items
 TEST_ARMOR_IMAGE = '/static/images/test_armor.png'

@@ -24,6 +24,7 @@ from app.models.assist_log import AssistLog
 from app.models.base import Base
 from app.models.db_maintenance import *  # If this file contains models
 from app.models.classroom import class_students  # Association table
+from app.models.item import Item
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

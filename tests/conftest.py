@@ -6,6 +6,8 @@ from alembic.config import Config
 from alembic import command
 import sqlite3
 from sqlalchemy import text
+import uuid
+import sqlalchemy
 
 # Do NOT import app/db until after Alembic runs!
 
@@ -89,7 +91,7 @@ def test_db_file():
     conn.close()
     # Check for cost column in equipment
     check_equipment_cost_column(db_path)
-    yield db_path
+    yield db_uri
     try:
         os.remove(db_path)
     except FileNotFoundError:
@@ -97,7 +99,10 @@ def test_db_file():
 
 @pytest.fixture(scope='function')
 def app(test_db_file):
+    # Import after Alembic migrations have run
     from app import create_app, db
+    import os
+    os.environ['SQLALCHEMY_DATABASE_URI'] = test_db_file
     app = create_app()
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False  # Disable CSRF for tests
@@ -107,8 +112,10 @@ def app(test_db_file):
     if test_db_file != app.config['SQLALCHEMY_DATABASE_URI']:
         print(f"[ERROR] Alembic DB URI and SQLAlchemy DB URI do not match! {test_db_file} != {app.config['SQLALCHEMY_DATABASE_URI']}")
     with app.app_context():
-        db.metadata.clear()  # Drop all old SQLAlchemy metadata
-        # db.reflect()  # Ensure SQLAlchemy metadata is in sync with DB schema (REMOVED - causes NoSuchTableError)
+        db.session.remove()
+        db.engine.dispose()
+        db.Model.metadata.reflect(bind=db.engine)
+        db.session.expire_all()
         yield app
         db.session.remove()
         db.engine.dispose()
@@ -125,7 +132,7 @@ def client(app):
 
 # Add a fixture to truncate all tables before each test for full isolation
 @pytest.fixture(autouse=True, scope='function')
-def truncate_tables(app):
+def truncate_tables(db_session):
     from app import db
     meta = db.metadata
     engine = db.engine
@@ -134,9 +141,154 @@ def truncate_tables(app):
         db.session.execute(text('PRAGMA foreign_keys=OFF'))
     try:
         for table in reversed(meta.sorted_tables):
-            db.session.execute(table.delete())
+            try:
+                db.session.execute(table.delete())
+            except sqlalchemy.exc.OperationalError as e:
+                print(f"[WARN] Could not delete from table {table.name}: {e}")
         db.session.commit()
     finally:
         # Re-enable foreign key checks for SQLite
         if engine.dialect.name == 'sqlite':
-            db.session.execute(text('PRAGMA foreign_keys=ON')) 
+            db.session.execute(text('PRAGMA foreign_keys=ON'))
+
+@pytest.fixture
+def test_user(db_session):
+    from app.models.user import User, UserRole
+    unique = uuid.uuid4().hex[:8]
+    user = User(username=f"student_{unique}", email=f"student_{unique}@example.com", role=UserRole.STUDENT)
+    user.set_password("password")
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+@pytest.fixture
+def test_classroom(db_session, test_user):
+    from app.models.classroom import Classroom
+    unique = uuid.uuid4().hex[:8]
+    classroom = Classroom(name=f"Test Class {unique}", teacher_id=test_user.id, join_code=f"TEST{unique[:5]}")
+    db_session.add(classroom)
+    db_session.commit()
+    return classroom
+
+@pytest.fixture
+def test_student(db_session, test_user, test_classroom):
+    from app.models.student import Student
+    student = Student(user_id=test_user.id, class_id=test_classroom.id, level=1, gold=200)
+    db_session.add(student)
+    db_session.commit()
+    return student
+
+@pytest.fixture
+def test_character(db_session, test_student):
+    from app.models.character import Character
+    from app.models.clan import Clan
+    # Create a clan for the character
+    clan = Clan(name="Test Clan", class_id=test_student.class_id)
+    db_session.add(clan)
+    db_session.commit()
+    character = Character(
+        name="Hero",
+        student_id=test_student.id,
+        character_class="Warrior",
+        level=1,
+        experience=0,
+        health=100,
+        max_health=100,
+        strength=10,
+        defense=10,
+        is_active=True,
+        clan_id=clan.id
+    )
+    db_session.add(character)
+    db_session.commit()
+    return character
+
+@pytest.fixture
+def test_item(db_session):
+    from app.models.item import Item
+    import uuid
+    unique = uuid.uuid4().hex[:8]
+    item = Item(
+        name=f"Test Item {unique}",
+        description="A test item.",
+        type="weapon",
+        tier=1,
+        slot="main_hand",
+        class_restriction=None,
+        level_requirement=1,
+        price=100,
+        image_path=None
+    )
+    db_session.add(item)
+    db_session.commit()
+    return item
+
+@pytest.fixture
+def test_equipment(db_session, test_item):
+    from app.models.equipment import Equipment, EquipmentType, EquipmentSlot
+    from app.models.item import Item
+    equipment = Equipment(
+        name="Test Sword",
+        type=EquipmentType.WEAPON,
+        slot=EquipmentSlot.MAIN_HAND,
+        cost=100,
+        level_requirement=1
+    )
+    db_session.add(equipment)
+    db_session.commit()
+    # Create a matching Item row with the same ID if it doesn't exist
+    if not Item.query.get(equipment.id):
+        item = Item(
+            id=equipment.id,
+            name=equipment.name,
+            description="A test sword.",
+            type="weapon",
+            tier=1,
+            slot="main_hand",
+            class_restriction=None,
+            level_requirement=1,
+            price=equipment.cost,
+            image_path=None
+        )
+        db_session.add(item)
+        db_session.commit()
+    return equipment
+
+@pytest.fixture
+def test_ability(db_session):
+    from app.models.ability import Ability
+    from app.models.item import Item
+    ability = Ability(
+        name="Test Ability",
+        description="A test ability.",
+        cost=50,
+        cooldown=1,
+        effect="Test effect"
+    )
+    db_session.add(ability)
+    db_session.commit()
+    # Create a matching Item row with the same ID if it doesn't exist
+    if not Item.query.get(ability.id):
+        item = Item(
+            id=ability.id,
+            name=ability.name,
+            description=ability.description,
+            type="ability",
+            tier=1,
+            slot=None,
+            class_restriction=None,
+            level_requirement=1,
+            price=ability.cost,
+            image_path=None
+        )
+        db_session.add(item)
+        db_session.commit()
+    return ability
+
+@pytest.fixture
+def test_inventory(db_session, test_character, test_equipment):
+    from app.models.equipment import Inventory
+    inv = Inventory(character_id=test_character.id, item_id=test_equipment.id, is_equipped=True)
+    db_session.add(inv)
+    db_session.commit()
+    return inv 

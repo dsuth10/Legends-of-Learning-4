@@ -60,6 +60,16 @@
             <input type="hidden" class="form-control" id="clan-emblem" />
             <div id="clan-icon-preview" class="mt-2"></div>
           </div>
+          <div class="mb-3">
+            <label class="form-label">Clan Banner</label>
+            <div id="clan-banner-picker" class="d-flex flex-wrap gap-2 mb-2"></div>
+            <input type="hidden" class="form-control" id="clan-banner" />
+            <div id="clan-banner-preview" class="mt-2"></div>
+          </div>
+          <div class="mb-3">
+            <label for="clan-theme-color" class="form-label">Theme Color</label>
+            <input type="color" class="form-control form-control-color" id="clan-theme-color" value="#2470dc" title="Choose theme color">
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -84,6 +94,26 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-danger" id="confirm-delete-clan-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Award Badge Modal -->
+<div class="modal fade" id="awardBadgeModal" tabindex="-1" aria-labelledby="awardBadgeModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="awardBadgeModalLabel">Award Badge</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="badge-list" class="d-flex flex-wrap gap-2 mb-2"></div>
+        <div id="badge-award-error" class="alert alert-danger d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="award-badge-btn" disabled>Award</button>
       </div>
     </div>
   </div>

@@ -23,6 +23,7 @@ class EventType(Enum):
     GOLD_TRANSACTION = 'GOLD_TRANSACTION'
     XP_GAIN = 'XP_GAIN'
     LEVEL_UP = 'LEVEL_UP'
+    XP_TRANSACTION = 'XP_TRANSACTION'
 
 class AuditLog(Base):
     """Model for tracking important game events and changes.
@@ -71,7 +72,8 @@ class AuditLog(Base):
         'EQUIPMENT_CHANGE': 'Equipment changed',
         'GOLD_TRANSACTION': 'Gold transaction',
         'XP_GAIN': 'Experience gained',
-        'LEVEL_UP': 'Level up'
+        'LEVEL_UP': 'Level up',
+        'XP_TRANSACTION': 'XP transaction'
     }
     
     @classmethod

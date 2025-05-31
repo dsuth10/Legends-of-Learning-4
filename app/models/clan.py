@@ -11,6 +11,8 @@ class Clan(Base):
     name = db.Column(db.String(64), nullable=False)
     description = db.Column(db.Text, nullable=True)
     emblem = db.Column(db.String(256), nullable=True)  # Path/URL to clan emblem image
+    banner = db.Column(db.String(256), nullable=True)  # Path/URL to clan banner image
+    theme_color = db.Column(db.String(16), nullable=True)  # Hex color code for theme
     level = db.Column(db.Integer, default=1, nullable=False)
     experience = db.Column(db.Integer, default=0, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
@@ -86,6 +88,8 @@ class Clan(Base):
             "name": self.name,
             "description": self.description,
             "emblem": self.emblem,
+            "banner": self.banner,
+            "theme_color": self.theme_color,
             "level": self.level,
             "experience": self.experience,
             "is_active": self.is_active,
