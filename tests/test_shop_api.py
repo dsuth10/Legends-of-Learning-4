@@ -2,28 +2,74 @@ import pytest
 from flask import url_for
 from sqlalchemy import text
 
+@pytest.fixture
+def test_equipment(db_session):
+    from app.models.equipment import Equipment
+    eq = db_session.query(Equipment).first()
+    if eq is None:
+        eq = Equipment(name='Test Sword', type='weapon', slot='main_hand', cost=100)
+        db_session.add(eq)
+        db_session.commit()
+    return eq
+
+@pytest.fixture
+def test_weapon(db_session):
+    from app.models.equipment import Equipment
+    weapon = db_session.query(Equipment).filter_by(name='Test Sword').first()
+    if weapon is None:
+        weapon = Equipment(name='Test Sword', type='weapon', slot='main_hand', cost=100, class_restriction='Warrior', level_requirement=1)
+        db_session.add(weapon)
+        db_session.commit()
+    return weapon
+
+@pytest.fixture
+def test_armor(db_session):
+    from app.models.equipment import Equipment
+    armor = db_session.query(Equipment).filter_by(type='armor').first()
+    if armor is None:
+        armor = Equipment(name='Test Armor', type='armor', slot='chest', cost=50)
+        db_session.add(armor)
+        db_session.commit()
+    return armor
+
+@pytest.fixture
+def test_accessory(db_session):
+    from app.models.equipment import Equipment
+    accessory = db_session.query(Equipment).filter_by(type='accessory').first()
+    if accessory is None:
+        accessory = Equipment(name='Test Ring', type='accessory', slot='ring', cost=25)
+        db_session.add(accessory)
+        db_session.commit()
+    return accessory
+
 # --- DEBUG: Print inventories table schema ---
 def test_print_inventories_schema(db_session):
     result = db_session.execute(text("SELECT sql FROM sqlite_master WHERE type='table' AND name='inventories';"))
     print("\n[DEBUG] inventories CREATE TABLE SQL:\n", result.fetchone()[0])
 
 # --- Shop Listing ---
-def test_shop_listing(client, db_session, test_user, test_character, test_equipment):
+def test_shop_listing(client, db_session, test_user, test_character, test_weapon):
+    test_character.gold = 200
+    test_character.level = 10
+    test_character.character_class = 'Warrior'
+    db_session.commit()
     with client:
         client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
         response = client.get('/student/shop')
         assert response.status_code == 200
-        assert b"Test Sword" in response.data  # or check for JSON if API
+        assert test_weapon.name.encode() in response.data
 
 # --- Purchase Success ---
-def test_purchase_success(client, db_session, test_user, test_character, test_equipment):
+def test_purchase_success(client, db_session, test_user, test_character, test_weapon):
     db_session.rollback()
     test_character.gold = 200
+    test_character.level = 10
+    test_character.character_class = 'Warrior'
     db_session.commit()
     with client:
         client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
         response = client.post('/student/shop/buy', json={
-            "item_id": test_equipment.id,
+            "item_id": test_weapon.id,
             "item_type": "equipment"
         })
     assert response.status_code == 200
@@ -33,25 +79,25 @@ def test_purchase_success(client, db_session, test_user, test_character, test_eq
     assert test_character.gold == 100
 
 # --- Purchase: Insufficient Gold ---
-def test_purchase_insufficient_gold(client, db_session, test_user, test_character, test_equipment):
+def test_purchase_insufficient_gold(client, db_session, test_user, test_character, test_weapon):
     test_character.gold = 50
     db_session.commit()
     with client:
         client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
         response = client.post('/student/shop/buy', json={
-            "item_id": test_equipment.id,
+            "item_id": test_weapon.id,
             "item_type": "equipment"
         })
     assert response.status_code == 400
     assert b"not enough gold" in response.data.lower()
 
 # --- Purchase: Already Owned ---
-def test_purchase_already_owned(client, db_session, test_user, test_character, test_equipment, test_item):
+def test_purchase_already_owned(client, db_session, test_user, test_character, test_weapon):
     from app.models.equipment import Inventory
     db_session.refresh(test_character)
-    db_session.refresh(test_equipment)
-    # Use test_equipment.id for item_id, which matches a valid Item
-    inv = Inventory(character_id=test_character.id, item_id=test_equipment.id)
+    db_session.refresh(test_weapon)
+    # Add equipment to inventory to simulate already owned
+    inv = Inventory(character_id=test_character.id, item_id=test_weapon.id)
     db_session.add(inv)
     db_session.commit()
     test_character.gold = 200
@@ -59,15 +105,15 @@ def test_purchase_already_owned(client, db_session, test_user, test_character, t
     with client:
         client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
         response = client.post('/student/shop/buy', json={
-            "item_id": test_equipment.id,
+            "item_id": test_weapon.id,
             "item_type": "equipment"
         })
     assert response.status_code == 400
     assert b"already owned" in response.data.lower()
 
 # --- Purchase: Level Restriction ---
-def test_purchase_level_restriction(client, db_session, test_user, test_character, test_equipment):
-    test_equipment.level_requirement = 10
+def test_purchase_level_restriction(client, db_session, test_user, test_character, test_weapon):
+    test_weapon.level_requirement = 10
     db_session.commit()
     test_character.level = 1
     test_character.gold = 200
@@ -75,23 +121,24 @@ def test_purchase_level_restriction(client, db_session, test_user, test_characte
     with client:
         client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
         response = client.post('/student/shop/buy', json={
-            "item_id": test_equipment.id,
+            "item_id": test_weapon.id,
             "item_type": "equipment"
         })
     assert response.status_code == 400
     assert b"level" in response.data.lower()
 
 # --- Purchase: Class Restriction ---
-def test_purchase_class_restriction(client, db_session, test_user, test_character, test_equipment):
-    test_equipment.class_restriction = "Sorcerer"
+def test_purchase_class_restriction(client, db_session, test_user, test_character, test_weapon):
+    test_weapon.class_restriction = "Sorcerer"
     db_session.commit()
     test_character.character_class = "Warrior"
+    test_character.level = test_weapon.level_requirement
     test_character.gold = 200
     db_session.commit()
     with client:
         client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
         response = client.post('/student/shop/buy', json={
-            "item_id": test_equipment.id,
+            "item_id": test_weapon.id,
             "item_type": "equipment"
         })
     assert response.status_code == 400
@@ -111,11 +158,14 @@ def test_purchase_invalid_item_id(client, db_session, test_user, test_character)
     assert b"item not found" in response.data.lower()
 
 # --- Equip Item ---
-def test_equip_item(client, db_session, test_user, test_character, equipment_with_item):
+def test_equip_item(client, db_session, test_user, test_character, test_weapon):
     from app.models.equipment import Inventory
+    test_character.character_class = 'Warrior'
+    test_character.level = 10
+    db_session.commit()
     db_session.refresh(test_character)
-    db_session.refresh(equipment_with_item)
-    inv = Inventory(character_id=test_character.id, item_id=equipment_with_item.id)
+    db_session.refresh(test_weapon)
+    inv = Inventory(character_id=test_character.id, item_id=test_weapon.id)
     db_session.add(inv)
     db_session.commit()
     with client:
@@ -129,11 +179,11 @@ def test_equip_item(client, db_session, test_user, test_character, equipment_wit
     assert inv.is_equipped is True
 
 # --- Unequip Item ---
-def test_unequip_item(client, db_session, test_user, test_character, test_equipment):
+def test_unequip_item(client, db_session, test_user, test_character, test_weapon):
     from app.models.equipment import Inventory
     db_session.refresh(test_character)
-    db_session.refresh(test_equipment)
-    inv = Inventory(character_id=test_character.id, item_id=test_equipment.id, is_equipped=True)
+    db_session.refresh(test_weapon)
+    inv = Inventory(character_id=test_character.id, item_id=test_weapon.id, is_equipped=True)
     db_session.add(inv)
     db_session.commit()
     with client:
@@ -146,7 +196,7 @@ def test_unequip_item(client, db_session, test_user, test_character, test_equipm
     assert inv.is_equipped is False
 
 # --- Equip Item Not in Inventory ---
-def test_equip_item_not_in_inventory(client, db_session, test_user, test_character, test_equipment):
+def test_equip_item_not_in_inventory(client, db_session, test_user, test_character, test_weapon):
     with client:
         client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
         response = client.patch('/student/equipment/equip', json={
@@ -157,42 +207,25 @@ def test_equip_item_not_in_inventory(client, db_session, test_user, test_charact
     assert b"item not found" in response.data.lower()
 
 # --- Equip Two Items in Same Slot (should unequip previous) ---
-def test_equip_two_items_same_slot(client, db_session, test_user, test_character, test_equipment, test_item):
+def test_equip_two_items_same_slot(client, db_session, test_user, test_character, test_weapon):
     from app.models.equipment import Equipment, Inventory, EquipmentType, EquipmentSlot
-    from app.models.item import Item
+    test_character.character_class = 'Warrior'
+    test_character.level = 10
+    db_session.commit()
     db_session.refresh(test_character)
-    db_session.refresh(test_equipment)
-    # Create two items and two weapons
-    item1 = test_item
-    weapon1 = test_equipment
-    # Ensure Item exists for weapon1 (should already exist via fixture)
-    # Create a second weapon and matching item with a unique ID
+    db_session.refresh(test_weapon)
+    # Create two weapons
+    weapon1 = test_weapon
     weapon2 = Equipment(
         name='Test Sword 2',
-        type=EquipmentType.WEAPON,
-        slot=EquipmentSlot.MAIN_HAND,
-        cost=50
+        type=EquipmentType.WEAPON.value,
+        slot=EquipmentSlot.MAIN_HAND.value,
+        cost=50,
+        class_restriction='Warrior',
+        level_requirement=1
     )
     db_session.add(weapon2)
     db_session.commit()
-    # Only create Item if it doesn't exist
-    existing_item = Item.query.get(weapon2.id)
-    if not existing_item:
-        item2 = Item(
-            id=weapon2.id,
-            name="Test Sword 2",
-            description="A second test sword.",
-            type="weapon",
-            tier=1,
-            slot="main_hand",
-            class_restriction=None,
-            level_requirement=1,
-            price=50,
-            image_path=None
-        )
-        db_session.add(item2)
-        db_session.commit()
-    # Now proceed with the rest of the test logic
     # Add both to inventory
     inv1 = Inventory(character_id=test_character.id, item_id=weapon1.id, is_equipped=True)
     inv2 = Inventory(character_id=test_character.id, item_id=weapon2.id, is_equipped=False)
@@ -223,9 +256,9 @@ def test_purchase_missing_payload(client, db_session, test_user, test_character)
 
 # --- Teacher Purchase Log (if endpoint exists) ---
 # Uncomment and adjust if you have a /teacher/purchases endpoint and teacher_user fixture
-# def test_teacher_purchase_log(client, db_session, teacher_user, test_student, test_equipment):
+# def test_teacher_purchase_log(client, db_session, teacher_user, test_student, test_weapon):
 #     from app.models.shop import ShopPurchase
-#     purchase = ShopPurchase(student_id=test_student.id, character_id=1, item_id=test_equipment.id, gold_spent=100)
+#     purchase = ShopPurchase(student_id=test_student.id, character_id=1, item_id=test_weapon.id, gold_spent=100)
 #     db_session.add(purchase)
 #     db_session.commit()
 #     client.post('/login', data={'username': teacher_user.username, 'password': 'password'})
@@ -234,11 +267,11 @@ def test_purchase_missing_payload(client, db_session, test_user, test_character)
 #     assert b"Test Sword" in response.data 
 
 # --- Unequip Weapon ---
-def test_unequip_weapon(client, db_session, test_user, test_character, test_equipment):
+def test_unequip_weapon(client, db_session, test_user, test_character, test_weapon):
     db_session.rollback()
     from app.models.equipment import Inventory, EquipmentType, EquipmentSlot
     # Equip a weapon for the character
-    inv = Inventory(character_id=test_character.id, item_id=test_equipment.id, is_equipped=True)
+    inv = Inventory(character_id=test_character.id, item_id=test_weapon.id, is_equipped=True)
     db_session.add(inv)
     db_session.commit()
     with client:
@@ -251,36 +284,11 @@ def test_unequip_weapon(client, db_session, test_user, test_character, test_equi
     assert test_character.equipped_weapon is None
 
 # --- Unequip Armor ---
-def test_unequip_armor(client, db_session, test_user, test_character, test_equipment):
+def test_unequip_armor(client, db_session, test_user, test_character, test_armor):
     db_session.rollback()
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot, Inventory
-    from app.models.item import Item
     # Create and equip an armor
-    armor = Equipment(
-        name="Test Armor",
-        type=EquipmentType.ARMOR,
-        slot=EquipmentSlot.CHEST,
-        cost=50
-    )
-    db_session.add(armor)
-    db_session.commit()
-    # Create a matching Item for the armor if it doesn't exist
-    existing_item = Item.query.get(armor.id)
-    if not existing_item:
-        item = Item(
-            id=armor.id,
-            name="Test Armor",
-            description="A test armor.",
-            type="armor",
-            tier=1,
-            slot="chest",
-            class_restriction=None,
-            level_requirement=1,
-            price=50,
-            image_path=None
-        )
-        db_session.add(item)
-        db_session.commit()
+    armor = test_armor
     inv = Inventory(character_id=test_character.id, item_id=armor.id, is_equipped=True)
     db_session.add(inv)
     db_session.commit()
@@ -294,31 +302,11 @@ def test_unequip_armor(client, db_session, test_user, test_character, test_equip
     assert test_character.equipped_armor is None
 
 # --- Unequip Accessory ---
-def test_unequip_accessory(client, db_session, test_user, test_character, test_equipment):
+def test_unequip_accessory(client, db_session, test_user, test_character, test_accessory):
     db_session.rollback()
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot, Inventory
-    from app.models import db
     # Create and equip an accessory
-    accessory = Equipment(
-        name="Test Ring",
-        type=EquipmentType.ACCESSORY,
-        slot=EquipmentSlot.RING,
-        cost=25
-    )
-    db_session.add(accessory)
-    db_session.commit()
-    item_table = db.Table('items', db.metadata, autoload_with=db.engine)
-    db_session.execute(item_table.insert().values(
-        id=accessory.id,
-        name="Test Ring",
-        description="A test ring.",
-        type="accessory",
-        tier=1,
-        slot="ring",
-        class_restriction=None,
-        price=25
-    ))
-    db_session.commit()
+    accessory = test_accessory
     inv = Inventory(character_id=test_character.id, item_id=accessory.id, is_equipped=True)
     db_session.add(inv)
     db_session.commit()
@@ -329,35 +317,4 @@ def test_unequip_accessory(client, db_session, test_user, test_character, test_e
         }, follow_redirects=True)
     assert response.status_code == 200
     db_session.refresh(test_character)
-    assert test_character.equipped_accessory is None
-
-@pytest.fixture
-def equipment_with_item(db_session):
-    from app.models.equipment import Equipment, EquipmentType, EquipmentSlot
-    from app.models.item import Item
-    equipment = Equipment(
-        name='Test Sword',
-        type=EquipmentType.WEAPON,
-        slot=EquipmentSlot.MAIN_HAND,
-        cost=100,
-        level_requirement=1
-    )
-    db_session.add(equipment)
-    db_session.commit()
-    # Create a matching Item row with the same ID if it doesn't exist
-    if not Item.query.get(equipment.id):
-        item = Item(
-            id=equipment.id,
-            name=equipment.name,
-            description="A test sword.",
-            type="weapon",
-            tier=1,
-            slot="main_hand",
-            class_restriction=None,
-            level_requirement=1,
-            price=equipment.cost,
-            image_path=None
-        )
-        db_session.add(item)
-        db_session.commit()
-    return equipment 
+    assert test_character.equipped_accessory is None 

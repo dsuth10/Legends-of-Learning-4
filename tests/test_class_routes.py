@@ -156,7 +156,7 @@ def test_student_roster_listing_filtering_sorting(client, db_session, teacher_us
     bob_email = None
     for i, (name, level, gold, xp, health, power, clan, char_class) in enumerate([
         ('Alice', 2, 100, 500, 90, 80, clan1, 'Warrior'),
-        ('Bob', 3, 200, 1500, 100, 90, clan2, 'Mage'),
+        ('Bob', 3, 200, 1500, 100, 90, clan2, 'Sorcerer'),
         ('Charlie', 1, 50, 200, 70, 60, None, 'Druid'),
     ]):
         unique = uuid.uuid4().hex[:8]
@@ -237,7 +237,7 @@ def test_student_roster_listing_filtering_sorting(client, db_session, teacher_us
     assert b'Alice Test' in resp.data and b'Bob Test' not in resp.data and b'Charlie Test' not in resp.data
 
     # Filter by character class
-    resp = client.get(f'/teacher/students?class_id={class_obj.id}&character_class=Mage')
+    resp = client.get(f'/teacher/students?class_id={class_obj.id}&character_class=Sorcerer')
     assert b'Bob Test' in resp.data and b'Alice Test' not in resp.data and b'Charlie Test' not in resp.data
 
     # Sorting by level desc

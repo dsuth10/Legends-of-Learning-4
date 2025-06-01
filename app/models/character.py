@@ -100,15 +100,15 @@ class Character(Base):
     # Helper properties for equipped items
     @property
     def equipped_weapon(self):
-        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'equipmenttype.weapon'), None)
+        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'weapon'), None)
 
     @property
     def equipped_armor(self):
-        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'equipmenttype.armor'), None)
+        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'armor'), None)
 
     @property
     def equipped_accessory(self):
-        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'equipmenttype.accessory'), None)
+        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'accessory'), None)
 
     @property
     def total_health(self):

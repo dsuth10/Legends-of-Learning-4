@@ -129,7 +129,6 @@ def test_batch_grant_item(client, db_session):
     from app.models.character import Character
     from app.models.audit import AuditLog, EventType
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot, Inventory
-    from app.models.item import Item
     # Setup
     teacher, classroom = create_teacher_and_class(db_session)
     student1, student_profile1, character1 = create_student_with_character(db_session, classroom.id, name='StudentA', char_name='HeroA')
@@ -137,26 +136,11 @@ def test_batch_grant_item(client, db_session):
     # Create equipment item
     equipment = Equipment(
         name='Test Sword',
-        type=EquipmentType.WEAPON,
-        slot=EquipmentSlot.MAIN_HAND,
+        type=EquipmentType.WEAPON.value,
+        slot=EquipmentSlot.MAIN_HAND.value,
         cost=100
     )
     db_session.add(equipment)
-    db_session.commit()
-    # Create a matching Item row with the same ID
-    item = Item(
-        id=equipment.id,
-        name=equipment.name,
-        description="A test sword.",
-        type="weapon",
-        tier=1,
-        slot="main_hand",
-        class_restriction=None,
-        level_requirement=1,
-        price=equipment.cost,
-        image_path=None
-    )
-    db_session.add(item)
     db_session.commit()
     login(client, teacher.username, 'password123')
     # Perform batch grant-item

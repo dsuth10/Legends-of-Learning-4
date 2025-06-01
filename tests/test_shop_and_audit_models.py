@@ -52,8 +52,8 @@ def test_equipment(db_session):
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot
     equipment = Equipment(
         name='Test Sword',
-        type=EquipmentType.WEAPON,
-        slot=EquipmentSlot.MAIN_HAND,
+        type=EquipmentType.WEAPON.value,
+        slot=EquipmentSlot.MAIN_HAND.value,
         cost=100
     )
     db_session.add(equipment)
@@ -73,73 +73,14 @@ def test_ability(db_session):
     return ability
 
 @pytest.fixture
-def equipment_with_item(db_session):
-    from app.models.equipment import Equipment, EquipmentType, EquipmentSlot
-    from app.models.item import Item
-    equipment = Equipment(
-        name='Test Sword',
-        type=EquipmentType.WEAPON,
-        slot=EquipmentSlot.MAIN_HAND,
-        cost=100
-    )
-    db_session.add(equipment)
-    db_session.commit()
-    # Create a matching Item row with the same ID if it doesn't exist
-    if not Item.query.get(equipment.id):
-        item = Item(
-            id=equipment.id,
-            name=equipment.name,
-            description="A test sword.",
-            type="weapon",
-            tier=1,
-            slot="main_hand",
-            class_restriction=None,
-            level_requirement=1,
-            price=equipment.cost,
-            image_path=None
-        )
-        db_session.add(item)
-        db_session.commit()
-    return equipment
-
-@pytest.fixture
-def test_ability_with_item(db_session):
-    from app.models.ability import Ability, AbilityType
-    from app.models.item import Item
-    ability = Ability(
-        name='Test Ability',
-        type=AbilityType.ATTACK,
-        cost=50
-    )
-    db_session.add(ability)
-    db_session.commit()
-    # Create a matching Item row with the same ID if it doesn't exist
-    if not Item.query.get(ability.id):
-        item = Item(
-            id=ability.id,
-            name=ability.name,
-            description="A test ability.",
-            type="ability",
-            tier=1,
-            slot=None,
-            class_restriction=None,
-            level_requirement=1,
-            price=ability.cost,
-            image_path=None
-        )
-        db_session.add(item)
-        db_session.commit()
-    return ability
-
-@pytest.fixture
-def test_shop_purchase(db_session, test_character, test_student, equipment_with_item):
+def test_shop_purchase(db_session, test_character, test_student, test_equipment):
     from app.models.shop import ShopPurchase, PurchaseType
     purchase = ShopPurchase(
         character_id=test_character.id,
         student_id=test_student.id,
         purchase_type=PurchaseType.EQUIPMENT.value,
-        item_id=equipment_with_item.id,
-        gold_spent=equipment_with_item.cost
+        item_id=test_equipment.id,
+        gold_spent=test_equipment.cost
     )
     db_session.add(purchase)
     db_session.commit()
@@ -154,27 +95,27 @@ def test_audit_log(db_session, test_user):
     return log
 
 class TestShopPurchase:
-    def test_equipment_purchase_creation(self, db_session, test_character, equipment_with_item, test_student):
+    def test_equipment_purchase_creation(self, db_session, test_character, test_equipment, test_student):
         from app.models.shop import ShopPurchase, PurchaseType
         purchase = ShopPurchase(
             character_id=test_character.id,
             student_id=test_student.id,
             purchase_type=PurchaseType.EQUIPMENT.value,
-            item_id=equipment_with_item.id,
-            gold_spent=equipment_with_item.cost
+            item_id=test_equipment.id,
+            gold_spent=test_equipment.cost
         )
         db_session.add(purchase)
         db_session.commit()
         assert purchase.id is not None
 
-    def test_ability_purchase_creation(self, db_session, test_character, test_ability_with_item, test_student):
+    def test_ability_purchase_creation(self, db_session, test_character, test_ability, test_student):
         from app.models.shop import ShopPurchase, PurchaseType
         purchase = ShopPurchase(
             character_id=test_character.id,
             student_id=test_student.id,
             purchase_type=PurchaseType.ABILITY.value,
-            item_id=test_ability_with_item.id,
-            gold_spent=test_ability_with_item.cost
+            item_id=test_ability.id,
+            gold_spent=test_ability.cost
         )
         db_session.add(purchase)
         db_session.commit()
@@ -191,33 +132,33 @@ class TestShopPurchase:
                 gold_spent=10
             )
 
-    def test_negative_gold_spent(self, db_session, test_character, equipment_with_item, test_student):
+    def test_negative_gold_spent(self, db_session, test_character, test_equipment, test_student):
         from app.models.shop import ShopPurchase, PurchaseType
         with pytest.raises(ValueError):
             ShopPurchase(
                 character_id=test_character.id,
                 student_id=test_student.id,
                 purchase_type=PurchaseType.EQUIPMENT.value,
-                item_id=equipment_with_item.id,
+                item_id=test_equipment.id,
                 gold_spent=-5
             )
 
-    def test_get_character_purchases(self, db_session, test_character, equipment_with_item, test_ability_with_item, test_student):
+    def test_get_character_purchases(self, db_session, test_character, test_equipment, test_ability, test_student):
         from app.models.shop import ShopPurchase, PurchaseType
         # Add purchases
         purchase1 = ShopPurchase(
             character_id=test_character.id,
             student_id=test_student.id,
             purchase_type=PurchaseType.EQUIPMENT.value,
-            item_id=equipment_with_item.id,
-            gold_spent=equipment_with_item.cost
+            item_id=test_equipment.id,
+            gold_spent=test_equipment.cost
         )
         purchase2 = ShopPurchase(
             character_id=test_character.id,
             student_id=test_student.id,
             purchase_type=PurchaseType.ABILITY.value,
-            item_id=test_ability_with_item.id,
-            gold_spent=test_ability_with_item.cost
+            item_id=test_ability.id,
+            gold_spent=test_ability.cost
         )
         db_session.add_all([purchase1, purchase2])
         db_session.commit()

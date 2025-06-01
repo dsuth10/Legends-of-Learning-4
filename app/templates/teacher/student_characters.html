@@ -56,7 +56,7 @@
               <label for="grantItemSelect" class="form-label">Select Item to Grant:</label>
               <select id="grantItemSelect" class="form-select">
                 {% for item in all_equipment %}
-                  <option value="{{ item.id }}">{{ item.name }} ({{ item.type.value.title() }}, {{ item.slot.value.title() }})</option>
+                  <option value="{{ item.id }}">{{ item.name }} ({{ item.type.title() }}, {{ item.slot.title() }})</option>
                 {% endfor %}
               </select>
             </div>

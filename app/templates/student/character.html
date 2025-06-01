@@ -61,7 +61,7 @@
                 <h4>Inventory (Unequipped Items)</h4>
                 <ul class="list-group mb-3" id="inventory-list">
                   {% for item in main_character.inventory_items if not item.is_equipped %}
-                    <li class="equipment-item list-group-item" data-id="{{ item.id }}" data-slot="{{ item.equipment.type.value }}" title="{{ item.equipment.description }} | +H:{{ item.equipment.health_bonus }} +S:{{ item.equipment.strength_bonus }} +D:{{ item.equipment.defense_bonus }}">
+                    <li class="equipment-item list-group-item" data-id="{{ item.id }}" data-slot="{{ item.equipment.slot }}" title="{{ item.equipment.description }} | +H:{{ item.equipment.health_bonus }} +S:{{ item.equipment.strength_bonus }} +D:{{ item.equipment.defense_bonus }}">
                       <img src="{{ item.equipment.image_url or '/static/images/default_item.png' }}" alt="{{ item.equipment.name }}" style="width:32px;height:32px;margin-right:8px;vertical-align:middle;">
                       {{ item.equipment.name }}
                     </li>
@@ -89,15 +89,10 @@ function equipHandler(slot) {
   return function(evt) {
     const itemId = evt.item.dataset.id;
     const itemSlot = evt.item.dataset.slot;
-    if (itemSlot !== slot) {
-      evt.from.appendChild(evt.item);
-      alert(`You can only equip ${slot} items in the ${slot} slot.`);
-      return;
-    }
     fetch('/student/equipment/equip', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inventory_id: itemId, slot: slot })
+      body: JSON.stringify({ inventory_id: itemId, slot: itemSlot })
     })
     .then(r => r.json())
     .then(resp => {

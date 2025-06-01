@@ -26,8 +26,8 @@ class Equipment(Base):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
     description = db.Column(db.Text)
-    type = db.Column(db.Enum(EquipmentType), nullable=False)
-    slot = db.Column(db.Enum(EquipmentSlot), nullable=False)
+    type = db.Column(db.String(16), nullable=False)
+    slot = db.Column(db.String(16), nullable=False)
     level_requirement = db.Column(db.Integer, default=1, nullable=False)
     
     # Stats
@@ -40,6 +40,7 @@ class Equipment(Base):
     is_tradeable = db.Column(db.Boolean, default=True, nullable=False)
     cost = db.Column(db.Integer, default=0, nullable=False)  # Cost in gold to purchase
     image_url = db.Column(db.String(256), nullable=True)
+    class_restriction = db.Column(db.String(32), nullable=True)
     
     def __init__(self, name, type, slot, cost=0, **kwargs):
         super().__init__(**kwargs)
@@ -49,7 +50,7 @@ class Equipment(Base):
         self.cost = cost
     
     def __repr__(self):
-        return f'<Equipment {self.name} ({self.type.value})>'
+        return f'<Equipment {self.name} ({self.type})>'
 
 class Inventory(Base):
     """Inventory model for tracking character equipment ownership."""

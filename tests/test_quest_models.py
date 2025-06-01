@@ -95,8 +95,8 @@ def equipment(db_session):
     equipment = Equipment(
         name="TestSword",
         description="A test sword",
-        type=EquipmentType.WEAPON,
-        slot=EquipmentSlot.MAIN_HAND,
+        type=EquipmentType.WEAPON.value,
+        slot=EquipmentSlot.MAIN_HAND.value,
         cost=100
     )
     equipment.stats = {"attack": 10}
@@ -215,37 +215,6 @@ def test_quest(db_session, test_classroom):
     db_session.add(quest)
     db_session.commit()
     return quest
-
-@pytest.fixture
-def equipment_with_item(db_session):
-    from app.models.equipment import Equipment, EquipmentType, EquipmentSlot
-    from app.models.item import Item
-    equipment = Equipment(
-        name="TestSword",
-        description="A test sword",
-        type=EquipmentType.WEAPON,
-        slot=EquipmentSlot.MAIN_HAND,
-        cost=100
-    )
-    db_session.add(equipment)
-    db_session.commit()
-    # Create a matching Item row with the same ID if it doesn't exist
-    if not Item.query.get(equipment.id):
-        item = Item(
-            id=equipment.id,
-            name=equipment.name,
-            description="A test sword.",
-            type="weapon",
-            tier=1,
-            slot="main_hand",
-            class_restriction=None,
-            level_requirement=1,
-            price=equipment.cost,
-            image_path=None
-        )
-        db_session.add(item)
-        db_session.commit()
-    return equipment
 
 class TestQuest:
     def test_create_quest(self, db_session):
@@ -415,12 +384,12 @@ class TestReward:
         db_session.refresh(character)
         assert character.gold == initial_gold + 50
     
-    def test_equipment_reward(self, db_session, quest, character, equipment_with_item):
+    def test_equipment_reward(self, db_session, quest, character, equipment):
         from app.models.quest import Reward, RewardType
         reward = Reward(
             quest_id=quest.id,
             type=RewardType.EQUIPMENT,
-            item_id=equipment_with_item.id
+            item_id=equipment.id
         )
         db_session.add(reward)
         db_session.commit()
@@ -512,32 +481,15 @@ class TestConsequence:
 def test_quest_model_logic(db_session, test_clan, test_character):
     from app.models.quest import Quest, QuestLog
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot
-    from app.models.item import Item
-    # Create equipment and matching item
+    # Create equipment
     equipment = Equipment(
         name='Test Sword',
-        type=EquipmentType.WEAPON,
-        slot=EquipmentSlot.MAIN_HAND,
+        type=EquipmentType.WEAPON.value,
+        slot=EquipmentSlot.MAIN_HAND.value,
         cost=100
     )
     db_session.add(equipment)
     db_session.commit()
-    # Create a matching Item row with the same ID if it doesn't exist
-    if not Item.query.get(equipment.id):
-        item = Item(
-            id=equipment.id,
-            name=equipment.name,
-            description="A test sword.",
-            type="weapon",
-            tier=1,
-            slot="main_hand",
-            class_restriction=None,
-            level_requirement=1,
-            price=equipment.cost,
-            image_path=None
-        )
-        db_session.add(item)
-        db_session.commit()
     # ... rest of the test ...
 
 def test_quest_creation(test_quest):

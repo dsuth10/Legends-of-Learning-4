@@ -4,6 +4,16 @@ from sqlalchemy.exc import IntegrityError
 import uuid
 
 @pytest.fixture
+def test_equipment(db_session):
+    from app.models.equipment import Equipment
+    eq = db_session.query(Equipment).first()
+    if eq is None:
+        eq = Equipment(name='Test Sword', type='weapon', slot='main_hand', cost=100)
+        db_session.add(eq)
+        db_session.commit()
+    return eq
+
+@pytest.fixture
 def student_user(db_session):
     from app.models.user import User, UserRole
     from app.models.student import Student
@@ -72,37 +82,6 @@ def test_clan(db_session, test_classroom):
     return clan
 
 @pytest.fixture
-def equipment_with_item(db_session):
-    from app.models.equipment import Equipment, EquipmentType, EquipmentSlot
-    from app.models.item import Item
-    equipment = Equipment(
-        name='Test Sword',
-        type=EquipmentType.WEAPON,
-        slot=EquipmentSlot.MAIN_HAND,
-        strength_bonus=5,
-        cost=100
-    )
-    db_session.add(equipment)
-    db_session.commit()
-    # Create a matching Item row with the same ID if it doesn't exist
-    if not Item.query.get(equipment.id):
-        item = Item(
-            id=equipment.id,
-            name=equipment.name,
-            description="A test sword.",
-            type="weapon",
-            tier=1,
-            slot="main_hand",
-            class_restriction=None,
-            level_requirement=1,
-            price=equipment.cost,
-            image_path=None
-        )
-        db_session.add(item)
-        db_session.commit()
-    return equipment
-
-@pytest.fixture
 def test_ability(db_session):
     from app.models.ability import Ability, AbilityType
     ability = Ability(
@@ -135,13 +114,14 @@ def test_classroom(db_session, test_user):
     return classroom
 
 @pytest.fixture
-def test_clan(db_session, test_classroom):
-    from app.models.clan import Clan
-    unique_id = uuid.uuid4().hex
-    clan = Clan(name=f'Test Clan {unique_id}', class_id=test_classroom.id)
-    db_session.add(clan)
-    db_session.commit()
-    return clan
+def test_weapon(db_session):
+    from app.models.equipment import Equipment
+    weapon = db_session.query(Equipment).filter_by(type='weapon').first()
+    if weapon is None:
+        weapon = Equipment(name='Test Sword', type='weapon', slot='main_hand', cost=100)
+        db_session.add(weapon)
+        db_session.commit()
+    return weapon
 
 def test_character_creation(test_character):
     assert test_character.id is not None
@@ -177,7 +157,7 @@ def test_clan_management(test_clan, test_character):
     if test_character.clan_id is not None:
         print('[DEBUG] Character clan_id after removal:', test_character.clan_id)
 
-def test_equipment_and_inventory(test_character, equipment_with_item):
+def test_equipment_and_inventory(test_character, test_weapon):
     from app.models.equipment import Inventory, Equipment, EquipmentType, EquipmentSlot
     from app.models import db
     # Debug: print equipment table columns
@@ -191,7 +171,7 @@ def test_equipment_and_inventory(test_character, equipment_with_item):
     conn.close()
     inventory_item = Inventory(
         character_id=test_character.id,
-        item_id=equipment_with_item.id
+        item_id=test_weapon.id
     )
     inventory_item.save()
     assert inventory_item in test_character.inventory_items.all()
@@ -200,26 +180,10 @@ def test_equipment_and_inventory(test_character, equipment_with_item):
     assert inventory_item.is_equipped
     another_weapon = Equipment(
         name='Another Sword',
-        type=EquipmentType.WEAPON,
-        slot=EquipmentSlot.MAIN_HAND
+        type=EquipmentType.WEAPON.value,
+        slot=EquipmentSlot.MAIN_HAND.value
     )
     db.session.add(another_weapon)
-    db.session.commit()
-    # Create a matching Item for the new weapon
-    from app.models.item import Item
-    item2 = Item(
-        id=another_weapon.id,
-        name=another_weapon.name,
-        description="Another test sword.",
-        type="weapon",
-        tier=1,
-        slot="main_hand",
-        class_restriction=None,
-        level_requirement=1,
-        price=100,
-        image_path=None
-    )
-    db.session.add(item2)
     db.session.commit()
     another_inventory = Inventory(
         character_id=test_character.id,

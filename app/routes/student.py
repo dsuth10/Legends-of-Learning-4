@@ -79,19 +79,20 @@ def shop():
             # Get owned ability IDs
             if hasattr(main_character, 'abilities'):
                 owned_ability_ids = set(a.ability_id for a in main_character.abilities)
-    # Query all items and abilities for the shop
-    items = Equipment.query.all()
-    ability_items = Ability.query.all()
-    # Format items for the template
-    items_list = []
+    # Always define these, even if main_character is None
     char_gold = main_character.gold if main_character else 0
     char_level = main_character.level if main_character else 1
     char_class = main_character.character_class if main_character else ''
+    # Query all items and abilities for the shop
+    items = Equipment.query.all()
+    print(f"[DEBUG] Shop route: Equipment.query.all() count = {len(items)}")
+    items_list = []
     for eq in items:
         owned = eq.id in owned_item_ids
         can_afford = char_gold >= eq.cost
-        unlocked = (char_level >= getattr(eq, 'level_requirement', 1)) and (not hasattr(eq, 'class_restriction') or not eq.class_restriction or eq.class_restriction == char_class)
+        unlocked = (char_level >= getattr(eq, 'level_requirement', 1)) and (not eq.class_restriction or eq.class_restriction.lower() == char_class.lower())
         can_buy = (not owned) and can_afford and unlocked
+        print(f"[DEBUG] Shop filter: name={eq.name}, owned={owned}, can_afford={can_afford}, unlocked={unlocked}, can_buy={can_buy}, class_restriction={eq.class_restriction}, char_class={char_class}")
         items_list.append({
             'id': eq.id,
             'name': eq.name,
@@ -106,6 +107,26 @@ def shop():
             'can_afford': can_afford,
             'unlocked': unlocked,
             'can_buy': can_buy,
+        })
+    ability_items = Ability.query.all()
+    # Format items for the template
+    items_list = []
+    print(f"[DEBUG] /student/shop: char_class={char_class}, char_level={char_level}, gold={char_gold}")
+    for eq in items:
+        items_list.append({
+            'id': eq.id,
+            'name': eq.name,
+            'price': eq.cost,
+            'image': eq.image_url or '/static/images/default_item.png',
+            'category': 'equipment',
+            'tier': getattr(eq, 'rarity', 1),
+            'description': eq.description or '',
+            'level_requirement': getattr(eq, 'level_requirement', 1),
+            'class_restriction': getattr(eq, 'class_restriction', None),
+            'owned': eq.id in owned_item_ids,
+            'can_afford': char_gold >= eq.cost,
+            'unlocked': char_level >= getattr(eq, 'level_requirement', 1),
+            'can_buy': (not eq.id in owned_item_ids) and (char_gold >= eq.cost) and (char_level >= getattr(eq, 'level_requirement', 1)) and (not eq.class_restriction or eq.class_restriction.lower() == char_class.lower()),
         })
     for ab in ability_items:
         owned = ab.id in owned_ability_ids
@@ -288,20 +309,9 @@ def api_equip_item():
     item = Inventory.query.filter_by(id=inventory_id, character_id=main_character.id).first()
     if not item:
         return jsonify({'success': False, 'message': 'Item not found.'}), 404
-    # Validate slot type
-    slot_map = {
-        'weapon': [EquipmentSlot.MAIN_HAND, EquipmentSlot.OFF_HAND],
-        'armor': [EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET],
-        'accessory': [EquipmentSlot.NECK, EquipmentSlot.RING],
-    }
-    # Map slot string to type
-    slot_type = None
-    for t, slots in slot_map.items():
-        if item.item.slot in slots and slot == t:
-            slot_type = t
-            break
-    if not slot_type or slot_type != item.item.type.value:
-        return jsonify({'success': False, 'message': f'Cannot equip {item.item.type.value} in {slot} slot.'}), 400
+    # Validate slot directly
+    if item.item.slot != slot:
+        return jsonify({'success': False, 'message': f'Cannot equip {item.item.type} in {slot} slot.'}), 400
     # Unequip any currently equipped item in the same slot
     for inv in main_character.inventory_items:
         if inv.is_equipped and inv.item.slot == item.item.slot:
@@ -400,7 +410,7 @@ def shop_buy():
         return jsonify({'success': False, 'message': f'Level {level_req} required.'}), 400
     # Validate class restriction (equipment only)
     class_restr = getattr(item, 'class_restriction', None)
-    if purchase_type == PurchaseType.EQUIPMENT.value and class_restr and class_restr != character.character_class:
+    if purchase_type == PurchaseType.EQUIPMENT.value and class_restr and class_restr.lower() != character.character_class.lower():
         return jsonify({'success': False, 'message': f'Class restriction: {class_restr}.'}), 400
     # Deduct gold
     character.gold -= cost
