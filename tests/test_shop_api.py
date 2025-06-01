@@ -172,7 +172,7 @@ def test_equip_item(client, db_session, test_user, test_character, test_weapon):
         client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
         response = client.patch('/student/equipment/equip', json={
             "inventory_id": inv.id,
-            "slot": "weapon"
+            "slot": test_weapon.slot
         })
     assert response.status_code == 200
     db_session.refresh(inv)
@@ -201,7 +201,7 @@ def test_equip_item_not_in_inventory(client, db_session, test_user, test_charact
         client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
         response = client.patch('/student/equipment/equip', json={
             "inventory_id": 99999,
-            "slot": "weapon"
+            "slot": "main_hand"
         })
     assert response.status_code == 404
     assert b"item not found" in response.data.lower()
@@ -236,7 +236,7 @@ def test_equip_two_items_same_slot(client, db_session, test_user, test_character
         # Equip second weapon
         response = client.patch('/student/equipment/equip', json={
             "inventory_id": inv2.id,
-            "slot": "weapon"
+            "slot": weapon2.slot
         })
     assert response.status_code == 200
     db_session.refresh(inv1)
