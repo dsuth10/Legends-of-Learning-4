@@ -27,6 +27,7 @@ from flask_jwt_extended import jwt_required
 from app.models.clan_progress import ClanProgressHistory
 from app.services.clan_metrics import calculate_clan_metrics
 from .blueprint import teacher_bp, teacher_required, student_required
+from .quests import teacher_quests_bp
 
 __all__ = [
     'teacher_bp',
@@ -47,3 +48,6 @@ from . import students_api  # noqa: F401
 
 # All duplicated route blocks have been removed from this file.
 # All teacher routes are now handled in their respective submodules.
+
+def init_app(app):
+    app.register_blueprint(teacher_quests_bp)

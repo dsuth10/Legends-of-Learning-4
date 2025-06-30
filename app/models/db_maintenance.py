@@ -4,7 +4,7 @@ import time
 import os
 from flask import current_app
 
-LATEST_ALEMBIC_REVISION = '2991d84147f0'
+LATEST_ALEMBIC_REVISION = 'yyyy'
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'instance', 'legends.db')
 

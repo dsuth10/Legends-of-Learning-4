@@ -1,10 +1,34 @@
-{% extends "teacher/base_dashboard.html" %}
-{% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">Quests</li>
-{% endblock %}
-{% block dashboard_content %}
-<div class="alert alert-info mt-4">
-  <h4 class="alert-heading">Quests</h4>
-  <p>This feature is coming soon.</p>
-</div>
+{% extends "base.html" %}
+{% block content %}
+<h2>Quests</h2>
+<a href="{{ url_for('teacher_quests.create_quest') }}" class="btn btn-primary mb-3">Create New Quest</a>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Gold Reward</th>
+      <th>XP Reward</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for quest in quests %}
+    <tr>
+      <td>{{ quest.title }}</td>
+      <td>{{ quest.type }}</td>
+      <td>{{ quest.description }}</td>
+      <td>{{ quest.rewards.filter_by(type='gold').first().amount if quest.rewards.filter_by(type='gold').first() else 0 }}</td>
+      <td>{{ quest.rewards.filter_by(type='experience').first().amount if quest.rewards.filter_by(type='experience').first() else 0 }}</td>
+      <td>
+        <a href="{{ url_for('teacher_quests.edit_quest', quest_id=quest.id) }}" class="btn btn-sm btn-warning">Edit</a>
+        <form action="{{ url_for('teacher_quests.delete_quest', quest_id=quest.id) }}" method="post" style="display:inline;">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 {% endblock %} 

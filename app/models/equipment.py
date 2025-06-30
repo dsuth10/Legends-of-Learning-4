@@ -67,7 +67,7 @@ class Inventory(Base):
     # Relationships
     character = db.relationship('Character', backref=db.backref('inventory_items', lazy='dynamic', cascade='all, delete-orphan'))
     item = db.relationship('Equipment')
-    equipment = db.relationship('Equipment', primaryjoin='Inventory.item_id == Equipment.id', foreign_keys='Inventory.item_id')
+    equipment = db.relationship('Equipment', primaryjoin='Inventory.item_id == Equipment.id', foreign_keys='Inventory.item_id', overlaps="item")
     
     __table_args__ = (
         db.Index('idx_inventory_character', 'character_id'),  # For looking up character's inventory

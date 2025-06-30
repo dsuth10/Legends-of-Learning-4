@@ -114,12 +114,6 @@ def dashboard():
 def shop():
     return render_template('teacher/shop.html', active_page='shop')
 
-@teacher_bp.route('/quests')
-@login_required
-@teacher_required
-def quests():
-    return render_template('teacher/quests.html', active_page='quests')
-
 @teacher_bp.route('/analytics')
 @login_required
 @teacher_required

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ quest and "Edit" or "Create" }} Quest</h2>
+<form method="post">
+  <div class="mb-3">
+    <label for="title" class="form-label">Title</label>
+    <input type="text" class="form-control" name="title" id="title" value="{{ quest.title if quest else '' }}" required>
+  </div>
+  <div class="mb-3">
+    <label for="type" class="form-label">Type</label>
+    <select class="form-control" name="type" id="type">
+      <option value="daily" {% if quest and quest.type == 'daily' %}selected{% endif %}>Daily</option>
+      <option value="weekly" {% if quest and quest.type == 'weekly' %}selected{% endif %}>Weekly</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="description" class="form-label">Description</label>
+    <textarea class="form-control" name="description" id="description" required>{{ quest.description if quest else '' }}</textarea>
+  </div>
+  <div class="mb-3">
+    <label for="gold_reward" class="form-label">Gold Reward</label>
+    <input type="number" class="form-control" name="gold_reward" id="gold_reward" min="0" value="{{ gold_reward if gold_reward is defined else (quest.rewards.filter_by(type='gold').first().amount if quest and quest.rewards.filter_by(type='gold').first() else 0) }}">
+  </div>
+  <div class="mb-3">
+    <label for="xp_reward" class="form-label">XP Reward</label>
+    <input type="number" class="form-control" name="xp_reward" id="xp_reward" min="0" value="{{ xp_reward if xp_reward is defined else (quest.rewards.filter_by(type='experience').first().amount if quest and quest.rewards.filter_by(type='experience').first() else 0) }}">
+  </div>
+  <button type="submit" class="btn btn-success">Save</button>
+  <a href="{{ url_for('teacher_quests.list_quests') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %} 
