@@ -8,6 +8,10 @@ from app.models.quest import Quest
 from app.models.audit import AuditLog
 from app.models.user import User
 from app.models.character import Character
+from app.models.shop import ShopPurchase
+from app.models.student import Student
+from app.models.equipment import Equipment
+from app.models.ability import Ability
 import json
 from datetime import datetime, timedelta
 
@@ -176,4 +180,31 @@ def analytics_data():
 @login_required
 @teacher_required
 def backup():
-    return render_template('teacher/backup.html', active_page='backup') 
+    return render_template('teacher/backup.html', active_page='backup')
+
+@teacher_bp.route('/purchases')
+@login_required
+@teacher_required
+def purchase_log():
+    purchases = ShopPurchase.query.order_by(ShopPurchase.purchase_date.desc()).limit(100).all()
+    purchase_data = []
+    for p in purchases:
+        student = Student.query.get(p.student_id)
+        user = User.query.get(student.user_id) if student else None
+        item_name = None
+        if p.purchase_type == 'equipment':
+            item = Equipment.query.get(p.item_id)
+            item_name = item.name if item else 'Unknown Equipment'
+        elif p.purchase_type == 'ability':
+            item = Ability.query.get(p.item_id)
+            item_name = item.name if item else 'Unknown Ability'
+        else:
+            item_name = 'Unknown'
+        purchase_data.append({
+            'student': user.username if user else 'Unknown',
+            'item_name': item_name,
+            'item_type': p.purchase_type,
+            'gold_spent': p.gold_spent,
+            'date': p.purchase_date.strftime('%Y-%m-%d %H:%M'),
+        })
+    return render_template('teacher/purchase_log.html', purchases=purchase_data, active_page='purchase_log') 
