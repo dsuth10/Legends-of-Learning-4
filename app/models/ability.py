@@ -71,6 +71,7 @@ class CharacterAbility(Base):
     level = db.Column(db.Integer, default=1, nullable=False)  # Ability can be leveled up
     is_equipped = db.Column(db.Boolean, default=False, nullable=False)  # Some abilities might need to be "equipped" to be used
     learned_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime, nullable=True)  # Track when ability was last used
     # Relationships
     character = db.relationship('Character', back_populates='abilities')
     ability = db.relationship('Ability')

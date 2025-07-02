@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
-from sqlalchemy import String, Integer, Float, DateTime, ForeignKey
+from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, or_
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pydantic import BaseModel, Field
 
@@ -116,7 +116,15 @@ class Character(Base):
         for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
             if item and item.equipment and hasattr(item.equipment, 'health_bonus'):
                 bonus += item.equipment.health_bonus
-        return self.health + bonus
+        # Add active status effects
+        now = datetime.utcnow()
+        effect_bonus = sum(
+            effect.amount for effect in self.status_effects.filter(
+                StatusEffect.stat_affected == 'health',
+                StatusEffect.expires_at > now
+            )
+        )
+        return self.health + bonus + effect_bonus
 
     @property
     def total_strength(self):
@@ -124,7 +132,14 @@ class Character(Base):
         for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
             if item and item.equipment and hasattr(item.equipment, 'strength_bonus'):
                 bonus += item.equipment.strength_bonus
-        return self.strength + bonus
+        now = datetime.utcnow()
+        effect_bonus = sum(
+            effect.amount for effect in self.status_effects.filter(
+                StatusEffect.stat_affected == 'strength',
+                StatusEffect.expires_at > now
+            )
+        )
+        return self.strength + bonus + effect_bonus
 
     @property
     def total_defense(self):
@@ -132,7 +147,14 @@ class Character(Base):
         for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
             if item and item.equipment and hasattr(item.equipment, 'defense_bonus'):
                 bonus += item.equipment.defense_bonus
-        return self.defense + bonus
+        now = datetime.utcnow()
+        effect_bonus = sum(
+            effect.amount for effect in self.status_effects.filter(
+                StatusEffect.stat_affected == 'defense',
+                StatusEffect.expires_at > now
+            )
+        )
+        return self.defense + bonus + effect_bonus
 
     def to_dict(self):
         return {
@@ -167,4 +189,30 @@ class CharacterRead(CharacterBase):
     updated_at: datetime
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+class StatusEffect(db.Model):
+    __tablename__ = 'status_effects'
+    id = db.Column(db.Integer, primary_key=True)
+    character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=False)
+    effect_type = db.Column(db.String(32), nullable=False)  # e.g., 'buff', 'debuff', 'protect'
+    stat_affected = db.Column(db.String(32), nullable=False)  # e.g., 'defense', 'strength', 'health'
+    amount = db.Column(db.Integer, nullable=False)
+    expires_at = db.Column(DateTime, nullable=False)
+    source = db.Column(db.String(64), nullable=True)  # Ability or character name
+
+    character = db.relationship('Character', back_populates='status_effects')
+
+    def is_active(self):
+        return self.expires_at > datetime.utcnow()
+
+    def to_dict(self):
+        return {
+            'effect_type': self.effect_type,
+            'stat_affected': self.stat_affected,
+            'amount': self.amount,
+            'expires_at': self.expires_at.isoformat(),
+            'source': self.source
+        }
+
+Character.status_effects = db.relationship('StatusEffect', back_populates='character', lazy='dynamic', cascade='all, delete-orphan') 

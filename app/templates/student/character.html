@@ -73,6 +73,46 @@
                 <form method="POST" action="{{ url_for('student.gain_xp') }}">
                     <button type="submit" class="btn btn-warning">Gain 500 XP (Test Level Up)</button>
                 </form>
+                <h4>Equipped Abilities</h4>
+                <div id="abilities-section">
+                  {% if equipped_abilities %}
+                    <ul class="list-group mb-3">
+                      {% for ab in equipped_abilities %}
+                        {% set cooldown_remaining = 0 %}
+                        {% if ab.last_used_at and ab.cooldown %}
+                          {% set used_ts = ab.last_used_at | todatetime('utc') | unixtimestamp %}
+                          {% set cooldown_remaining = (used_ts + ab.cooldown) - now %}
+                          {% if cooldown_remaining < 0 %}{% set cooldown_remaining = 0 %}{% endif %}
+                        {% endif %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                          <div>
+                            <strong>{{ ab.name }}</strong> <span class="badge bg-info">{{ ab.type }}</span><br>
+                            <span class="text-muted small">{{ ab.description }}</span><br>
+                            <span class="text-muted">Power: {{ ab.power }} | Cooldown: {{ ab.cooldown }}s</span>
+                          </div>
+                          <div class="d-flex align-items-center">
+                            <select class="form-select ability-target-select me-2" style="width:auto;display:inline-block;" data-ability-id="{{ ab.id }}">
+                              <option value="{{ main_character.id }}">Self</option>
+                              {% for t in ability_targets %}
+                                <option value="{{ t.id }}">{{ t.name }} ({{ t.character_class }})</option>
+                              {% endfor %}
+                            </select>
+                            <button class="btn btn-primary use-ability-btn" data-ability-id="{{ ab.id }}" data-cooldown="{{ cooldown_remaining }}" {% if cooldown_remaining > 0 %}disabled{% endif %}>
+                              {% if cooldown_remaining > 0 %}
+                                Cooldown: <span class="cooldown-timer">{{ cooldown_remaining }}</span>s
+                              {% else %}
+                                Use
+                              {% endif %}
+                            </button>
+                          </div>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <div class="text-muted">No abilities equipped.</div>
+                  {% endif %}
+                  <div id="ability-feedback" class="mt-2"></div>
+                </div>
             </div>
         </div>
         <p>View and customize your character, equipment, and abilities here.</p>
@@ -145,6 +185,55 @@ Sortable.create(document.getElementById('accessory-slot'), {
   animation: 150,
   sort: false,
   onAdd: equipHandler('accessory')
+});
+</script>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+function updateCooldownTimers() {
+  document.querySelectorAll('.use-ability-btn').forEach(function(btn) {
+    var cooldown = parseInt(btn.getAttribute('data-cooldown'));
+    if (cooldown > 0) {
+      var timerSpan = btn.querySelector('.cooldown-timer');
+      if (timerSpan) {
+        cooldown--;
+        btn.setAttribute('data-cooldown', cooldown);
+        timerSpan.textContent = cooldown;
+        if (cooldown <= 0) {
+          btn.disabled = false;
+          btn.innerHTML = 'Use';
+        }
+      }
+    }
+  });
+}
+setInterval(updateCooldownTimers, 1000);
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.use-ability-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const abilityId = this.dataset.abilityId;
+      const targetSelect = document.querySelector('.ability-target-select[data-ability-id="' + abilityId + '"]');
+      const targetId = targetSelect ? targetSelect.value : {{ main_character.id }};
+      fetch('/student/abilities/use', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ability_id: abilityId, target_id: targetId, context: 'general' })
+      })
+      .then(r => r.json())
+      .then(resp => {
+        const feedback = document.getElementById('ability-feedback');
+        if (resp.success) {
+          feedback.innerHTML = `<div class='alert alert-success'>${resp.message}</div>`;
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          feedback.innerHTML = `<div class='alert alert-danger'>${resp.message}</div>`;
+        }
+      });
+    });
+  });
 });
 </script>
 {% endblock %} 

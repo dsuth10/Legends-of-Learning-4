@@ -1,7 +1,11 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 import uuid
+import json
+from app.models.character import Character, StatusEffect
+from app.models.ability import Ability, CharacterAbility
+from app import db
 
 @pytest.fixture
 def test_equipment(db_session):
@@ -14,25 +18,24 @@ def test_equipment(db_session):
     return eq
 
 @pytest.fixture
-def student_user(db_session):
+def student_user(client, db_session):
     from app.models.user import User, UserRole
-    from app.models.student import Student
     from app.models.classroom import Classroom
-    unique = uuid.uuid4().hex[:8]
-    teacher = User(username=f'testteacher_{unique}', email=f'teacher_{unique}@test.com', role=UserRole.TEACHER, password='password123')
-    teacher.save()
-    classroom = Classroom(name=f'TestClass_{unique}', teacher_id=teacher.id, join_code=f'JC{unique}')
-    classroom.save()
-    student = User(
-        username=f'teststudent_{unique}',
-        email=f'student_{unique}@test.com',
-        role=UserRole.STUDENT,
-        password='password123'
-    )
-    student.save()
-    student_profile = Student(user_id=student.id, class_id=classroom.id, level=1, gold=0, xp=0, health=100, power=10)
-    student_profile.save()
-    return student_profile
+    from app.models.student import Student
+    # Create a classroom for the student
+    classroom = Classroom(name='TestClass', teacher_id=1, join_code='TEST1234')
+    db.session.add(classroom)
+    db.session.commit()
+    # Create the user
+    u = User(username='student1', email='student1@example.com', role=UserRole.STUDENT)
+    u.set_password('testpass')
+    db.session.add(u)
+    db.session.commit()
+    # Create the student linked to the user and classroom
+    s = Student(user_id=u.id, class_id=classroom.id, level=1, gold=0, xp=0, health=100, power=10)
+    db.session.add(s)
+    db.session.commit()
+    return u
 
 @pytest.fixture
 def teacher_user(db_session):
@@ -122,6 +125,81 @@ def test_weapon(db_session):
         db_session.add(weapon)
         db_session.commit()
     return weapon
+
+@pytest.fixture
+def student_character(db_session, student_user):
+    c = Character(name='StudentChar', student_id=1, health=80, max_health=100, strength=10, defense=10)
+    db.session.add(c)
+    db.session.commit()
+    return c
+
+@pytest.fixture
+def student_ability(db_session):
+    a = Ability(name='Heal', type='heal', power=20, cooldown=5, duration=1)
+    db.session.add(a)
+    db.session.commit()
+    return a
+
+@pytest.fixture
+def student_char_ability(db_session, student_character, student_ability):
+    ca = CharacterAbility(character_id=student_character.id, ability_id=student_ability.id, is_equipped=True)
+    db.session.add(ca)
+    db.session.commit()
+    return ca
+
+@pytest.fixture
+def clanmate(db_session):
+    c = Character(name='Clanmate', student_id=2, health=60, max_health=100, strength=8, defense=8)
+    db.session.add(c)
+    db.session.commit()
+    return c
+
+@pytest.fixture
+def login_student(client, student_user):
+    client.post('/auth/login', data={'username': 'student1', 'password': 'testpass'}, follow_redirects=True)
+    return True
+
+@pytest.fixture
+def api_buff_ability(db_session):
+    a = Ability(name='APIBuff', type='buff', power=5, cooldown=2, duration=2)
+    db.session.add(a)
+    db.session.commit()
+    return a
+
+@pytest.fixture
+def api_debuff_ability(db_session):
+    a = Ability(name='APIDebuff', type='debuff', power=3, cooldown=2, duration=2)
+    db.session.add(a)
+    db.session.commit()
+    return a
+
+@pytest.fixture
+def api_protect_ability(db_session):
+    a = Ability(name='APIProtect', type='defense', power=4, cooldown=2, duration=2)
+    db.session.add(a)
+    db.session.commit()
+    return a
+
+@pytest.fixture
+def api_buff_char_ability(db_session, student_character, api_buff_ability):
+    ca = CharacterAbility(character_id=student_character.id, ability_id=api_buff_ability.id, is_equipped=True)
+    db.session.add(ca)
+    db.session.commit()
+    return ca
+
+@pytest.fixture
+def api_debuff_char_ability(db_session, student_character, api_debuff_ability):
+    ca = CharacterAbility(character_id=student_character.id, ability_id=api_debuff_ability.id, is_equipped=True)
+    db.session.add(ca)
+    db.session.commit()
+    return ca
+
+@pytest.fixture
+def api_protect_char_ability(db_session, student_character, api_protect_ability):
+    ca = CharacterAbility(character_id=student_character.id, ability_id=api_protect_ability.id, is_equipped=True)
+    db.session.add(ca)
+    db.session.commit()
+    return ca
 
 def test_character_creation(test_character):
     assert test_character.id is not None
@@ -248,3 +326,155 @@ def test_clan_experience_system(test_clan):
 def test_game_model_logic(db_session, test_clan, test_character):
     from app.models.clan_progress import ClanProgressHistory
     # ... rest of the test ... 
+
+def test_api_use_ability_on_self(client, db_session, login_student, student_character, student_ability, student_char_ability):
+    # Use ability on self
+    resp = client.post('/student/abilities/use', json={
+        'ability_id': student_ability.id,
+        'target_id': student_character.id,
+        'context': 'general'
+    })
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert data['success']
+    assert 'Healed' in data['message']
+
+def test_api_use_ability_on_clanmate(client, db_session, login_student, student_character, student_ability, student_char_ability, clanmate):
+    # Use ability on clanmate
+    resp = client.post('/student/abilities/use', json={
+        'ability_id': student_ability.id,
+        'target_id': clanmate.id,
+        'context': 'general'
+    })
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert data['success']
+    assert 'Healed' in data['message']
+
+def test_api_ability_on_cooldown(client, db_session, login_student, student_character, student_ability, student_char_ability):
+    # Use ability once
+    resp1 = client.post('/student/abilities/use', json={
+        'ability_id': student_ability.id,
+        'target_id': student_character.id,
+        'context': 'general'
+    })
+    assert resp1.get_json()['success']
+    # Use again immediately (should be on cooldown)
+    resp2 = client.post('/student/abilities/use', json={
+        'ability_id': student_ability.id,
+        'target_id': student_character.id,
+        'context': 'general'
+    })
+    data2 = resp2.get_json()
+    assert not data2['success'] or 'cooldown' in data2['message'].lower()
+
+def test_api_ability_not_equipped(client, db_session, login_student, student_character, student_ability):
+    # Not equipped
+    resp = client.post('/student/abilities/use', json={
+        'ability_id': student_ability.id,
+        'target_id': student_character.id,
+        'context': 'general'
+    })
+    data = resp.get_json()
+    assert not data['success']
+    assert 'equipped' in data['message']
+
+def test_api_ability_invalid_target(client, db_session, login_student, student_character, student_ability, student_char_ability):
+    # Use ability on invalid target
+    resp = client.post('/student/abilities/use', json={
+        'ability_id': student_ability.id,
+        'target_id': 999999,
+        'context': 'general'
+    })
+    data = resp.get_json()
+    assert not data['success']
+    assert 'Target not found' in data['message']
+
+def test_api_buff_ability(client, db_session, login_student, student_character, api_buff_ability, api_buff_char_ability):
+    # Use buff ability on self
+    resp = client.post('/student/abilities/use', json={
+        'ability_id': api_buff_ability.id,
+        'target_id': student_character.id,
+        'context': 'general'
+    })
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert data['success']
+    assert 'Buffed' in data['message']
+    # Stat should be increased
+    assert student_character.total_strength == student_character.strength + api_buff_ability.power
+    # StatusEffect should exist
+    effects = student_character.status_effects.all()
+    assert any(e.effect_type == 'buff' for e in effects)
+
+def test_api_debuff_ability(client, db_session, login_student, student_character, api_debuff_ability, api_debuff_char_ability, clanmate):
+    # Use debuff ability on clanmate
+    resp = client.post('/student/abilities/use', json={
+        'ability_id': api_debuff_ability.id,
+        'target_id': clanmate.id,
+        'context': 'general'
+    })
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert data['success']
+    assert 'Debuffed' in data['message']
+    # Stat should be decreased
+    assert clanmate.total_strength == clanmate.strength - api_debuff_ability.power
+    # StatusEffect should exist
+    effects = clanmate.status_effects.all()
+    assert any(e.effect_type == 'debuff' for e in effects)
+
+def test_api_protect_ability(client, db_session, login_student, student_character, api_protect_ability, api_protect_char_ability):
+    # Use protect ability on self
+    resp = client.post('/student/abilities/use', json={
+        'ability_id': api_protect_ability.id,
+        'target_id': student_character.id,
+        'context': 'general'
+    })
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert data['success']
+    assert 'Protected' in data['message']
+    # Stat should be increased
+    assert student_character.total_defense == student_character.defense + api_protect_ability.power
+    # StatusEffect should exist
+    effects = student_character.status_effects.all()
+    assert any(e.effect_type == 'protect' for e in effects)
+
+def test_api_buff_stack_and_expire(client, db_session, login_student, student_character, api_buff_ability, api_buff_char_ability):
+    # Use buff ability twice (stack)
+    resp1 = client.post('/student/abilities/use', json={
+        'ability_id': api_buff_ability.id,
+        'target_id': student_character.id,
+        'context': 'general'
+    })
+    assert resp1.get_json()['success']
+    # Simulate cooldown expiry
+    ca = CharacterAbility.query.filter_by(character_id=student_character.id, ability_id=api_buff_ability.id).first()
+    ca.last_used_at = datetime.utcnow() - timedelta(seconds=api_buff_ability.cooldown + 1)
+    db.session.commit()
+    resp2 = client.post('/student/abilities/use', json={
+        'ability_id': api_buff_ability.id,
+        'target_id': student_character.id,
+        'context': 'general'
+    })
+    assert resp2.get_json()['success']
+    # Stat should reflect both buffs
+    total_buff = sum(e.amount for e in student_character.status_effects.filter_by(effect_type='buff'))
+    assert student_character.total_strength == student_character.strength + total_buff
+    # Expire all buffs
+    for effect in student_character.status_effects:
+        effect.expires_at = datetime.utcnow() - timedelta(seconds=1)
+    db.session.commit()
+    assert student_character.total_strength == student_character.strength
+
+def test_api_invalid_buff_target(client, db_session, login_student, api_buff_ability, api_buff_char_ability):
+    # Use buff ability on invalid target
+    resp = client.post('/student/abilities/use', json={
+        'ability_id': api_buff_ability.id,
+        'target_id': 999999,
+        'context': 'general'
+    })
+    data = resp.get_json()
+    assert not data['success']
+    assert 'Target not found' in data['message'] 

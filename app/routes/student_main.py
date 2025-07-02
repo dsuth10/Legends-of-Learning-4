@@ -8,6 +8,7 @@ from app.models.student import Student
 from app.models.ability import Ability, CharacterAbility
 from app.models.shop import ShopPurchase, PurchaseType
 from app.models.quest import Quest, QuestLog, QuestStatus
+import time
 
 student_bp = Blueprint('student', __name__, url_prefix='/student')
 
@@ -126,9 +127,32 @@ def clan():
 def character():
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
     main_character = None
+    equipped_abilities = []
     if student_profile:
         main_character = student_profile.characters.filter_by(is_active=True).first()
-    return render_template('student/character.html', student=current_user, main_character=main_character)
+        if main_character:
+            equipped_abilities = [
+                {
+                    'id': ca.ability.id,
+                    'name': ca.ability.name,
+                    'type': ca.ability.type,
+                    'description': ca.ability.description,
+                    'power': ca.ability.power,
+                    'cooldown': ca.ability.cooldown,
+                    'duration': ca.ability.duration,
+                    'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
+                    'is_equipped': ca.is_equipped
+                }
+                for ca in main_character.abilities.filter_by(is_equipped=True).all()
+            ]
+    now = int(time.time())
+    ability_targets = []
+    if main_character and main_character.clan:
+        ability_targets = [
+            {'id': member.id, 'name': member.name, 'character_class': member.character_class}
+            for member in main_character.clan.members if member.id != main_character.id
+        ]
+    return render_template('student/character.html', student=current_user, main_character=main_character, equipped_abilities=equipped_abilities, now=now, ability_targets=ability_targets)
 
 @student_bp.route('/shop')
 @login_required
