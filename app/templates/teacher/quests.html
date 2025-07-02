@@ -26,9 +26,140 @@
         <form action="{{ url_for('teacher_quests.delete_quest', quest_id=quest.id) }}" method="post" style="display:inline;">
           <button type="submit" class="btn btn-sm btn-danger">Delete</button>
         </form>
+        <!-- Assign Button -->
+        <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#assignModal{{ quest.id }}">Assign</button>
+        <!-- Assign Modal -->
+        <div class="modal fade" id="assignModal{{ quest.id }}" tabindex="-1" aria-labelledby="assignModalLabel{{ quest.id }}" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="assignModalLabel{{ quest.id }}">Assign Quest: {{ quest.title }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <form method="post" action="{{ url_for('teacher_quests.assign_quest') }}" id="assignForm{{ quest.id }}">
+                <div class="modal-body">
+                  <input type="hidden" name="quest_id" value="{{ quest.id }}">
+                  <div class="mb-2">
+                    <label for="class_select_{{ quest.id }}" class="form-label">Class</label>
+                    <select class="form-select class-select" name="class_id" id="class_select_{{ quest.id }}" required>
+                      <option value="">Select a class...</option>
+                    </select>
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Assign to</label>
+                    <div>
+                      <input type="radio" name="target_type" value="class" id="assign_class_{{ quest.id }}" checked>
+                      <label for="assign_class_{{ quest.id }}">Whole Class</label>
+                    </div>
+                    <div>
+                      <input type="radio" name="target_type" value="clan" id="assign_clan_{{ quest.id }}">
+                      <label for="assign_clan_{{ quest.id }}">Clans</label>
+                    </div>
+                    <div>
+                      <input type="radio" name="target_type" value="student" id="assign_student_{{ quest.id }}">
+                      <label for="assign_student_{{ quest.id }}">Students</label>
+                    </div>
+                  </div>
+                  <div class="mb-2 d-none" id="clan_select_group_{{ quest.id }}">
+                    <label for="clan_select_{{ quest.id }}" class="form-label">Select Clans</label>
+                    <div id="clan_select_{{ quest.id }}" class="form-check-group"></div>
+                  </div>
+                  <div class="mb-2 d-none" id="student_select_group_{{ quest.id }}">
+                    <label for="student_select_{{ quest.id }}" class="form-label">Select Students</label>
+                    <div id="student_select_{{ quest.id }}" class="form-check-group"></div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="submit" class="btn btn-success">Assign</button>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+function fetchAssignmentData(questId) {
+  const classSelect = document.getElementById(`class_select_${questId}`);
+  fetch('/teacher/quests/assignment_data')
+    .then(res => res.json())
+    .then(data => {
+      classSelect.innerHTML = '<option value="">Select a class...</option>';
+      data.classes.forEach(cls => {
+        classSelect.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
+      });
+    });
+}
+function fetchClassDetails(questId, classId) {
+  const clanGroup = document.getElementById(`clan_select_group_${questId}`);
+  const clanSelect = document.getElementById(`clan_select_${questId}`);
+  const studentGroup = document.getElementById(`student_select_group_${questId}`);
+  const studentSelect = document.getElementById(`student_select_${questId}`);
+  clanSelect.innerHTML = '';
+  studentSelect.innerHTML = '';
+  if (!classId) {
+    clanGroup.classList.add('d-none');
+    studentGroup.classList.add('d-none');
+    return;
+  }
+  fetch(`/teacher/quests/assignment_data?class_id=${classId}`)
+    .then(res => res.json())
+    .then(data => {
+      // Populate clans
+      if (data.clans && data.clans.length > 0) {
+        clanGroup.classList.remove('d-none');
+        data.clans.forEach(clan => {
+          clanSelect.innerHTML += `<div class='form-check'><input class='form-check-input' type='checkbox' name='target_ids' value='${clan.id}' id='clan_${questId}_${clan.id}'><label class='form-check-label' for='clan_${questId}_${clan.id}'>${clan.name}</label></div>`;
+        });
+      } else {
+        clanGroup.classList.add('d-none');
+      }
+      // Populate students
+      if (data.students && data.students.length > 0) {
+        studentGroup.classList.remove('d-none');
+        data.students.forEach(stu => {
+          studentSelect.innerHTML += `<div class='form-check'><input class='form-check-input' type='checkbox' name='target_ids' value='${stu.character_id}' id='student_${questId}_${stu.character_id}'><label class='form-check-label' for='student_${questId}_${stu.character_id}'>${stu.name} (${stu.character_name})</label></div>`;
+        });
+      } else {
+        studentGroup.classList.add('d-none');
+      }
+    });
+}
+document.addEventListener('DOMContentLoaded', function() {
+  {% for quest in quests %}
+  const modal = document.getElementById('assignModal{{ quest.id }}');
+  modal.addEventListener('show.bs.modal', function() {
+    fetchAssignmentData({{ quest.id }});
+    // Reset form
+    document.getElementById('assignForm{{ quest.id }}').reset();
+    document.getElementById('clan_select_group_{{ quest.id }}').classList.add('d-none');
+    document.getElementById('student_select_group_{{ quest.id }}').classList.add('d-none');
+  });
+  document.getElementById('class_select_{{ quest.id }}').addEventListener('change', function(e) {
+    fetchClassDetails({{ quest.id }}, e.target.value);
+  });
+  // Show/hide clan/student selectors based on radio
+  document.getElementById('assign_class_{{ quest.id }}').addEventListener('change', function() {
+    document.getElementById('clan_select_group_{{ quest.id }}').classList.add('d-none');
+    document.getElementById('student_select_group_{{ quest.id }}').classList.add('d-none');
+  });
+  document.getElementById('assign_clan_{{ quest.id }}').addEventListener('change', function() {
+    document.getElementById('clan_select_group_{{ quest.id }}').classList.remove('d-none');
+    document.getElementById('student_select_group_{{ quest.id }}').classList.add('d-none');
+  });
+  document.getElementById('assign_student_{{ quest.id }}').addEventListener('change', function() {
+    document.getElementById('clan_select_group_{{ quest.id }}').classList.add('d-none');
+    document.getElementById('student_select_group_{{ quest.id }}').classList.remove('d-none');
+  });
+  {% endfor %}
+});
+</script>
 {% endblock %} 

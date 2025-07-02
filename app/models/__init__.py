@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from app.models.base import Base  # <-- Re-export Base
 from .db_config import db
 from app.models.achievement_badge import AchievementBadge
+from app.models.clan_progress import ClanProgressHistory
 # from app.models.item import Item  # Remove legacy Item model import
 
 __all__ = [
@@ -23,7 +24,7 @@ def init_db(app):
     from app.models.ability import Ability, AbilityType, CharacterAbility
     from app.models.student import Student
     from app.models.assist_log import AssistLog
-    from app.models.clan_progress import ClanProgressHistory
+    # from app.models.clan_progress import ClanProgressHistory  # Already imported at top level
     
     # Create tables
     # with app.app_context():

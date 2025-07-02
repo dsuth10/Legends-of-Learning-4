@@ -5,7 +5,115 @@
 {% block content %}
 <div class="container mt-5">
     <h2 class="mb-4">Your Quests</h2>
-    <p>Here you will see your available, active, and completed quests. You can mark quests as complete here.</p>
-    <!-- Add quest list and actions here -->
+    <div class="mb-3">Click a location on the map to view quest details and take action.</div>
+    <div class="quest-map position-relative mb-4" style="background: url('{{ url_for('static', filename='images/quest_maps/quest_map.png') }}') no-repeat center center; background-size: cover; width: 100%; max-width: 900px; height: 600px; margin: 0 auto; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);">
+        {% set max_x = 9 %}
+        {% set max_y = 9 %}
+        {% for q in assigned_quests %}
+            {% set status = q.status.value if q.status.value is defined else q.status %}
+            {% if q.x is not none and q.y is not none %}
+                {% set left = (q.x / max_x * 100) ~ '%' %}
+                {% set top = (q.y / max_y * 100) ~ '%' %}
+                <div class="quest-marker position-absolute" style="top:{{ top }}; left:{{ left }};">
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#questModal{{ q.quest.id }}"
+                       class="fw-bold {% if status == 'completed' %}completed-quest{% elif status == 'in_progress' %}active-quest{% else %}available-quest{% endif %}">
+                        {{ q.quest.title }}
+                        {% if status == 'completed' %}
+                            <span title="Completed">✔️</span>
+                        {% elif status == 'in_progress' %}
+                            <span title="Active">(Active)</span>
+                        {% endif %}
+                    </a>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    <!-- Modals for each quest -->
+    {% for q in assigned_quests %}
+    {% set status = q.status.value if q.status.value is defined else q.status %}
+    <div class="modal fade" id="questModal{{ q.quest.id }}" tabindex="-1" aria-labelledby="questModalLabel{{ q.quest.id }}" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="questModalLabel{{ q.quest.id }}">{{ q.quest.title }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>{{ q.quest.description }}</p>
+            <p><strong>Rewards:</strong>
+                {{ q.quest.rewards.filter_by(type='gold').first().amount if q.quest.rewards.filter_by(type='gold').first() else 0 }} Gold,
+                {{ q.quest.rewards.filter_by(type='experience').first().amount if q.quest.rewards.filter_by(type='experience').first() else 0 }} XP
+            </p>
+            <p style="color: red;">DEBUG: {{ q.quest.title }} status = {{ q.status }} (type: {{ q.status.__class__.__name__ }})</p>
+            {% if status == 'completed' %}
+              <p class="text-success"><em>This quest is completed.</em></p>
+            {% elif status == 'in_progress' %}
+              <p class="text-info"><em>This quest is in progress.</em></p>
+            {% endif %}
+          </div>
+          <div class="modal-footer">
+            {% if status == 'not_started' %}
+              <form method="post" action="{{ url_for('student.start_quest', quest_id=q.quest.id) }}">
+                <button type="submit" class="btn btn-success">Start Quest</button>
+              </form>
+            {% elif status == 'in_progress' %}
+              <form method="post" action="{{ url_for('student.complete_quest', quest_id=q.quest.id) }}">
+                <button type="submit" class="btn btn-primary">Mark Complete</button>
+              </form>
+            {% else %}
+              <button class="btn btn-secondary" disabled>Completed</button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    <!-- Optional: List active and completed quests below the map for clarity -->
+    <div class="row mt-4">
+      <div class="col-md-6">
+        <h5>Active Quests</h5>
+        <ul>
+        {% set found_active = false %}
+        {% for q in assigned_quests %}
+          {% set status = q.status.value if q.status.value is defined else q.status %}
+          {% if status == 'in_progress' %}
+            <li>{{ q.quest.title }}</li>
+            {% set found_active = true %}
+          {% endif %}
+        {% endfor %}
+        {% if not found_active %}
+          <li class="text-muted">No active quests.</li>
+        {% endif %}
+        </ul>
+      </div>
+      <div class="col-md-6">
+        <h5>Completed Quests</h5>
+        <ul>
+        {% set found_completed = false %}
+        {% for q in assigned_quests %}
+          {% set status = q.status.value if q.status.value is defined else q.status %}
+          {% if status == 'completed' %}
+            <li>{{ q.quest.title }}</li>
+            {% set found_completed = true %}
+          {% endif %}
+        {% endfor %}
+        {% if not found_completed %}
+          <li class="text-muted">No completed quests.</li>
+        {% endif %}
+        </ul>
+      </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block super_extra_css %}
+<style>
+.quest-map { position: relative; overflow: hidden; }
+.quest-marker { z-index: 2; }
+.quest-marker a { text-shadow: 1px 1px 2px #000, 0 0 6px #fff; font-size: 1.1rem; padding: 4px 10px; border-radius: 6px; background: rgba(0,0,0,0.18); }
+.quest-marker a.available-quest { color: #ffc107; border-bottom: 2px solid #ffc107; }
+.quest-marker a.active-quest { color: #17a2b8; border-bottom: 2px solid #17a2b8; }
+.quest-marker a.completed-quest { color: #aaa; text-decoration: line-through; border-bottom: 2px solid #aaa; opacity: 0.7; }
+.quest-marker a:hover { background: rgba(255,255,255,0.18); }
+</style>
 {% endblock %} 

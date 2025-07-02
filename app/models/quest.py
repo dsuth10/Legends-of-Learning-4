@@ -111,6 +111,10 @@ class QuestLog(Base):
     progress_data = db.Column(JSON, nullable=False, default=dict)  # Store progress details
     started_at = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
+
+    # Map coordinates for quest placement
+    x_coordinate = db.Column(db.Integer, nullable=True)
+    y_coordinate = db.Column(db.Integer, nullable=True)
     
     # Relationships
     character = db.relationship('Character', backref=db.backref('quest_logs', lazy='dynamic'))
@@ -119,6 +123,7 @@ class QuestLog(Base):
         db.Index('idx_questlog_character', 'character_id'),  # For character's quests
         db.Index('idx_questlog_status', 'character_id', 'status'),  # For filtering by status
         db.UniqueConstraint('character_id', 'quest_id', name='uq_character_quest'),  # One log per quest
+        db.UniqueConstraint('character_id', 'x_coordinate', 'y_coordinate', name='uq_character_questlog_map_coord'),  # No overlapping quests on map
     )
     
     def start_quest(self):

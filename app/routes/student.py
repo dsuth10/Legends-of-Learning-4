@@ -1,15 +1,15 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
 from .teacher import student_required
-from flask_sqlalchemy import SQLAlchemy
+from app.models import db
 from app.models.character import Character
 from app.models.equipment import Inventory, Equipment, EquipmentType, EquipmentSlot, TEST_ARMOR_IMAGE, TEST_RING_IMAGE, TEST_SWORD_IMAGE
 from app.models.student import Student
 from app.models.ability import Ability, CharacterAbility
 from app.models.shop import ShopPurchase, PurchaseType
+from app.models.quest import Quest, QuestLog, QuestStatus
 
 student_bp = Blueprint('student', __name__, url_prefix='/student')
-db = SQLAlchemy()
 
 @student_bp.route('/dashboard')
 @login_required
@@ -45,7 +45,74 @@ def profile():
 @login_required
 @student_required
 def quests():
-    return render_template('student/quests.html', student=current_user)
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
+    assigned_quests = []
+    if main_char:
+        for log in main_char.quest_logs:
+            print("DEBUG QUESTLOG:", log.quest_id, log.status, type(log.status), log.id)
+            quest = log.quest
+            assigned_quests.append({
+                'quest': quest,
+                'status': log.status,
+                'x': log.x_coordinate,
+                'y': log.y_coordinate,
+                'log': log
+            })
+    return render_template('student/quests.html', student=current_user, assigned_quests=assigned_quests)
+
+@student_bp.route('/quests/start/<int:quest_id>', methods=['POST'])
+@login_required
+@student_required
+def start_quest(quest_id):
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
+    quest = Quest.query.get_or_404(quest_id)
+    if not main_char:
+        flash('No active character found.', 'danger')
+        return redirect(url_for('student.quests'))
+    existing_log = QuestLog.query.filter_by(character_id=main_char.id, quest_id=quest.id).first()
+    if existing_log:
+        if existing_log.status == QuestStatus.NOT_STARTED:
+            existing_log.status = QuestStatus.IN_PROGRESS
+            db.session.commit()
+            db.session.refresh(existing_log)
+            print("AFTER REFRESH:", existing_log.status)
+            print("DEBUG: All quest logs for character after start_quest:")
+            for log in QuestLog.query.filter_by(character_id=main_char.id).all():
+                print(log.quest_id, log.status, type(log.status), log.id)
+            flash('Quest started!', 'success')
+        elif existing_log.status == QuestStatus.IN_PROGRESS:
+            flash('You have already started this quest.', 'info')
+        elif existing_log.status == QuestStatus.COMPLETED:
+            flash('You have already completed this quest.', 'info')
+        else:
+            flash('Quest already in progress or completed.', 'info')
+        return redirect(url_for('student.quests'))
+    # If no log exists, create a new one (should not happen with current assign flow)
+    new_log = QuestLog(character_id=main_char.id, quest_id=quest.id, status=QuestStatus.IN_PROGRESS)
+    db.session.add(new_log)
+    db.session.commit()
+    flash('Quest accepted!', 'success')
+    return redirect(url_for('student.quests'))
+
+@student_bp.route('/quests/complete/<int:quest_id>', methods=['POST'])
+@login_required
+@student_required
+def complete_quest(quest_id):
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
+    if not main_char:
+        flash('No active character found.', 'danger')
+        return redirect(url_for('student.quests'))
+    quest_log = QuestLog.query.filter_by(character_id=main_char.id, quest_id=quest_id).first()
+    if not quest_log or quest_log.status != QuestStatus.IN_PROGRESS:
+        flash('Quest not in progress or already completed.', 'warning')
+        return redirect(url_for('student.quests'))
+    quest_log.complete_quest()
+    db.session.commit()
+    flash('Quest completed! Rewards granted.', 'success')
+    return redirect(url_for('student.quests'))
 
 @student_bp.route('/clan')
 @login_required
@@ -201,7 +268,6 @@ def character_create():
             defense=base_stats["defense"],
             gold=base_stats["gold"]
         )
-        from app.models import db
         db.session.add(new_character)
         db.session.commit()
         flash('Character created successfully!', 'success')
@@ -234,7 +300,6 @@ def gain_xp():
         flash('No character found.', 'danger')
         return redirect(url_for('student.character'))
     main_character.gain_experience(500)
-    from app.models import db
     db.session.commit()
     flash('Gained 500 XP!','success')
     return redirect(url_for('student.character'))
@@ -252,7 +317,6 @@ def unequip_weapon():
         return redirect(url_for('student.character'))
     main_character = student_profile.characters.filter_by(is_active=True).first()
     main_character.equipped_weapon.is_equipped = False
-    from app.models import db
     db.session.commit()
     flash('Weapon unequipped and moved to inventory.', 'success')
     return redirect(url_for('student.character'))
@@ -270,7 +334,6 @@ def unequip_armor():
         return redirect(url_for('student.character'))
     main_character = student_profile.characters.filter_by(is_active=True).first()
     main_character.equipped_armor.is_equipped = False
-    from app.models import db
     db.session.commit()
     flash('Armor unequipped and moved to inventory.', 'success')
     return redirect(url_for('student.character'))
@@ -288,7 +351,6 @@ def unequip_accessory():
         return redirect(url_for('student.character'))
     main_character = student_profile.characters.filter_by(is_active=True).first()
     main_character.equipped_accessory.is_equipped = False
-    from app.models import db
     db.session.commit()
     flash('Accessory unequipped and moved to inventory.', 'success')
     return redirect(url_for('student.character'))
@@ -317,7 +379,6 @@ def api_equip_item():
         if inv.is_equipped and inv.item.slot == item.item.slot:
             inv.is_equipped = False
     item.is_equipped = True
-    from app.models import db
     db.session.commit()
     return jsonify({'success': True})
 
@@ -337,7 +398,6 @@ def api_unequip_item():
     if not item or not item.is_equipped:
         return jsonify({'success': False, 'message': 'Item not equipped or not found.'}), 404
     item.is_equipped = False
-    from app.models import db
     db.session.commit()
     return jsonify({'success': True})
 
@@ -367,7 +427,6 @@ def shop_buy():
     from app.models.equipment import Equipment, Inventory
     from app.models.ability import Ability, CharacterAbility
     from app.models.shop import ShopPurchase, PurchaseType
-    from app.models import db
     data = request.get_json()
     item_id = data.get('item_id')
     item_type = data.get('item_type')  # 'equipment' or 'ability', optional
