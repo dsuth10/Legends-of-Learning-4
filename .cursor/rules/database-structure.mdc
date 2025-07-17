@@ -1,0 +1,64 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- **Database Structure Overview**
+  - This rule provides a high-level summary of the main tables (models) and their relationships in the project database. Use it for onboarding, debugging, and as a reference for schema changes.
+
+- **Core Tables & Models:**
+  - `User` (`users`): Auth, profile, and role management (teacher, student, admin)
+  - `Student` (`students`): Game profile for a user, links to `User`, `Classroom`, and optionally `Clan`
+  - `Classroom` (`classrooms`): Teacher-managed class, links to `User` (teacher), has many `Student` and `Clan`
+  - `Clan` (`clans`): Student teams, links to `Classroom`, has many `Character`, optional leader (`Character`)
+  - `Character` (`characters`): Student's game avatar, links to `Student`, optionally `Clan`, has many `Ability`, `Inventory`, `QuestLog`, etc.
+  - `Ability` (`abilities`): Skills/powers, many-to-many with `Character` via `CharacterAbility`
+  - `Equipment` (`equipment`): Items that can be equipped, many-to-many with `Character` via `Inventory`
+  - `Quest` (`quests`): Game quests, can have parent quest (for chains), has many `Reward`, `Consequence`, `QuestLog`
+  - `AchievementBadge` (`achievement_badge`): Earnable badges, many-to-many with `Clan` and `Character`
+  - `ShopPurchase` (`shop_purchases`): Tracks purchases by `Character`/`Student`
+  - `AuditLog` (`audit_log`): Tracks important game events, links to `User` and `Character`
+  - `AssistLog` (`assist_logs`): Tracks ability assists between users
+  - `ClanProgressHistory` (`clan_progress_history`): Tracks clan metrics over time
+
+- **Key Relationships:**
+  - **User <-> Student**: One-to-one (Student.user_id → User.id)
+  - **User <-> Classroom**: Many-to-many via `class_students` association table
+  - **Classroom <-> Clan**: One-to-many (Clan.class_id → Classroom.id)
+  - **Classroom <-> Student**: One-to-many (Student.class_id → Classroom.id)
+  - **Clan <-> Character**: One-to-many (Character.clan_id → Clan.id)
+  - **Clan <-> AchievementBadge**: Many-to-many via `clan_badges` association table
+  - **Character <-> Student**: Many-to-one (Character.student_id → Student.id)
+  - **Character <-> Ability**: Many-to-many via `character_abilities` association table
+  - **Character <-> Equipment**: Many-to-many via `inventories` association table
+  - **Character <-> QuestLog**: One-to-many (QuestLog.character_id → Character.id)
+  - **Character <-> AchievementBadge**: Many-to-many via `character_badges` association table
+  - **Character <-> ShopPurchase**: One-to-many (ShopPurchase.character_id → Character.id)
+  - **Character <-> AuditLog**: One-to-many (AuditLog.character_id → Character.id)
+  - **Student <-> ShopPurchase**: One-to-many (ShopPurchase.student_id → Student.id)
+  - **Quest <-> Reward/Consequence/QuestLog**: One-to-many (Reward.quest_id, Consequence.quest_id, QuestLog.quest_id → Quest.id)
+  - **Ability <-> AssistLog**: One-to-many (AssistLog.ability_id → Ability.id)
+  - **User <-> AssistLog**: One-to-many (AssistLog.user_id/target_id → User.id)
+  - **Clan <-> ClanProgressHistory**: One-to-many (ClanProgressHistory.clan_id → Clan.id)
+
+- **Association & Join Tables:**
+  - `class_students`: User-classroom many-to-many
+  - `character_abilities`: Character-ability many-to-many
+  - `inventories`: Character-equipment many-to-many
+  - `clan_badges`: Clan-badge many-to-many
+  - `character_badges`: Character-badge many-to-many
+
+- **ERD-Style Summary:**
+  - User ⟷ Student ⟶ Character ⟶ (Ability, Equipment, QuestLog, AchievementBadge, ShopPurchase, AuditLog)
+  - User ⟷ Classroom ⟶ Clan ⟶ Character
+  - Quest ⟶ (Reward, Consequence, QuestLog)
+  - Clan ⟶ ClanProgressHistory
+  - Ability ⟶ AssistLog
+  - AchievementBadge ⟷ (Clan, Character)
+
+- **Best Practices:**
+  - Use foreign keys and association tables for all relationships
+  - Use `ondelete` for cascade/SET NULL as appropriate
+  - Update this rule if the schema changes or new relationships are added
+  - See [cursor_rules.mdc](mdc:.cursor/rules/cursor_rules.mdc) for rule formatting and cross-referencing
+
