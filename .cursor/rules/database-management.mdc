@@ -1,11 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: false
----
- ---
 description: Ensure Alembic migration version matches the latest migration to prevent DB version mismatch warnings
-globs: scripts/**, app/**, migrations/**, instance/**, *.py
+globs:  
 alwaysApply: true
 ---
 
