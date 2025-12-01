@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, or_
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -117,7 +117,7 @@ class Character(Base):
             if item and item.equipment and hasattr(item.equipment, 'health_bonus'):
                 bonus += item.equipment.health_bonus
         # Add active status effects
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         effect_bonus = sum(
             effect.amount for effect in self.status_effects.filter(
                 StatusEffect.stat_affected == 'health',
@@ -132,7 +132,7 @@ class Character(Base):
         for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
             if item and item.equipment and hasattr(item.equipment, 'strength_bonus'):
                 bonus += item.equipment.strength_bonus
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         effect_bonus = sum(
             effect.amount for effect in self.status_effects.filter(
                 StatusEffect.stat_affected == 'strength',
@@ -147,7 +147,7 @@ class Character(Base):
         for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
             if item and item.equipment and hasattr(item.equipment, 'defense_bonus'):
                 bonus += item.equipment.defense_bonus
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         effect_bonus = sum(
             effect.amount for effect in self.status_effects.filter(
                 StatusEffect.stat_affected == 'defense',
@@ -204,7 +204,7 @@ class StatusEffect(db.Model):
     character = db.relationship('Character', back_populates='status_effects')
 
     def is_active(self):
-        return self.expires_at > datetime.utcnow()
+        return self.expires_at > datetime.now(timezone.utc).replace(tzinfo=None)
 
     def to_dict(self):
         return {

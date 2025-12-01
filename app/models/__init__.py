@@ -23,6 +23,7 @@ def init_db(app):
     from app.models.equipment import Equipment, EquipmentType, EquipmentSlot, Inventory
     from app.models.ability import Ability, AbilityType, CharacterAbility
     from app.models.student import Student
+    from app.models.teacher import Teacher
     from app.models.assist_log import AssistLog
     # from app.models.clan_progress import ClanProgressHistory  # Already imported at top level
     

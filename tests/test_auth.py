@@ -61,7 +61,7 @@ def test_teacher_signup_duplicate_username_email(client, db_session):
         'confirm_password': 'securepassword',
         'access_code': access_code
     }, follow_redirects=True)
-    assert b'Username or email already exists' in response.data
+    assert b'Username already exists.' in response.data
     # Attempt duplicate email
     response = client.post('/auth/signup', data={
         'username': 'otheruser' + unique,
@@ -70,7 +70,7 @@ def test_teacher_signup_duplicate_username_email(client, db_session):
         'confirm_password': 'securepassword',
         'access_code': access_code
     }, follow_redirects=True)
-    assert b'Username or email already exists' in response.data
+    assert b'Email already exists.' in response.data
 
 def test_teacher_login_flow(client, db_session):
     from app.models.user import User

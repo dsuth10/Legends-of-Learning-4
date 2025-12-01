@@ -72,34 +72,12 @@ def create_app(config=None):
     init_app(app)
 
     # --- DB maintenance: version check and weekly integrity check ---
-    check_db_version(app)
-    start_weekly_integrity_check(app)
+    # check_db_version(app)
+    # start_weekly_integrity_check(app)
     # --------------------------------------------------------------
 
-    # --- Populate Equipment Table from Hardcoded Data (if empty) ---
-    from app.models.equipment_data import EQUIPMENT_DATA
-    from app.models.equipment import Equipment
-    with app.app_context():
-        if Equipment.query.count() == 0:
-            for item in EQUIPMENT_DATA:
-                type_value = item['type'].value if hasattr(item['type'], 'value') else item['type']
-                slot_value = item['slot'].value if hasattr(item['slot'], 'value') else item['slot']
-                eq = Equipment(
-                    name=item['name'],
-                    description=item['description'],
-                    type=type_value,
-                    slot=slot_value,
-                    cost=item['cost'],
-                    level_requirement=item['level_requirement'],
-                    health_bonus=item['health_bonus'],
-                    strength_bonus=item['strength_bonus'],
-                    defense_bonus=item['defense_bonus'],
-                    rarity=item['rarity'],
-                    image_url=item['image_url'],
-                    class_restriction=item.get('class_restriction'),
-                )
-                db.session.add(eq)
-            db.session.commit()
-    # --------------------------------------------------------------
+    # Register CLI commands
+    from app.commands import seed_db_command
+    app.cli.add_command(seed_db_command)
 
     return app

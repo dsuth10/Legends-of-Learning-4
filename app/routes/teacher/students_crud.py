@@ -52,11 +52,9 @@ def remove_student(user_id):
         return redirect(url_for('teacher.students'))
     classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
     # Debug: log students before removal
-    logging.warning(f"[DEBUG] Before removal: class {class_id} students: {[u.id for u in classroom.students.all()]}")
-    logging.warning(f"[DEBUG] Student profile before: {Student.query.filter_by(user_id=user.id, class_id=class_id).first()}")
+
     # Log association table before
-    assoc_before = db.session.execute(class_students.select().where(class_students.c.class_id == class_id)).fetchall()
-    logging.warning(f"[DEBUG] Association table before: {assoc_before}")
+
     if not classroom or not classroom.students.filter_by(id=user.id).first():
         flash('You do not have permission to remove this student from the selected class.', 'danger')
         return redirect(url_for('teacher.students', class_id=class_id))
@@ -65,8 +63,7 @@ def remove_student(user_id):
         classroom.remove_student(user)
         db.session.commit()
         # Log association table after
-        assoc_after = db.session.execute(class_students.select().where(class_students.c.class_id == class_id)).fetchall()
-        logging.warning(f"[DEBUG] Association table after: {assoc_after}")
+
         # Set student profile to unassigned
         student_profile = Student.query.filter_by(user_id=user.id, class_id=class_id).first()
         if student_profile:
@@ -79,9 +76,7 @@ def remove_student(user_id):
             flash('Student removed from class.', 'warning')
         # Debug: log students after removal
         classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
-        logging.warning(f"[DEBUG] After removal: class {class_id} students: {[u.id for u in classroom.students.all()]}")
-        student_profile = Student.query.filter_by(user_id=user.id).first()
-        logging.warning(f"[DEBUG] Student profile after: {student_profile}")
+
     except Exception as e:
         logging.error(f"[ERROR] Exception during student removal: {e}")
         flash(f"Error removing student: {e}", 'danger')

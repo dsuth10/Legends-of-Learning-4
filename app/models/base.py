@@ -1,4 +1,4 @@
-from datetime import datetime
+from app.utils.date_utils import get_utc_now
 from app.models.db_config import db
 
 class Base(db.Model):
@@ -6,8 +6,8 @@ class Base(db.Model):
     
     __abstract__ = True
     
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, nullable=False, default=get_utc_now, onupdate=get_utc_now)
 
     def save(self):
         db.session.add(self)
@@ -33,4 +33,4 @@ class Base(db.Model):
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
-        self.save() 
+        self.save()

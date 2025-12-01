@@ -13,7 +13,7 @@ from app.models.student import Student
 from app.models.equipment import Equipment
 from app.models.ability import Ability
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 @teacher_bp.route('/dashboard')
 @login_required
@@ -38,7 +38,7 @@ def dashboard():
         'active_quests': Quest.query.\
             join(Classroom, Quest.id == Classroom.id).\
             filter(Classroom.teacher_id == current_user.id,
-                  Quest.end_date >= datetime.utcnow()).\
+                  Quest.end_date >= datetime.now(timezone.utc).replace(tzinfo=None)).\
             count()
     }
     total_classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).count()
@@ -53,7 +53,7 @@ def dashboard():
         distinct().\
         count()
     inactive_students = total_students - active_students
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    seven_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
     recent_activities = []
     audit_logs = AuditLog.query.\
         join(Character, AuditLog.character_id == Character.id).\

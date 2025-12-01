@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.utils.date_utils import get_utc_now
 from enum import Enum
 from typing import List, Optional
 from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, JSON
@@ -76,10 +77,10 @@ class Quest(Base):
         if self.level_requirement > character.level:
             return False
         
-        if self.start_date and datetime.utcnow() < self.start_date:
+        if self.start_date and get_utc_now() < self.start_date:
             return False
         
-        if self.end_date and datetime.utcnow() > self.end_date:
+        if self.end_date and get_utc_now() > self.end_date:
             return False
         
         # Check if prerequisite quest is completed
@@ -132,7 +133,7 @@ class QuestLog(Base):
             raise ValueError("Quest has already been started")
         
         self.status = QuestStatus.IN_PROGRESS
-        self.started_at = datetime.utcnow()
+        self.started_at = get_utc_now()
         self.save()
     
     def update_progress(self, progress_data):
@@ -146,7 +147,7 @@ class QuestLog(Base):
             raise ValueError("Quest must be in progress to complete")
         
         self.status = QuestStatus.COMPLETED
-        self.completed_at = datetime.utcnow()
+        self.completed_at = get_utc_now()
         
         # Distribute rewards
         for reward in self.quest.rewards:
@@ -157,7 +158,7 @@ class QuestLog(Base):
     def fail_quest(self):
         """Mark quest as failed and apply consequences."""
         self.status = QuestStatus.FAILED
-        self.completed_at = datetime.utcnow()
+        self.completed_at = get_utc_now()
         
         # Apply consequences
         for consequence in self.quest.consequences:

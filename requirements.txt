@@ -12,4 +12,5 @@ Flask-CORS>=4.0
 pandas>=2.1
 numpy>=1.24
 pydantic>=2.0
-Flask-JWT-Extended 
+Flask-JWT-Extended
+email-validator

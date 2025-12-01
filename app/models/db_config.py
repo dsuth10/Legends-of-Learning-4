@@ -53,7 +53,7 @@ def get_database_url() -> str:
     """
     # Create instance directory if it doesn't exist
     os.makedirs(DB_PATH.parent, exist_ok=True)
-    return f'sqlite:///{DB_PATH}'
+    return f'sqlite:///{DB_PATH.as_posix()}'
 
 def get_sqlalchemy_config() -> Dict[str, Any]:
     """
@@ -84,4 +84,4 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
     except Exception as e:
-        print(f"[DB PRAGMA] Warning: {e}") 
+        print(f"[DB PRAGMA] Warning: {e}")
