@@ -1,0 +1,20 @@
+---
+description: Ensure Alembic migration version matches the latest migration to prevent DB version mismatch warnings
+globs:  
+alwaysApply: true
+---
+
+- **Always run `alembic upgrade head` after resetting or modifying the database schema**
+  - This ensures the database is at the latest migration version and prevents version mismatch warnings like:
+    ```
+    [DB Version Check] WARNING: DB version <current> does not match latest migration <latest>
+    ```
+  - **DO NOT** use `db.create_all()` for schema management in production or after initial setup; always use Alembic migrations.
+  - If you see a version mismatch warning:
+    - Stop the Flask server.
+    - Run `alembic upgrade head` in your project root.
+    - Restart the Flask server.
+  - Keep this as a checklist item after any database reset, migration, or schema change.
+ 
+
+  ---

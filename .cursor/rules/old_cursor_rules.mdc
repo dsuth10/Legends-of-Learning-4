@@ -1,7 +1,7 @@
 ---
-description: Guidelines for creating and maintaining Cursor rules to ensure consistency and effectiveness.
-globs: .cursor/rules/*.mdc
-alwaysApply: true
+description: How to add or edit Cursor rules in your project
+globs: 
+alwaysApply: false
 ---
 
 - **Required Rule Structure:**
@@ -69,4 +69,5 @@ alwaysApply: true
   - Keep descriptions concise
   - Include both DO and DON'T examples
   - Reference actual code over theoretical examples
+
   - Use consistent formatting across rules 

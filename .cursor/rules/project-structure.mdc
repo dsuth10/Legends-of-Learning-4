@@ -1,0 +1,54 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- **Project Directory Structure Overview**
+  - This rule provides a high-level map of the project's main directories and their purposes. Use it for onboarding, navigation, and as a reference for where to add or find code, assets, and documentation.
+
+- **Top-Level Directories & Files:**
+  - `/app/` — Main application code
+    - `/models/` — SQLAlchemy models (e.g., `character.py`, `equipment.py`, `user.py`)
+    - `/routes/` — Flask route blueprints
+      - `/student/` — Student-specific routes
+      - `/teacher/` — Teacher-specific routes
+    - `/services/` — Business logic and utilities
+    - `/templates/` — Jinja2 HTML templates
+      - `/student/`, `/teacher/` — Role-specific templates
+    - `/static/` — App-specific static files (see also top-level `/static/`)
+      - `/csv/` — CSV templates for import
+  - `/static/` — Global static assets
+    - `/images/` — Game images (badges, equipment, clan icons, quest maps)
+      - `/equipment/` — Equipment images by class (`/druid/`, `/sorcerer/`, `/warrior/`)
+      - `/badges/`, `/clan_icons/`, `/quest_maps/`
+    - `/avatars/` — Character and teacher avatars
+    - `/js/`, `/css/` — JavaScript and CSS
+  - `/docs/` — Project documentation (e.g., `equipment_data_system.md`)
+  - `/scripts/` — Utility and migration scripts, PRDs, complexity reports
+  - `/tests/` — Pytest test suite for models, routes, and APIs
+  - `/migrations/` — Alembic migration scripts
+    - `/versions/` — Individual migration files
+  - `/tasks/` — Taskmaster-generated task files and `tasks.json`
+  - `/instance/` — Per-environment files (e.g., `legends.db` SQLite database)
+  - `/backups/` — (Empty or for future use) Backups of data or configs
+  - `/legends_of_learning.egg-info/` — Python package metadata
+  - `run.py` — Main Flask app entry point
+  - `requirements.txt`, `requirements-dev.txt` — Python dependencies
+  - `README-task-master.md` — Taskmaster usage and workflow
+  - `alembic.ini` — Alembic configuration
+  - `.cursor/` — Cursor rules and config
+    - `/rules/` — Project-specific rules (this file, `cursor_rules.mdc`, etc.)
+  - `.taskmaster/` — Taskmaster config, tasks, reports, and templates
+
+- **Navigation Tips:**
+  - For new features, add models to `/app/models/`, routes to `/app/routes/`, templates to `/app/templates/`, and static assets to `/static/`.
+  - Use `/scripts/` for one-off scripts, data seeding, and PRD examples.
+  - See `/tests/` for test-driven development and regression checks.
+  - Use `/migrations/` for all schema changes (see [cursor_rules.mdc](mdc:.cursor/rules/cursor_rules.mdc)).
+  - Taskmaster-related files are in `/tasks/` and `.taskmaster/`.
+
+- **Best Practices:**
+  - Keep new code organized by feature and role (student/teacher) where possible.
+  - Reference this rule and [cursor_rules.mdc](mdc:.cursor/rules/cursor_rules.mdc) for onboarding and codebase consistency.
+  - Update this rule if the directory structure changes or new major folders are added.
+
