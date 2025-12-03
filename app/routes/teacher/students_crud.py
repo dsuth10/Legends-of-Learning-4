@@ -12,7 +12,42 @@ from app.models.student import Student
 from app.models.character import Character
 from app.models.equipment import Equipment, Inventory
 from app.models.audit import AuditLog, EventType
+from app.forms.student import AddStudentForm
+from app.services.student_service import StudentService
 import logging
+
+@teacher_bp.route('/students/add', methods=['GET', 'POST'])
+@login_required
+@teacher_required
+def add_student():
+    form = AddStudentForm()
+    # Populate class choices
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    form.class_id.choices = [(c.id, c.name) for c in classes]
+    
+    if form.validate_on_submit():
+        classroom = Classroom.query.filter_by(id=form.class_id.data, teacher_id=current_user.id).first()
+        if not classroom:
+            flash('Invalid class selection.', 'danger')
+            return render_template('teacher/add_student.html', form=form)
+        
+        try:
+            StudentService.create_student(
+                username=form.username.data,
+                email=form.email.data,
+                password=form.password.data,
+                classroom=classroom,
+                first_name=form.first_name.data,
+                last_name=form.last_name.data
+            )
+            flash('Student added successfully!', 'success')
+            return redirect(url_for('teacher.students', class_id=classroom.id))
+        except ValueError as e:
+            flash(str(e), 'danger')
+        except Exception as e:
+            flash(f'An error occurred: {str(e)}', 'danger')
+    
+    return render_template('teacher/add_student.html', form=form)
 
 @teacher_bp.route('/students/<int:user_id>/edit', methods=['GET', 'POST'])
 @login_required

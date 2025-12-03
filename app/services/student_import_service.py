@@ -3,6 +3,7 @@ import io
 from app.models import db
 from app.models.user import User, UserRole
 from app.models.student import Student
+from app.services.student_service import StudentService
 from sqlalchemy.exc import IntegrityError
 
 class StudentImportService:
@@ -100,33 +101,29 @@ class StudentImportService:
             first_name = row.get('first_name', '')
             last_name = row.get('last_name', '')
 
-            existing_user = User.query.filter((User.username == username) | (User.email == email), User.role == UserRole.STUDENT).first()
-            if existing_user:
-                failed += 1
-                errors.append(f'Row {i}: Username or email already exists.')
-                continue
+            # Normal creation
+            username = row['username']
+            email = row['email']
+            password = row['password']
+            first_name = row.get('first_name', '')
+            last_name = row.get('last_name', '')
 
             try:
-                new_user = User(
+                StudentService.create_student(
                     username=username,
                     email=email,
-                    role=UserRole.STUDENT,
+                    password=password,
+                    classroom=classroom,
                     first_name=first_name,
                     last_name=last_name
                 )
-                new_user.set_password(password)
-                db.session.add(new_user)
-                db.session.commit()
-
-                classroom.add_student(new_user)
-                student_profile = Student(user_id=new_user.id, class_id=classroom.id)
-                db.session.add(student_profile)
-                db.session.commit()
                 created += 1
-            except IntegrityError:
-                db.session.rollback()
+            except ValueError as e:
                 failed += 1
-                errors.append(f'Row {i}: Username or email already exists (detected at DB level).')
+                errors.append(f'Row {i}: {str(e)}')
+            except Exception as e:
+                failed += 1
+                errors.append(f'Row {i}: An unexpected error occurred: {str(e)}')
 
         return {
             'created': created,

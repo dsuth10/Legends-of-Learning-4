@@ -5,80 +5,83 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Add Student</h2>
-    {% if reassignable_student %}
-        <div class="alert alert-info d-flex align-items-center">
-            <i class="fas fa-user-clock fa-2x me-3" aria-hidden="true"></i>
-            <div>
-                <h4 class="alert-heading">Unassigned Student Found</h4>
-                <p>
-                    <strong>Heads up!</strong> A student with this email/username already exists but is not currently assigned to any class.<br>
-                    <span data-bs-toggle="tooltip" title="Reassigning will move this student into your selected class and update their info.">
-                        <i class="fas fa-question-circle text-secondary"></i>
-                        What does 'reassign' mean?
-                    </span>
-                </p>
-                <table class="table table-sm table-bordered w-auto mb-3">
-                    <tr><th>Username</th><td>{{ reassignable_student.username }}</td></tr>
-                    <tr><th>Email</th><td>{{ reassignable_student.email }}</td></tr>
-                </table>
-                <form method="post" class="row g-2 align-items-end">
-                    <input type="hidden" name="reassign_confirm" value="1">
-                    <input type="hidden" name="user_id" value="{{ reassignable_student.user_id }}">
-                    <input type="hidden" name="class_id" value="{{ reassignable_student.class_id }}">
-                    <div class="col-md-6">
-                        <label for="first_name" class="form-label">First Name</label>
-                        <input type="text" class="form-control" name="first_name" id="first_name" value="{{ reassignable_student.first_name }}">
-                    </div>
-                    <div class="col-md-6">
-                        <label for="last_name" class="form-label">Last Name</label>
-                        <input type="text" class="form-control" name="last_name" id="last_name" value="{{ reassignable_student.last_name }}">
-                    </div>
-                    <div class="col-12 mt-2">
-                        <button type="submit" class="btn btn-primary me-2">Reassign Student to Class</button>
-                        <a href="{{ url_for('teacher.add_student') }}" class="btn btn-secondary">Cancel</a>
-                    </div>
-                </form>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+            {{ form.class_id.label(class="form-label") }}
+            {{ form.class_id(class="form-select") }}
+            {% if form.class_id.errors %}
+            <div class="text-danger">
+                {% for error in form.class_id.errors %}
+                <small>{{ error }}</small>
+                {% endfor %}
             </div>
+            {% endif %}
         </div>
-    {% else %}
-        <form method="POST">
-            <div class="mb-3">
-                <label for="class_id" class="form-label">Select Class</label>
-                <select class="form-select" id="class_id" name="class_id" required>
-                    <option value="" disabled selected>Select a class</option>
-                    {% for class in classes %}
-                        <option value="{{ class.id }}">{{ class.name }} (Join Code: {{ class.join_code }})</option>
-                    {% endfor %}
-                </select>
+
+        <div class="mb-3">
+            {{ form.username.label(class="form-label") }}
+            {{ form.username(class="form-control") }}
+            {% if form.username.errors %}
+            <div class="text-danger">
+                {% for error in form.username.errors %}
+                <small>{{ error }}</small>
+                {% endfor %}
             </div>
-            <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" class="form-control" name="username" required>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control") }}
+            {% if form.email.errors %}
+            <div class="text-danger">
+                {% for error in form.email.errors %}
+                <small>{{ error }}</small>
+                {% endfor %}
             </div>
-            <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" class="form-control" name="email" required>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-control") }}
+            {% if form.password.errors %}
+            <div class="text-danger">
+                {% for error in form.password.errors %}
+                <small>{{ error }}</small>
+                {% endfor %}
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" name="password" required>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.first_name.label(class="form-label") }}
+            {{ form.first_name(class="form-control") }}
+            {% if form.first_name.errors %}
+            <div class="text-danger">
+                {% for error in form.first_name.errors %}
+                <small>{{ error }}</small>
+                {% endfor %}
             </div>
-            <div class="mb-3">
-                <label for="first_name" class="form-label">First Name</label>
-                <input type="text" class="form-control" name="first_name">
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.last_name.label(class="form-label") }}
+            {{ form.last_name(class="form-control") }}
+            {% if form.last_name.errors %}
+            <div class="text-danger">
+                {% for error in form.last_name.errors %}
+                <small>{{ error }}</small>
+                {% endfor %}
             </div>
-            <div class="mb-3">
-                <label for="last_name" class="form-label">Last Name</label>
-                <input type="text" class="form-control" name="last_name">
-            </div>
-            <button type="submit" class="btn btn-primary">Add Student</button>
-        </form>
-    {% endif %}
+            {% endif %}
+        </div>
+
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('teacher.students') }}" class="btn btn-secondary">Cancel</a>
+    </form>
 </div>
-<script>
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-      new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-</script>
-{% endblock %} 
+{% endblock %}

@@ -6,6 +6,9 @@
 <div class="container mt-4">
   <h2>Student Roster Management</h2>
   <div class="mb-3">
+    <a href="{{ url_for('teacher.add_student') }}" class="btn btn-primary">
+      <i class="fas fa-user-plus me-1"></i> Add Student
+    </a>
     <a href="{{ url_for('teacher.unassigned_students') }}" class="btn btn-outline-warning">
       View Unassigned Students
     </a>
@@ -17,19 +20,22 @@
         <select class="form-select" id="class_id" name="class_id" required onchange="this.form.submit()">
           <option value="" disabled {% if not selected_class %}selected{% endif %}>Select a class</option>
           {% for class in classes %}
-            <option value="{{ class.id }}" {% if selected_class and class.id == selected_class.id %}selected{% endif %}>{{ class.name }} (Join Code: {{ class.join_code }})</option>
+          <option value="{{ class.id }}" {% if selected_class and class.id==selected_class.id %}selected{% endif %}>{{
+            class.name }} (Join Code: {{ class.join_code }})</option>
           {% endfor %}
         </select>
       </div>
       {% if selected_class %}
       <div class="col-md-3 d-flex align-items-end">
-        <a href="{{ url_for('teacher.student_characters', class_id=selected_class.id) }}" class="btn btn-outline-info ms-2">
+        <a href="{{ url_for('teacher.student_characters', class_id=selected_class.id) }}"
+          class="btn btn-outline-info ms-2">
           <i class="fas fa-user-shield me-1"></i> Character Management
         </a>
       </div>
       <div class="col-md-2">
         <label for="search" class="form-label">Search</label>
-        <input type="text" class="form-control" id="search" name="search" placeholder="Name or Email" value="{{ search }}">
+        <input type="text" class="form-control" id="search" name="search" placeholder="Name or Email"
+          value="{{ search }}">
       </div>
       <div class="col-md-1">
         <label for="level" class="form-label">Level</label>
@@ -56,7 +62,8 @@
         <select class="form-select" id="clan_id" name="clan_id">
           <option value="">All</option>
           {% for clan in clans %}
-            <option value="{{ clan.id }}" {% if clan_id and clan.id == clan_id %}selected{% endif %}>{{ clan.name }}</option>
+          <option value="{{ clan.id }}" {% if clan_id and clan.id==clan_id %}selected{% endif %}>{{ clan.name }}
+          </option>
           {% endfor %}
         </select>
       </div>
@@ -65,7 +72,7 @@
         <select class="form-select" id="character_class" name="character_class">
           <option value="">All</option>
           {% for cc in character_classes %}
-            <option value="{{ cc }}" {% if character_class == cc %}selected{% endif %}>{{ cc }}</option>
+          <option value="{{ cc }}" {% if character_class==cc %}selected{% endif %}>{{ cc }}</option>
           {% endfor %}
         </select>
       </div>
@@ -77,75 +84,85 @@
     </div>
   </form>
   {% if selected_class %}
-    {% if students and students|length > 0 %}
-      <div class="table-responsive mt-3">
-        <table class="table table-striped align-middle">
-          <thead>
-            <tr>
-              {% macro sort_link(label, col) %}
-                {% set is_sorted = sort == col %}
-                <a href="?{{ request.query_string|safe|replace('sort=' ~ sort, 'sort=' ~ col)|replace('direction=' ~ direction, 'direction=' ~ ('desc' if is_sorted and direction == 'asc' else 'asc')) }}" class="text-decoration-none">
-                  {{ label }}
-                  {% if is_sorted %}
-                    <i class="fas fa-sort-{{ 'up' if direction == 'asc' else 'down' }}"></i>
-                  {% else %}
-                    <i class="fas fa-sort text-muted"></i>
-                  {% endif %}
-                </a>
-              {% endmacro %}
-              <th>{{ sort_link('Name', 'username') }}</th>
-              <th>{{ sort_link('Email', 'email') }}</th>
-              <th>{{ sort_link('Level', 'level') }}</th>
-              <th>{{ sort_link('Gold', 'gold') }}</th>
-              <th>{{ sort_link('XP', 'xp') }}</th>
-              <th>{{ sort_link('Health', 'health') }}</th>
-              <th>{{ sort_link('Power', 'power') }}</th>
-              <th>Character Name</th>
-              <th>{{ sort_link('Character Class', 'character_class') }}</th>
-              <th>{{ sort_link('Clan', 'clan') }}</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for student in students %}
-            <tr>
-              <td>{{ student['user'].full_name }}</td>
-              <td>{{ student['user'].email }}</td>
-              <td>{{ student['student'].level }}</td>
-              <td>{{ student['character'].gold if student['character'] else '-' }}</td>
-              <td>{{ student['character'].experience if student['character'] else '-' }}</td>
-              <td>{{ student['student'].health }}</td>
-              <td>{{ student['student'].power }}</td>
-              <td>{% if student['character'] %}{{ student['character'].name }}{% else %}-{% endif %}</td>
-              <td>{% if student['character'] %}{{ student['character'].name }} ({{ student['character'].character_class }}){% else %}-{% endif %}</td>
-              <td>{% if student['clan'] %}{{ student['clan'].name }}{% else %}-{% endif %}</td>
-              <td>
-                <form method="post" action="{{ url_for('teacher.toggle_student_status', user_id=student['user'].id) }}" style="display:inline;">
-                  <button type="submit" class="btn btn-sm {% if student['user'].is_active %}btn-success{% else %}btn-secondary{% endif %}">
-                    {% if student['user'].is_active %}Active{% else %}Inactive{% endif %}
-                  </button>
-                </form>
-              </td>
-              <td>
-                <a href="{{ url_for('teacher.edit_student', user_id=student['user'].id) }}" class="btn btn-primary btn-sm">Edit</a>
-                <form method="post" action="{{ url_for('teacher.remove_student', user_id=student['user'].id) }}" style="display:inline;">
-                  <input type="hidden" name="class_id" value="{{ selected_class.id }}">
-                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this student from the class?');">Remove</button>
-                </form>
-                <button type="button" class="btn btn-warning btn-sm give-gold-btn" data-student-id="{{ student['student'].id }}" data-student-name="{{ student['user'].full_name }}">Gold</button>
-                <button type="button" class="btn btn-info btn-sm give-xp-btn" data-student-id="{{ student['student'].id }}" data-student-name="{{ student['user'].full_name }}">XP</button>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="alert alert-info mt-4">No students found in this class.</div>
-    {% endif %}
+  {% if students and students|length > 0 %}
+  <div class="table-responsive mt-3">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          {% macro sort_link(label, col) %}
+          {% set is_sorted = sort == col %}
+          <a href="?{{ request.query_string|safe|replace('sort=' ~ sort, 'sort=' ~ col)|replace('direction=' ~ direction, 'direction=' ~ ('desc' if is_sorted and direction == 'asc' else 'asc')) }}"
+            class="text-decoration-none">
+            {{ label }}
+            {% if is_sorted %}
+            <i class="fas fa-sort-{{ 'up' if direction == 'asc' else 'down' }}"></i>
+            {% else %}
+            <i class="fas fa-sort text-muted"></i>
+            {% endif %}
+          </a>
+          {% endmacro %}
+          <th>{{ sort_link('Name', 'username') }}</th>
+          <th>{{ sort_link('Email', 'email') }}</th>
+          <th>{{ sort_link('Level', 'level') }}</th>
+          <th>{{ sort_link('Gold', 'gold') }}</th>
+          <th>{{ sort_link('XP', 'xp') }}</th>
+          <th>{{ sort_link('Health', 'health') }}</th>
+          <th>{{ sort_link('Power', 'power') }}</th>
+          <th>Character Name</th>
+          <th>{{ sort_link('Character Class', 'character_class') }}</th>
+          <th>{{ sort_link('Clan', 'clan') }}</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in students %}
+        <tr>
+          <td>{{ student['user'].full_name }}</td>
+          <td>{{ student['user'].email }}</td>
+          <td>{{ student['student'].level }}</td>
+          <td>{{ student['character'].gold if student['character'] else '-' }}</td>
+          <td>{{ student['character'].experience if student['character'] else '-' }}</td>
+          <td>{{ student['student'].health }}</td>
+          <td>{{ student['student'].power }}</td>
+          <td>{% if student['character'] %}{{ student['character'].name }}{% else %}-{% endif %}</td>
+          <td>{% if student['character'] %}{{ student['character'].name }} ({{ student['character'].character_class
+            }}){% else %}-{% endif %}</td>
+          <td>{% if student['clan'] %}{{ student['clan'].name }}{% else %}-{% endif %}</td>
+          <td>
+            <form method="post" action="{{ url_for('teacher.toggle_student_status', user_id=student['user'].id) }}"
+              style="display:inline;">
+              <button type="submit"
+                class="btn btn-sm {% if student['user'].is_active %}btn-success{% else %}btn-secondary{% endif %}">
+                {% if student['user'].is_active %}Active{% else %}Inactive{% endif %}
+              </button>
+            </form>
+          </td>
+          <td>
+            <a href="{{ url_for('teacher.edit_student', user_id=student['user'].id) }}"
+              class="btn btn-primary btn-sm">Edit</a>
+            <form method="post" action="{{ url_for('teacher.remove_student', user_id=student['user'].id) }}"
+              style="display:inline;">
+              <input type="hidden" name="class_id" value="{{ selected_class.id }}">
+              <button type="submit" class="btn btn-danger btn-sm"
+                onclick="return confirm('Remove this student from the class?');">Remove</button>
+            </form>
+            <button type="button" class="btn btn-warning btn-sm give-gold-btn"
+              data-student-id="{{ student['student'].id }}"
+              data-student-name="{{ student['user'].full_name }}">Gold</button>
+            <button type="button" class="btn btn-info btn-sm give-xp-btn" data-student-id="{{ student['student'].id }}"
+              data-student-name="{{ student['user'].full_name }}">XP</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}
-    <div class="alert alert-secondary mt-4">Select a class to view its students.</div>
+  <div class="alert alert-info mt-4">No students found in this class.</div>
+  {% endif %}
+  {% else %}
+  <div class="alert alert-secondary mt-4">Select a class to view its students.</div>
   {% endif %}
 </div>
 {% endblock %}
@@ -155,7 +172,8 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="awardModalLabel">Award <span id="awardTypeLabel"></span> to <span id="awardStudentName"></span></h5>
+        <h5 class="modal-title" id="awardModalLabel">Award <span id="awardTypeLabel"></span> to <span
+            id="awardStudentName"></span></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -181,62 +199,62 @@
   </div>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  let awardModal = new bootstrap.Modal(document.getElementById('awardModal'));
-  let awardType = '';
-  let awardStudentId = null;
-  let awardStudentName = '';
-  document.querySelectorAll('.give-gold-btn, .give-xp-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      awardType = btn.classList.contains('give-gold-btn') ? 'gold' : 'xp';
-      awardStudentId = btn.getAttribute('data-student-id');
-      awardStudentName = btn.getAttribute('data-student-name');
-      document.getElementById('awardTypeLabel').textContent = awardType.toUpperCase();
-      document.getElementById('awardStudentName').textContent = awardStudentName;
-      document.getElementById('awardStudentId').value = awardStudentId;
-      document.getElementById('awardType').value = awardType;
-      document.getElementById('awardAmount').value = '';
-      document.getElementById('awardReason').value = '';
-      document.getElementById('awardFeedback').classList.add('d-none');
-      awardModal.show();
+  document.addEventListener('DOMContentLoaded', function () {
+    let awardModal = new bootstrap.Modal(document.getElementById('awardModal'));
+    let awardType = '';
+    let awardStudentId = null;
+    let awardStudentName = '';
+    document.querySelectorAll('.give-gold-btn, .give-xp-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        awardType = btn.classList.contains('give-gold-btn') ? 'gold' : 'xp';
+        awardStudentId = btn.getAttribute('data-student-id');
+        awardStudentName = btn.getAttribute('data-student-name');
+        document.getElementById('awardTypeLabel').textContent = awardType.toUpperCase();
+        document.getElementById('awardStudentName').textContent = awardStudentName;
+        document.getElementById('awardStudentId').value = awardStudentId;
+        document.getElementById('awardType').value = awardType;
+        document.getElementById('awardAmount').value = '';
+        document.getElementById('awardReason').value = '';
+        document.getElementById('awardFeedback').classList.add('d-none');
+        awardModal.show();
+      });
+    });
+    document.getElementById('awardForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const studentId = document.getElementById('awardStudentId').value;
+      const type = document.getElementById('awardType').value;
+      const amount = parseInt(document.getElementById('awardAmount').value, 10);
+      const reason = document.getElementById('awardReason').value;
+      const url = `/teacher/api/teacher/student/${studentId}/award-${type}`;
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': (window.csrf_token || '')
+        },
+        body: JSON.stringify({ amount, reason })
+      })
+        .then(response => response.json())
+        .then(data => {
+          const feedback = document.getElementById('awardFeedback');
+          if (data.success) {
+            feedback.className = 'alert alert-success mt-2';
+            feedback.textContent = data.message;
+            feedback.classList.remove('d-none');
+            setTimeout(() => { awardModal.hide(); window.location.reload(); }, 1200);
+          } else {
+            feedback.className = 'alert alert-danger mt-2';
+            feedback.textContent = data.message || 'Error.';
+            feedback.classList.remove('d-none');
+          }
+        })
+        .catch(() => {
+          const feedback = document.getElementById('awardFeedback');
+          feedback.className = 'alert alert-danger mt-2';
+          feedback.textContent = 'Request failed.';
+          feedback.classList.remove('d-none');
+        });
     });
   });
-  document.getElementById('awardForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const studentId = document.getElementById('awardStudentId').value;
-    const type = document.getElementById('awardType').value;
-    const amount = parseInt(document.getElementById('awardAmount').value, 10);
-    const reason = document.getElementById('awardReason').value;
-    const url = `/teacher/api/teacher/student/${studentId}/award-${type}`;
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': (window.csrf_token || '')
-      },
-      body: JSON.stringify({ amount, reason })
-    })
-    .then(response => response.json())
-    .then(data => {
-      const feedback = document.getElementById('awardFeedback');
-      if (data.success) {
-        feedback.className = 'alert alert-success mt-2';
-        feedback.textContent = data.message;
-        feedback.classList.remove('d-none');
-        setTimeout(() => { awardModal.hide(); window.location.reload(); }, 1200);
-      } else {
-        feedback.className = 'alert alert-danger mt-2';
-        feedback.textContent = data.message || 'Error.';
-        feedback.classList.remove('d-none');
-      }
-    })
-    .catch(() => {
-      const feedback = document.getElementById('awardFeedback');
-      feedback.className = 'alert alert-danger mt-2';
-      feedback.textContent = 'Request failed.';
-      feedback.classList.remove('d-none');
-    });
-  });
-});
 </script>
-{% endblock %} 
+{% endblock %}
