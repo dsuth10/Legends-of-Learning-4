@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="bi bi-person-circle"></i> {{ battle.student.user.username }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Health:</strong>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-success" role="progressbar"
+                                style="width: {{ (battle.player_health / battle.player_max_health * 100)|int }}%"
+                                id="player-health-bar">
+                                <span id="player-health-text">{{ battle.player_health }} / {{ battle.player_max_health
+                                    }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5><i class="bi bi-bug"></i> {{ battle.monster.name }} (Level {{ battle.monster.level }})</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Health:</strong>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-danger" role="progressbar"
+                                style="width: {{ (battle.monster_health / battle.monster_max_health * 100)|int }}%"
+                                id="monster-health-bar">
+                                <span id="monster-health-text">{{ battle.monster_health }} / {{
+                                    battle.monster_max_health }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4" id="question-card">
+        <div class="card-header bg-info text-white">
+            <h5><i class="bi bi-question-circle"></i> Question</h5>
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">{{ question.text }}</h5>
+            <form id="answer-form" class="mt-3">
+                <input type="hidden" name="question_id" value="{{ question.id }}">
+                <div class="list-group">
+                    {% for option in question.options %}
+                    <label class="list-group-item list-group-item-action">
+                        <input class="form-check-input me-2" type="radio" name="answer" value="{{ option }}" required>
+                        {{ option }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="mt-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary" id="submit-answer">
+                        <i class="bi bi-check-circle"></i> Submit Answer
+                    </button>
+                    <form action="{{ url_for('student_battle.flee', battle_id=battle.id) }}" method="post"
+                        style="display:inline;"
+                        onsubmit="return confirm('Are you sure you want to flee? You will lose this battle.');">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-flag"></i> Flee
+                        </button>
+                    </form>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mt-4" id="result-card" style="display: none;">
+        <div class="card-body">
+            <div id="result-message"></div>
+            <button class="btn btn-primary mt-3" id="next-question-btn" style="display: none;">
+                Next Question
+            </button>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h6><i class="bi bi-clock-history"></i> Battle Log</h6>
+        </div>
+        <div class="card-body" id="battle-log">
+            {% if battle.turn_log %}
+            {% for turn in battle.turn_log %}
+            <div class="mb-2">
+                <strong>Turn {{ turn.turn }}:</strong>
+                {% if turn.correct %}
+                <span class="text-success">✓ Correct! Dealt {{ turn.damage_dealt }} damage.</span>
+                {% else %}
+                <span class="text-danger">✗ Incorrect. Took {{ turn.damage_taken }} damage.</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="text-muted">No turns yet. Answer the question to attack!</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.getElementById('answer-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const submitBtn = document.getElementById('submit-answer');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+
+        fetch('{{ url_for("student_battle.attack", battle_id=battle.id) }}', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update health bars
+                    updateHealthBar('player', data.player_health, data.player_max_health);
+                    updateHealthBar('monster', data.monster_health, data.monster_max_health);
+
+                    // Show result
+                    const resultCard = document.getElementById('result-card');
+                    const resultMessage = document.getElementById('result-message');
+                    const questionCard = document.getElementById('question-card');
+
+                    if (data.correct) {
+                        resultMessage.innerHTML = `
+                    <div class="alert alert-success">
+                        <h5>✓ Correct!</h5>
+                        <p>You dealt <strong>${data.turn_result.damage_dealt}</strong> damage to ${data.turn_result.monster_name || 'the monster'}!</p>
+                    </div>
+                `;
+                    } else {
+                        resultMessage.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>✗ Incorrect!</h5>
+                        <p>The correct answer was: <strong>${data.turn_result.correct_answer}</strong></p>
+                        <p>You took <strong>${data.turn_result.damage_taken}</strong> damage!</p>
+                    </div>
+                `;
+                    }
+
+                    // Add to battle log
+                    const battleLog = document.getElementById('battle-log');
+                    const turnCount = battleLog.children.length + 1;
+                    const logEntry = document.createElement('div');
+                    logEntry.className = 'mb-2';
+                    logEntry.innerHTML = `
+                <strong>Turn ${turnCount}:</strong>
+                ${data.correct ?
+                            `<span class="text-success">✓ Correct! Dealt ${data.turn_result.damage_dealt} damage.</span>` :
+                            `<span class="text-danger">✗ Incorrect. Took ${data.turn_result.damage_taken} damage.</span>`
+                        }
+            `;
+                    battleLog.appendChild(logEntry);
+
+                    resultCard.style.display = 'block';
+
+                    if (data.battle_ended) {
+                        // Battle is over
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url;
+                        }, 2000);
+                    } else {
+                        // Show next question button
+                        document.getElementById('next-question-btn').style.display = 'block';
+                        questionCard.style.display = 'none';
+                    }
+                } else {
+                    alert('Error: ' + data.message);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Answer';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Answer';
+            });
+    });
+
+    document.getElementById('next-question-btn').addEventListener('click', function () {
+        window.location.reload();
+    });
+
+    function updateHealthBar(type, current, max) {
+        const bar = document.getElementById(`${type}-health-bar`);
+        const text = document.getElementById(`${type}-health-text`);
+        const percentage = (current / max * 100);
+
+        bar.style.width = percentage + '%';
+        text.textContent = `${current} / ${max}`;
+    }
+</script>
+{% endblock %}

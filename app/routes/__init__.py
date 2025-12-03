@@ -14,4 +14,8 @@ def init_app(app):
     app.register_blueprint(clan_api)
     app.register_blueprint(teacher_quests_bp)
     app.register_blueprint(abilities_bp)
+    from .teacher.education import teacher_education_bp
+    app.register_blueprint(teacher_education_bp)
+    from .student.battle import student_battle_bp
+    app.register_blueprint(student_battle_bp)
 

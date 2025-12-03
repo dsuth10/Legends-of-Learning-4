@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>{% if question_set %}Edit{% else %}Create{% endif %} Question Set</h2>
+
+    <form method="post" class="mt-4">
+        <div class="mb-3">
+            <label for="title" class="form-label">Title *</label>
+            <input type="text" class="form-control" id="title" name="title"
+                value="{{ question_set.title if question_set else '' }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" name="description"
+                rows="3">{{ question_set.description if question_set else '' }}</textarea>
+        </div>
+
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="is_active" name="is_active" {% if not question_set or
+                question_set.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="is_active">
+                Active (students can use this question set in battles)
+            </label>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> {% if question_set %}Update{% else %}Create{% endif %}
+            </button>
+            <a href="{{ url_for('teacher_education.list_sets') }}" class="btn btn-secondary">
+                <i class="bi bi-x-circle"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>{{ question_set.title }}</h2>
+            <p class="text-muted">{{ question_set.description }}</p>
+        </div>
+        <a href="{{ url_for('teacher_education.list_sets') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Sets
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Add New Question</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                <div class="mb-3">
+                    <label for="text" class="form-label">Question Text *</label>
+                    <textarea class="form-control" id="text" name="text" rows="2" required></textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="question_type" class="form-label">Question Type</label>
+                        <select class="form-select" id="question_type" name="question_type">
+                            <option value="multiple_choice">Multiple Choice</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="difficulty" class="form-label">Difficulty (1-5)</label>
+                        <input type="number" class="form-control" id="difficulty" name="difficulty" min="1" max="5"
+                            value="1">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Answer Options *</label>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <input type="text" class="form-control" name="option_1" placeholder="Option 1" required>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <input type="text" class="form-control" name="option_2" placeholder="Option 2" required>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <input type="text" class="form-control" name="option_3" placeholder="Option 3 (optional)">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <input type="text" class="form-control" name="option_4" placeholder="Option 4 (optional)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="correct_answer" class="form-label">Correct Answer *</label>
+                    <input type="text" class="form-control" id="correct_answer" name="correct_answer"
+                        placeholder="Enter the exact text of the correct answer" required>
+                    <small class="form-text text-muted">Must match one of the options exactly</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Question
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5>Questions ({{ questions|length }})</h5>
+        </div>
+        <div class="card-body">
+            {% if questions %}
+            <div class="list-group">
+                {% for question in questions %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-2">{{ loop.index }}. {{ question.text }}</h6>
+                            <div class="mb-2">
+                                {% for option in question.options %}
+                                <span
+                                    class="badge {% if option == question.correct_answer %}bg-success{% else %}bg-secondary{% endif %} me-1">
+                                    {{ option }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                            <small class="text-muted">
+                                Difficulty: {{ question.difficulty }}/5 |
+                                Correct Answer: <strong>{{ question.correct_answer }}</strong>
+                            </small>
+                        </div>
+                        <form action="{{ url_for('teacher_education.delete_question', question_id=question.id) }}"
+                            method="post" style="display:inline;"
+                            onsubmit="return confirm('Are you sure you want to delete this question?');">
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No questions yet. Add your first question above!
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
