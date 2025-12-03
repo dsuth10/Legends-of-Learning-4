@@ -1,5 +1,5 @@
 from flask import Flask
-from app.models import db  # Use the single db instance from app.models
+from app.models import db, init_db  # Use the single db instance from app.models
 from flask_login import LoginManager
 from flask_migrate import Migrate
 import os
@@ -46,7 +46,9 @@ def create_app(config=None):
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = engine_options
     
     # Initialize extensions
-    db.init_app(app)
+    # Initialize extensions
+    # db.init_app(app) # Moved to init_db
+    init_db(app) # Register models and init db
     login_manager.init_app(app)
     migrate.init_app(app, db)
     jwt = JWTManager(app)

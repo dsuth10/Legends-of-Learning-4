@@ -25,6 +25,8 @@ def init_db(app):
     from app.models.student import Student
     from app.models.teacher import Teacher
     from app.models.assist_log import AssistLog
+    from app.models.education import QuestionSet, Question
+    from app.models.battle import Monster, Battle
     # from app.models.clan_progress import ClanProgressHistory  # Already imported at top level
     
     # Create tables
