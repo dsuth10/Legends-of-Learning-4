@@ -43,6 +43,11 @@
                     <label for="class_select_{{ quest.id }}" class="form-label">Class</label>
                     <select class="form-select class-select" name="class_id" id="class_select_{{ quest.id }}" required>
                       <option value="">Select a class...</option>
+                      {% if classes %}
+                        {% for class in classes %}
+                          <option value="{{ class.id }}">{{ class.name }}</option>
+                        {% endfor %}
+                      {% endif %}
                     </select>
                   </div>
                   <div class="mb-2">
@@ -89,13 +94,54 @@
 <script>
 function fetchAssignmentData(questId) {
   const classSelect = document.getElementById(`class_select_${questId}`);
-  fetch('/teacher/quests/assignment_data')
-    .then(res => res.json())
+  if (!classSelect) {
+    console.error(`Class select element not found for quest ${questId}`);
+    return;
+  }
+  
+  // Show loading state
+  classSelect.innerHTML = '<option value="">Loading classes...</option>';
+  classSelect.disabled = true;
+  
+  fetch('/teacher/quests/assignment_data', {
+    credentials: 'include',  // Include cookies for authentication
+    headers: {
+      'Accept': 'application/json',
+    }
+  })
+    .then(res => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      return res.json();
+    })
     .then(data => {
-      classSelect.innerHTML = '<option value="">Select a class...</option>';
-      data.classes.forEach(cls => {
-        classSelect.innerHTML += `<option value="${cls.id}">${cls.name}</option>`;
-      });
+      // Preserve existing options if any, otherwise start fresh
+      const hasExistingOptions = classSelect.options.length > 1;
+      if (!hasExistingOptions) {
+        classSelect.innerHTML = '<option value="">Select a class...</option>';
+      }
+      if (data.classes && data.classes.length > 0) {
+        // Add new options, avoiding duplicates
+        const existingValues = Array.from(classSelect.options).map(opt => opt.value);
+        data.classes.forEach(cls => {
+          if (!existingValues.includes(String(cls.id))) {
+            const option = document.createElement('option');
+            option.value = cls.id;
+            option.textContent = cls.name;
+            classSelect.appendChild(option);
+          }
+        });
+      } else if (!hasExistingOptions) {
+        classSelect.innerHTML += '<option value="" disabled>No classes available</option>';
+      }
+      classSelect.disabled = false;
+    })
+    .catch(error => {
+      console.error('Error fetching assignment data:', error);
+      classSelect.innerHTML = '<option value="">Error loading classes</option>';
+      classSelect.disabled = false;
+      alert('Failed to load classes. Please refresh the page and try again.');
     });
 }
 function fetchClassDetails(questId, classId) {
@@ -110,8 +156,18 @@ function fetchClassDetails(questId, classId) {
     studentGroup.classList.add('d-none');
     return;
   }
-  fetch(`/teacher/quests/assignment_data?class_id=${classId}`)
-    .then(res => res.json())
+  fetch(`/teacher/quests/assignment_data?class_id=${classId}`, {
+    credentials: 'include',  // Include cookies for authentication
+    headers: {
+      'Accept': 'application/json',
+    }
+  })
+    .then(res => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      return res.json();
+    })
     .then(data => {
       // Populate clans
       if (data.clans && data.clans.length > 0) {
@@ -131,6 +187,10 @@ function fetchClassDetails(questId, classId) {
       } else {
         studentGroup.classList.add('d-none');
       }
+    })
+    .catch(error => {
+      console.error('Error fetching class details:', error);
+      alert('Failed to load class details. Please try again.');
     });
 }
 document.addEventListener('DOMContentLoaded', function() {

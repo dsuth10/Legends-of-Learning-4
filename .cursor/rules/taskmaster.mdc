@@ -1,9 +1,6 @@
 ---
-description: Comprehensive reference for Taskmaster MCP tools and CLI commands.
-globs: **/*
-alwaysApply: true
+alwaysApply: false
 ---
-
 # Taskmaster Tool & Command Reference
 
 This document provides a detailed reference for interacting with Taskmaster, covering both the recommended MCP tools (for integrations like Cursor) and the corresponding `task-master` CLI commands (for direct user interaction or fallback).

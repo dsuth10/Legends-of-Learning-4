@@ -16,7 +16,9 @@ teacher_quests_bp = Blueprint('teacher_quests', __name__, url_prefix='/teacher/q
 def list_quests():
     db.session.expire_all()  # Force session to reload from DB
     quests = Quest.query.order_by(Quest.id.desc()).all()
-    return render_template('teacher/quests.html', quests=quests)
+    # Get classes for the teacher to populate dropdown (fallback if JS fails)
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    return render_template('teacher/quests.html', quests=quests, classes=classes)
 
 @teacher_quests_bp.route('/create', methods=['GET', 'POST'])
 @login_required
@@ -94,9 +96,9 @@ def assign_quest():
 
     if target_type == 'class':
         # Assign to all students with active characters in the class
-        characters = Character.query.join('student').filter(
+        characters = Character.query.join(Student).filter(
             Character.is_active == True,
-            Character.student.has(class_id=class_id)
+            Student.class_id == class_id
         ).all()
         character_ids = [c.id for c in characters]
     elif target_type == 'clan':
