@@ -5,7 +5,322 @@
 {% block content %}
 <div class="container mt-5">
     <h2 class="mb-4">Your Progress</h2>
-    <p>See your XP, level, gold, and other stats over time here.</p>
-    <!-- Add progress charts and stats here -->
+    
+    {% if not main_character %}
+    <div class="alert alert-info">
+        <h4>No Character Found</h4>
+        <p>You need to create a character first to see your progress. <a href="{{ url_for('student.character_create') }}" class="alert-link">Create a character</a></p>
+    </div>
+    {% else %}
+    
+    <!-- Summary Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Current Level</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ summary_stats.current_level }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total XP</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ summary_stats.total_xp }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Current Gold</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ summary_stats.current_gold }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Quests Completed</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">{{ summary_stats.total_quests_completed }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- XP Progression Chart -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">XP Progression Over Time</h5>
+                </div>
+                <div class="card-body">
+                    {% if xp_chart_data.dates|length > 0 %}
+                    <canvas id="xpProgressionChart" height="80"></canvas>
+                    {% else %}
+                    <p class="text-muted">No XP data available yet. Start completing quests to see your progress!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level Progression Chart -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">Level Progression Timeline</h5>
+                </div>
+                <div class="card-body">
+                    {% if level_chart_data.dates|length > 0 %}
+                    <canvas id="levelProgressionChart" height="80"></canvas>
+                    {% else %}
+                    <p class="text-muted">No level progression data available yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gold Earned/Spent Chart -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">Gold Earned vs Spent</h5>
+                </div>
+                <div class="card-body">
+                    {% if gold_chart_data.dates|length > 0 %}
+                    <canvas id="goldChart" height="80"></canvas>
+                    {% else %}
+                    <p class="text-muted">No gold transaction data available yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quest Completion Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">Quest Completion Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Total Completed:</strong> {{ quest_stats.total_completed }} / {{ quest_stats.total_quests }}</p>
+                    <p><strong>Completion Rate:</strong> {{ quest_stats.completion_rate }}%</p>
+                    {% if quest_stats.completion_timeline.dates|length > 0 %}
+                    <canvas id="questCompletionChart" height="80"></canvas>
+                    {% else %}
+                    <p class="text-muted">No quest completion timeline available yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">Achievement Badges</h5>
+                </div>
+                <div class="card-body">
+                    {% if badges|length > 0 %}
+                    <div class="row">
+                        {% for badge in badges %}
+                        <div class="col-md-4 mb-3 text-center">
+                            <img src="{{ badge.icon }}" alt="{{ badge.name }}" class="img-fluid" style="max-width: 64px; max-height: 64px;">
+                            <p class="small mt-2 mb-0"><strong>{{ badge.name }}</strong></p>
+                            {% if badge.description %}
+                            <p class="small text-muted">{{ badge.description }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No badges earned yet. Complete achievements to earn badges!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Feed -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_activities|length > 0 %}
+                    <div class="list-group">
+                        {% for activity in recent_activities %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ activity.type }}</h6>
+                                <small class="text-muted">{{ activity.timestamp.strftime('%Y-%m-%d %H:%M') if activity.timestamp else '' }}</small>
+                            </div>
+                            {% if activity.description %}
+                            <p class="mb-1">{{ activity.description }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No recent activity to display.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
 </div>
-{% endblock %} 
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // XP Progression Chart
+    {% if xp_chart_data.dates|length > 0 %}
+    const xpCtx = document.getElementById('xpProgressionChart');
+    if (xpCtx) {
+        new Chart(xpCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: {{ xp_chart_data.dates|tojson }},
+                datasets: [{
+                    label: 'Total XP',
+                    data: {{ xp_chart_data.xp|tojson }},
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Experience Points Over Time' }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+    {% endif %}
+
+    // Level Progression Chart
+    {% if level_chart_data.dates|length > 0 %}
+    const levelCtx = document.getElementById('levelProgressionChart');
+    if (levelCtx) {
+        new Chart(levelCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: {{ level_chart_data.dates|tojson }},
+                datasets: [{
+                    label: 'Level',
+                    data: {{ level_chart_data.levels|tojson }},
+                    borderColor: '#1cc88a',
+                    backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                    fill: false,
+                    stepped: 'after'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Character Level Over Time' }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    }
+    {% endif %}
+
+    // Gold Earned/Spent Chart
+    {% if gold_chart_data.dates|length > 0 %}
+    const goldCtx = document.getElementById('goldChart');
+    if (goldCtx) {
+        new Chart(goldCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: {{ gold_chart_data.dates|tojson }},
+                datasets: [
+                    {
+                        label: 'Gold Earned',
+                        data: {{ gold_chart_data.earned|tojson }},
+                        borderColor: '#36b9cc',
+                        backgroundColor: 'rgba(54, 185, 204, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Gold Spent',
+                        data: {{ gold_chart_data.spent|tojson }},
+                        borderColor: '#f6c23e',
+                        backgroundColor: 'rgba(246, 194, 62, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Gold Transactions Over Time' }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+    {% endif %}
+
+    // Quest Completion Chart
+    {% if quest_stats.completion_timeline.dates|length > 0 %}
+    const questCtx = document.getElementById('questCompletionChart');
+    if (questCtx) {
+        new Chart(questCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: {{ quest_stats.completion_timeline.dates|tojson }},
+                datasets: [{
+                    label: 'Quests Completed',
+                    data: {{ quest_stats.completion_timeline.counts|tojson }},
+                    backgroundColor: '#858796'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Quest Completion Timeline' }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    }
+    {% endif %}
+});
+</script>
+{% endblock %}
