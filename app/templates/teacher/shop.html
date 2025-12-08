@@ -1,10 +1,250 @@
 {% extends "teacher/base_dashboard.html" %}
+
 {% block breadcrumb %}
 <li class="breadcrumb-item active" aria-current="page">Shop Config</li>
 {% endblock %}
+
 {% block dashboard_content %}
-<div class="alert alert-info mt-4">
-  <h4 class="alert-heading">Shop Config</h4>
-  <p>This feature is coming soon.</p>
+<div class="row mb-4 align-items-center">
+  <div class="col-md-6">
+    <h2><i class="fas fa-store me-2"></i>Shop Configuration</h2>
+    <p class="text-muted">Customize item prices and availability for your classes.</p>
+  </div>
+  <div class="col-md-6 text-end">
+    <button id="saveChangesBtn" class="btn btn-primary" onclick="saveConfiguration()">
+      <i class="fas fa-save me-2"></i>Save Changes
+    </button>
+  </div>
 </div>
-{% endblock %} 
+
+<!-- Class Selector -->
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('teacher.shop') }}" class="row align-items-center g-3">
+      <div class="col-auto">
+        <label for="classSelect" class="col-form-label fw-bold">Select Class:</label>
+      </div>
+      <div class="col-md-4">
+        <select class="form-select" id="classSelect" name="class_id" onchange="this.form.submit()">
+          {% for c in classes %}
+          <option value="{{ c.id }}" {% if selected_class and selected_class.id==c.id %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if selected_class %}
+      <div class="col-auto">
+        <span class="badge bg-info">{{ items|length }} Items Loaded</span>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+{% if selected_class %}
+<!-- Bulk Actions -->
+<div class="card mb-4 bg-light">
+  <div class="card-body py-2">
+    <div class="row align-items-center">
+      <div class="col-auto fw-bold"><i class="fas fa-bolt me-2"></i>Bulk Actions:</div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-outline-secondary" onclick="bulkAdjustPrice(1.1)">Price +10%</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="bulkAdjustPrice(0.9)">Price -10%</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="resetAllOverrides()">Reset All</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Items Table -->
+<div class="card">
+  <div class="card-header">
+    <ul class="nav nav-tabs card-header-tabs" id="shopTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="equipment-tab" data-bs-toggle="tab" data-bs-target="#equipment-pane"
+          type="button" role="tab">Equipment</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="abilities-tab" data-bs-toggle="tab" data-bs-target="#abilities-pane" type="button"
+          role="tab">Abilities</button>
+      </li>
+    </ul>
+  </div>
+  <div class="card-body p-0">
+    <div class="tab-content" id="myTabContent">
+      <!-- Equipment Pane -->
+      <div class="tab-pane fade show active" id="equipment-pane" role="tabpanel">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 50px;">Icon</th>
+                <th>Item Name</th>
+                <th>Base Cost</th>
+                <th style="width: 150px;">Override Cost</th>
+                <th>Base Lvl</th>
+                <th style="width: 100px;">Req Lvl</th>
+                <th class="text-center">Visible</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items if item.type == 'equipment' %}
+              <tr class="item-row" data-id="{{ item.id }}" data-type="{{ item.type }}">
+                <td><img src="{{ item.image }}" class="rounded" width="32" height="32"></td>
+                <td class="fw-bold">{{ item.name }}</td>
+                <td class="text-muted">{{ item.base_cost }}</td>
+                <td>
+                  <input type="number" class="form-control form-control-sm cost-input"
+                    value="{{ item.override_cost if item.override_cost is not none else '' }}"
+                    placeholder="{{ item.base_cost }}" min="0">
+                </td>
+                <td class="text-muted">{{ item.base_level }}</td>
+                <td>
+                  <input type="number" class="form-control form-control-sm level-input"
+                    value="{{ item.override_level if item.override_level is not none else '' }}"
+                    placeholder="{{ item.base_level }}" min="1">
+                </td>
+                <td class="text-center">
+                  <div class="form-check form-switch d-inline-block">
+                    <input class="form-check-input visibility-input" type="checkbox" {% if item.is_visible %}checked{%
+                      endif %}>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Abilities Pane -->
+      <div class="tab-pane fade" id="abilities-pane" role="tabpanel">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 50px;">Icon</th>
+                <th>Ability Name</th>
+                <th>Base Cost</th>
+                <th style="width: 150px;">Override Cost</th>
+                <th>Base Lvl</th>
+                <th style="width: 100px;">Req Lvl</th>
+                <th class="text-center">Visible</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items if item.type == 'ability' %}
+              <tr class="item-row" data-id="{{ item.id }}" data-type="{{ item.type }}">
+                <td><img src="{{ item.image }}" class="rounded" width="32" height="32"></td>
+                <td class="fw-bold">{{ item.name }}</td>
+                <td class="text-muted">{{ item.base_cost }}</td>
+                <td>
+                  <input type="number" class="form-control form-control-sm cost-input"
+                    value="{{ item.override_cost if item.override_cost is not none else '' }}"
+                    placeholder="{{ item.base_cost }}" min="0">
+                </td>
+                <td class="text-muted">{{ item.base_level }}</td>
+                <td>
+                  <input type="number" class="form-control form-control-sm level-input"
+                    value="{{ item.override_level if item.override_level is not none else '' }}"
+                    placeholder="{{ item.base_level }}" min="1">
+                </td>
+                <td class="text-center">
+                  <div class="form-check form-switch d-inline-block">
+                    <input class="form-check-input visibility-input" type="checkbox" {% if item.is_visible %}checked{%
+                      endif %}>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for Logic -->
+<script>
+  function saveConfiguration() {
+    const btn = document.getElementById('saveChangesBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+
+    const updates = [];
+    document.querySelectorAll('.item-row').forEach(row => {
+      const id = row.dataset.id;
+      const type = row.dataset.type;
+      const costInput = row.querySelector('.cost-input');
+      const levelInput = row.querySelector('.level-input');
+      const visibilityInput = row.querySelector('.visibility-input');
+
+      // Only send if changes exist or to explicit set defaults? 
+      // Strategy: Send all current states to be safe and simple.
+      updates.push({
+        item_id: id,
+        item_type: type,
+        override_cost: costInput.value,
+        override_level: levelInput.value,
+        is_visible: visibilityInput.checked
+      });
+    });
+
+    const classId = document.getElementById('classSelect').value;
+
+    fetch('{{ url_for("teacher.save_shop_config") }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        class_id: classId,
+        updates: updates
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Show toast or success message
+          alert('Configuration saved successfully!');
+        } else {
+          alert('Error saving configuration: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while saving.');
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      });
+  }
+
+  function bulkAdjustPrice(factor) {
+    if (!confirm('This will adjust ALL prices by ' + Math.round((factor - 1) * 100) + '%. Continue?')) return;
+
+    document.querySelectorAll('.item-row').forEach(row => {
+      const costInput = row.querySelector('.cost-input');
+      const basePrice = parseFloat(costInput.placeholder);
+
+      let currentPrice = costInput.value ? parseFloat(costInput.value) : basePrice;
+      let newPrice = Math.round(currentPrice * factor);
+
+      costInput.value = newPrice;
+    });
+  }
+
+  function resetAllOverrides() {
+    if (!confirm('Are you sure you want to reset all overrides to default?')) return;
+
+    document.querySelectorAll('.cost-input').forEach(input => input.value = '');
+    document.querySelectorAll('.level-input').forEach(input => input.value = '');
+    document.querySelectorAll('.visibility-input').forEach(input => input.checked = true);
+  }
+</script>
+{% endif %}
+{% endblock %}

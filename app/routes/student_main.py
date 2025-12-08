@@ -10,6 +10,7 @@ from app.models.shop import ShopPurchase, PurchaseType
 from app.models.quest import Quest, QuestLog, QuestStatus
 from app.models.audit import AuditLog, EventType
 from app.models.achievement_badge import AchievementBadge
+from app.models.shop_config import ShopItemOverride
 from datetime import datetime, timedelta
 from collections import defaultdict
 import time
@@ -192,62 +193,81 @@ def shop():
     # Query all items and abilities for the shop
     items = Equipment.query.all()
     print(f"[DEBUG] Shop route: Equipment.query.all() count = {len(items)}")
+    # Query overrides for the student's active classroom
+    overrides_map = {}
+    if main_character and student_profile:
+        # Assuming student is in at least one active class and the main character belongs to it?
+        # Actually character is linked to student, student to classrooms.
+        # We need the classroom ID for the CURRENT context. 
+        # Usually checking the first active class or similar.
+        # Check if student_profile.classes has items.
+        active_class = next((c for c in student_profile.classes), None)
+        if active_class:
+            overrides = ShopItemOverride.query.filter_by(classroom_id=active_class.id).all()
+            for ov in overrides:
+                overrides_map[(ov.item_type, ov.item_id)] = ov
+
     items_list = []
+    print(f"[DEBUG] Shop route: Equipment.query.all() count = {len(items)}")
     for eq in items:
+        # Apply Overrides
+        override = overrides_map.get(('equipment', eq.id))
+        effective_cost = override.override_cost if override and override.override_cost is not None else eq.cost
+        effective_level = override.override_level_req if override and override.override_level_req is not None else getattr(eq, 'level_requirement', 1)
+        visible = override.is_visible if override else True
+        
+        if not visible:
+            continue
+
         owned = eq.id in owned_item_ids
-        can_afford = char_gold >= eq.cost
-        unlocked = (char_level >= getattr(eq, 'level_requirement', 1)) and (not eq.class_restriction or eq.class_restriction.lower() == char_class.lower())
+        can_afford = char_gold >= effective_cost
+        unlocked = (char_level >= effective_level) and (not eq.class_restriction or eq.class_restriction.lower() == char_class.lower())
         can_buy = (not owned) and can_afford and unlocked
-        print(f"[DEBUG] Shop filter: name={eq.name}, owned={owned}, can_afford={can_afford}, unlocked={unlocked}, can_buy={can_buy}, class_restriction={eq.class_restriction}, char_class={char_class}")
+        
         items_list.append({
             'id': eq.id,
             'name': eq.name,
-            'price': eq.cost,
+            'price': effective_cost,
+            'original_price': eq.cost if effective_cost != eq.cost else None,
             'image': eq.image_url or '/static/images/default_item.png',
             'category': 'equipment',
             'tier': getattr(eq, 'rarity', 1),
             'description': eq.description or '',
-            'level_requirement': getattr(eq, 'level_requirement', 1),
+            'level_requirement': effective_level,
+            'original_level_requirement': getattr(eq, 'level_requirement', 1) if effective_level != getattr(eq, 'level_requirement', 1) else None,
             'class_restriction': getattr(eq, 'class_restriction', None),
             'owned': owned,
             'can_afford': can_afford,
             'unlocked': unlocked,
             'can_buy': can_buy,
         })
-    ability_items = Ability.query.all()
-    # Format items for the template
-    items_list = []
-    print(f"[DEBUG] /student/shop: char_class={char_class}, char_level={char_level}, gold={char_gold}")
-    for eq in items:
-        items_list.append({
-            'id': eq.id,
-            'name': eq.name,
-            'price': eq.cost,
-            'image': eq.image_url or '/static/images/default_item.png',
-            'category': 'equipment',
-            'tier': getattr(eq, 'rarity', 1),
-            'description': eq.description or '',
-            'level_requirement': getattr(eq, 'level_requirement', 1),
-            'class_restriction': getattr(eq, 'class_restriction', None),
-            'owned': eq.id in owned_item_ids,
-            'can_afford': char_gold >= eq.cost,
-            'unlocked': char_level >= getattr(eq, 'level_requirement', 1),
-            'can_buy': (not eq.id in owned_item_ids) and (char_gold >= eq.cost) and (char_level >= getattr(eq, 'level_requirement', 1)) and (not eq.class_restriction or eq.class_restriction.lower() == char_class.lower()),
-        })
+    
     for ab in ability_items:
+        # Apply Overrides
+        override = overrides_map.get(('ability', ab.id))
+        effective_cost = override.override_cost if override and override.override_cost is not None else ab.cost
+        effective_level = override.override_level_req if override and override.override_level_req is not None else getattr(ab, 'level_requirement', 1)
+        visible = override.is_visible if override else True
+        
+        if not visible:
+            continue
+
         owned = ab.id in owned_ability_ids
-        can_afford = char_gold >= ab.cost
-        unlocked = (char_level >= getattr(ab, 'level_requirement', 1))
+        can_afford = char_gold >= effective_cost
+        unlocked = (char_level >= effective_level)
         can_buy = (not owned) and can_afford and unlocked
+        
         items_list.append({
             'id': ab.id,
             'name': ab.name,
-            'price': ab.cost,
+            'price': effective_cost,
+            'original_price': ab.cost if effective_cost != ab.cost else None,
             'image': '/static/images/default_item.png',
             'category': 'ability',
             'tier': getattr(ab, 'tier', 1),
             'description': ab.description or '',
-            'level_requirement': getattr(ab, 'level_requirement', 1),
+            'level_requirement': effective_level,
+            'original_level_requirement': getattr(ab, 'level_requirement', 1) if effective_level != getattr(ab, 'level_requirement', 1) else None,
             'class_restriction': None,
             'owned': owned,
             'can_afford': can_afford,
@@ -712,6 +732,7 @@ def shop_buy():
     from app.models.equipment import Equipment, Inventory
     from app.models.ability import Ability, CharacterAbility
     from app.models.shop import ShopPurchase, PurchaseType
+    from app.models.shop_config import ShopItemOverride
     item_id = None  # Initialize before try block to avoid UnboundLocalError
     try:
         data = request.get_json()
@@ -748,28 +769,40 @@ def shop_buy():
             already_owned = CharacterAbility.query.filter_by(character_id=character.id, ability_id=item.id).first()
         if already_owned:
             return jsonify({'success': False, 'message': 'Item already owned.'}), 400
+        # Check for overrides
+        active_class = next((c for c in student_profile.classes), None)
+        effective_cost = getattr(item, 'cost', 0)
+        effective_level_req = getattr(item, 'level_requirement', 1)
+        
+        if active_class:
+            override = ShopItemOverride.query.filter_by(
+                classroom_id=active_class.id,
+                item_type='equipment' if purchase_type == PurchaseType.EQUIPMENT.value else 'ability',
+                item_id=item.id
+            ).first()
+            if override:
+                if not override.is_visible:
+                    return jsonify({'success': False, 'message': 'Item is not available.'}), 400
+                if override.override_cost is not None:
+                    effective_cost = override.override_cost
+                if override.override_level_req is not None:
+                    effective_level_req = override.override_level_req
+
         # Validate gold
-        cost = getattr(item, 'cost', 0)
-        if character.gold < cost:
+        if character.gold < effective_cost:
             return jsonify({'success': False, 'message': 'Not enough gold.'}), 400
         # Validate level
-        level_req = getattr(item, 'level_requirement', 1)
-        if character.level < level_req:
-            return jsonify({'success': False, 'message': f'Level {level_req} required.'}), 400
+        if character.level < effective_level_req:
+            return jsonify({'success': False, 'message': f'Level {effective_level_req} required.'}), 400
         # Validate class restriction (equipment only)
         class_restr = getattr(item, 'class_restriction', None)
         if purchase_type == PurchaseType.EQUIPMENT.value and class_restr and class_restr.lower() != character.character_class.lower():
             return jsonify({'success': False, 'message': f'Class restriction: {class_restr}.'}), 400
         # Deduct gold
-        character.gold -= cost
+        character.gold -= effective_cost
         # Set gold_spent to the item's price (or gold deducted)
-        gold_spent = None
-        if item_type == 'equipment':
-            gold_spent = item.cost if item else None
-        elif item_type == 'ability':
-            gold_spent = item.cost if item else None
-        else:
-            gold_spent = item.cost if item else None
+        gold_spent = effective_cost
+
         if gold_spent is None:
             return jsonify({'success': False, 'message': 'Item has no cost set. Please contact your teacher/admin.'}), 400
         if gold_spent <= 0:

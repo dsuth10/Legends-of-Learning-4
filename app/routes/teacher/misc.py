@@ -12,6 +12,7 @@ from app.models.shop import ShopPurchase
 from app.models.student import Student
 from app.models.equipment import Equipment
 from app.models.ability import Ability
+from app.models.shop_config import ShopItemOverride
 import json
 from datetime import datetime, timedelta, timezone
 
@@ -112,7 +113,112 @@ def dashboard():
 @login_required
 @teacher_required
 def shop():
-    return render_template('teacher/shop.html', active_page='shop')
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    class_id = request.args.get('class_id', type=int)
+    
+    # Default to first class if not specified/exists
+    if not class_id and classes:
+        class_id = classes[0].id
+    
+    selected_class = None
+    if class_id:
+        selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+    
+    items_data = []
+    
+    if selected_class:
+        # Fetch all base items
+        equipment = Equipment.query.all()
+        abilities = Ability.query.all()
+        
+        # Fetch overrides
+        overrides = ShopItemOverride.query.filter_by(classroom_id=selected_class.id).all()
+        overrides_map = {(o.item_type, o.item_id): o for o in overrides}
+        
+        for eq in equipment:
+            ov = overrides_map.get(('equipment', eq.id))
+            items_data.append({
+                'id': eq.id,
+                'name': eq.name,
+                'type': 'equipment',
+                'category_display': 'Equipment',
+                'base_cost': eq.cost,
+                'override_cost': ov.override_cost if ov else None,
+                'base_level': getattr(eq, 'level_requirement', 1),
+                'override_level': ov.override_level_req if ov else None,
+                'is_visible': ov.is_visible if ov else True,
+                'image': eq.image_url or '/static/images/default_item.png'
+            })
+            
+        for ab in abilities:
+            ov = overrides_map.get(('ability', ab.id))
+            items_data.append({
+                'id': ab.id,
+                'name': ab.name,
+                'type': 'ability',
+                'category_display': 'Ability',
+                'base_cost': ab.cost,
+                'override_cost': ov.override_cost if ov else None,
+                'base_level': getattr(ab, 'level_requirement', 1),
+                'override_level': ov.override_level_req if ov else None,
+                'is_visible': ov.is_visible if ov else True,
+                'image': '/static/images/default_item.png'
+            })
+            
+    return render_template('teacher/shop.html', active_page='shop', classes=classes, selected_class=selected_class, items=items_data)
+
+@teacher_bp.route('/shop/save', methods=['POST'])
+@login_required
+@teacher_required
+def save_shop_config():
+    data = request.get_json()
+    class_id = data.get('class_id')
+    updates = data.get('updates', [])
+    
+    if not class_id:
+        return jsonify({'success': False, 'message': 'Missing class ID'}), 400
+        
+    classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+    if not classroom:
+        return jsonify({'success': False, 'message': 'Classroom not found or unauthorized'}), 404
+        
+    try:
+        # Simple strategy: Process each update. 
+        # Ideally we might clear old overrides or upsert. 
+        # Here we will upsert based on the updates sent.
+        
+        for update in updates:
+            item_type = update.get('item_type')
+            item_id = update.get('item_id')
+            
+            override = ShopItemOverride.query.filter_by(
+                classroom_id=classroom.id,
+                item_type=item_type,
+                item_id=item_id
+            ).first()
+            
+            if not override:
+                override = ShopItemOverride(
+                    classroom_id=classroom.id,
+                    item_type=item_type,
+                    item_id=item_id
+                )
+                db.session.add(override)
+            
+            # Update fields
+            # Handle empty strings/nulls
+            cost_val = update.get('override_cost')
+            level_val = update.get('override_level')
+            
+            override.override_cost = int(cost_val) if cost_val not in (None, '') else None
+            override.override_level_req = int(level_val) if level_val not in (None, '') else None
+            override.is_visible = update.get('is_visible', True)
+            
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Configuration saved successfully.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @teacher_bp.route('/analytics')
 @login_required
