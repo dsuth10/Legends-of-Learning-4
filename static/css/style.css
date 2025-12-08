@@ -102,4 +102,18 @@ a:hover, .nav-link:hover {
   color: #82e9ff !important;
 }
 
+/* Border-left utility classes for summary cards */
+.border-left-primary {
+    border-left: .25rem solid #4e73df !important;
+}
+.border-left-success {
+    border-left: .25rem solid #1cc88a !important;
+}
+.border-left-info {
+    border-left: .25rem solid #36b9cc !important;
+}
+.border-left-warning {
+    border-left: .25rem solid #f6c23e !important;
+}
+
 /* Add more customizations as needed for contrast and accessibility */ 

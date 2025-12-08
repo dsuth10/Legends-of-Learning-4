@@ -5,11 +5,14 @@ from typing import List, Optional
 from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pydantic import BaseModel, Field
+import logging
 
 from app.models import db
 from app.models.base import Base
 from app.models.equipment import Equipment
 from app.models.ability import Ability
+
+logger = logging.getLogger(__name__)
 
 class QuestStatus(str, Enum):
     NOT_STARTED = "not_started"
@@ -149,10 +152,11 @@ class QuestLog(Base):
         self.status = QuestStatus.COMPLETED
         self.completed_at = get_utc_now()
         
-        # Distribute rewards
+        # Distribute all rewards in a single transaction
         for reward in self.quest.rewards:
-            reward.distribute(self.character)
+            reward.distribute(self.character, commit=False)
         
+        # Single commit for all changes
         self.save()
     
     def fail_quest(self):
@@ -160,10 +164,11 @@ class QuestLog(Base):
         self.status = QuestStatus.FAILED
         self.completed_at = get_utc_now()
         
-        # Apply consequences
+        # Apply all consequences in a single transaction
         for consequence in self.quest.consequences:
-            consequence.apply(self.character)
+            consequence.apply(self.character, commit=False)
         
+        # Single commit for all changes
         self.save()
     
     def __repr__(self):
@@ -183,17 +188,48 @@ class Reward(Base):
     item_id = db.Column(db.Integer, db.ForeignKey('equipment.id', ondelete='SET NULL'), nullable=True)
     ability_id = db.Column(db.Integer, db.ForeignKey('abilities.id', ondelete='SET NULL'), nullable=True)
     
-    def distribute(self, character, session=None):
+    def distribute(self, character, session=None, commit=False):
+        """Distribute reward to character.
+        
+        Args:
+            character: Character to receive reward
+            session: Database session (defaults to db.session)
+            commit: Whether to commit after distribution (default: False)
+        """
         from app.models import db
         if session is None:
             session = db.session
+        
+        logger.info(f"Distributing {self.type.value} reward of {self.amount} to character {character.id}")
+        
         if self.type == RewardType.EXPERIENCE:
-            character.gain_experience(self.amount)
-            session.commit()
+            # Ensure character is in session before modifying
+            session.add(character)
+            
+            # Manually handle experience and level up to avoid premature commit
+            # This maintains the single transaction guarantee
+            old_level = character.level
+            character.experience += self.amount
+            logger.debug(f"Character {character.id} gained {self.amount} XP")
+            
+            # Calculate new level (level = experience // 1000 + 1)
+            new_level = (character.experience // 1000) + 1
+            if new_level > character.level:
+                # Handle level up manually without calling level_up() which commits
+                levels_gained = new_level - character.level
+                character.level = new_level
+                # Increase stats with each level (same logic as level_up())
+                character.max_health += 10 * levels_gained
+                character.health = character.max_health  # Heal to full on level up
+                character.strength += 2 * levels_gained
+                character.defense += 2 * levels_gained
+                logger.debug(f"Character {character.id} leveled up to {character.level} (gained {levels_gained} levels)")
         elif self.type == RewardType.GOLD:
+            # Ensure character is in session before modifying
+            session.add(character)
+            old_gold = character.gold
             character.gold += self.amount
-            character.save()
-            session.commit()
+            logger.debug(f"Character {character.id} gold: {old_gold} -> {character.gold}")
         elif self.type == RewardType.EQUIPMENT and self.item_id:
             from app.models.equipment import Inventory
             inventory = Inventory(
@@ -201,7 +237,7 @@ class Reward(Base):
                 item_id=self.item_id
             )
             session.add(inventory)
-            session.commit()
+            logger.debug(f"Added equipment {self.item_id} to character {character.id} inventory")
         elif self.type == RewardType.ABILITY and self.ability_id:
             from app.models.ability import CharacterAbility
             char_ability = CharacterAbility(
@@ -209,10 +245,27 @@ class Reward(Base):
                 ability_id=self.ability_id
             )
             session.add(char_ability)
-            session.commit()
+            logger.debug(f"Added ability {self.ability_id} to character {character.id}")
         elif self.type == RewardType.CLAN_EXPERIENCE and hasattr(character, 'clan') and character.clan:
-            character.clan.gain_experience(self.amount)
+            clan = character.clan
+            # Ensure clan is in session before modifying
+            session.add(clan)
+            
+            # Manually handle experience and level up to avoid premature commit
+            # This maintains the single transaction guarantee
+            old_clan_level = clan.level
+            clan.experience += self.amount
+            logger.debug(f"Clan {clan.id} gained {self.amount} XP")
+            
+            # Calculate new level (level = experience // 5000 + 1)
+            new_clan_level = (clan.experience // 5000) + 1
+            if new_clan_level > clan.level:
+                clan.level = new_clan_level
+                logger.debug(f"Clan {clan.id} leveled up to {clan.level}")
+        
+        if commit:
             session.commit()
+            logger.info(f"Reward distribution committed for character {character.id}")
     
     def __repr__(self):
         return f'<Reward {self.type.value} ({self.amount})>'
@@ -231,18 +284,42 @@ class Consequence(Base):
     gold_penalty = db.Column(db.Integer, default=0)
     health_penalty = db.Column(db.Integer, default=0)
     
-    def apply(self, character):
-        """Apply the consequence to a character."""
+    def apply(self, character, session=None, commit=False):
+        """Apply the consequence to a character.
+        
+        Args:
+            character: Character to apply consequence to
+            session: Database session (defaults to db.session)
+            commit: Whether to commit after applying (default: False)
+        """
+        from app.models import db
+        if session is None:
+            session = db.session
+        
+        logger.info(f"Applying consequence to character {character.id}: XP={self.experience_penalty}, Gold={self.gold_penalty}, Health={self.health_penalty}")
+        
+        # Ensure character is in session before modifying
+        session.add(character)
+        
         if self.experience_penalty > 0:
+            old_experience = character.experience
             character.experience = max(0, character.experience - self.experience_penalty)
+            logger.debug(f"Character {character.id} experience: {old_experience} -> {character.experience}")
         
         if self.gold_penalty > 0:
+            old_gold = character.gold
             character.gold = max(0, character.gold - self.gold_penalty)
+            logger.debug(f"Character {character.id} gold: {old_gold} -> {character.gold}")
         
         if self.health_penalty > 0:
-            character.take_damage(self.health_penalty)
+            # Manually apply damage to avoid premature commit from take_damage()
+            old_health = character.health
+            character.health = max(0, character.health - self.health_penalty)
+            logger.debug(f"Character {character.id} health: {old_health} -> {character.health}")
         
-        character.save()
+        if commit:
+            session.commit()
+            logger.info(f"Consequence applied and committed for character {character.id}")
     
     def __repr__(self):
         return f'<Consequence for {self.quest.title}>'

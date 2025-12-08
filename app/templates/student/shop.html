@@ -114,43 +114,78 @@
         setTimeout(function() { msgDiv.style.display = 'none'; }, 3000);
     }
 
-    document.querySelectorAll('.shop-item-card .btn.btn-primary').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
+    // Use event delegation on the shop items container
+    // Script is at bottom of page, so DOM should be ready
+    (function() {
+        var shopGrid = document.getElementById('shop-items-grid');
+        if (!shopGrid) {
+            console.error('shop-items-grid not found');
+            return;
+        }
+        shopGrid.addEventListener('click', function(e) {
+            var btn = e.target.closest('.btn.btn-primary');
+            if (!btn || btn.disabled || btn.dataset.processing === 'true') return;
+            
             var card = btn.closest('.shop-item-card');
+            if (!card) return;
+            
             var itemId = card.getAttribute('data-item-id');
             var itemType = card.getAttribute('data-category');
+            
+            // Prevent multiple clicks
+            btn.dataset.processing = 'true';
             btn.disabled = true;
+            var originalText = btn.textContent;
+            btn.textContent = 'Processing...';
+            
             fetch('/student/shop/buy', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ item_id: itemId, item_type: itemType })
+                headers: { 
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ item_id: itemId, item_type: itemType }),
+                credentials: 'same-origin' // Include cookies
             })
-            .then(res => res.json().then(data => ({ status: res.status, data })))
             .then(function(res) {
-                if (res.data.success) {
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                return res.json();
+            })
+            .then(function(data) {
+                if (data.success) {
                     // Update gold display
                     var goldBadge = document.querySelector('.badge.bg-warning');
-                    if (goldBadge) goldBadge.textContent = 'Gold: ' + res.data.character.gold;
+                    if (goldBadge && data.character && data.character.gold !== undefined) {
+                        goldBadge.textContent = 'Gold: ' + data.character.gold;
+                    }
+                    
                     // Mark as owned
-                    var badge = document.createElement('span');
-                    badge.className = 'badge bg-info mb-2';
-                    badge.textContent = 'Owned';
-                    btn.parentNode.insertBefore(badge, btn);
-                    btn.disabled = true;
+                    if (!card.querySelector('.badge.bg-info')) {
+                        var badge = document.createElement('span');
+                        badge.className = 'badge bg-info mb-2';
+                        badge.textContent = 'Owned';
+                        btn.parentNode.insertBefore(badge, btn);
+                    }
+                    
                     btn.textContent = 'Owned';
+                    btn.disabled = true;
                     card.setAttribute('data-unlocked', 'true');
                     card.setAttribute('data-owned', 'true');
+                    
                     showShopMessage('Purchase successful!', false);
                 } else {
-                    btn.disabled = false;
-                    showShopMessage(res.data.message || 'Purchase failed.', true);
+                    throw new Error(data.message || 'Purchase failed');
                 }
             })
             .catch(function(err) {
+                console.error('Shop purchase error:', err);
                 btn.disabled = false;
-                showShopMessage('Error: Could not complete purchase.', true);
+                btn.textContent = originalText;
+                btn.dataset.processing = 'false';
+                showShopMessage('Error: ' + err.message, true);
             });
         });
-    });
+    })();
 </script>
 {% endblock %} 
