@@ -44,6 +44,52 @@
         </div>
     </div>
 
+    {% if equipped_abilities %}
+    <div class="card mt-4" id="abilities-card">
+        <div class="card-header bg-warning text-dark">
+            <h6><i class="bi bi-lightning-charge"></i> Abilities</h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-2">
+                {% for ab in equipped_abilities %}
+                    {% set cooldown_remaining = 0 %}
+                    {% if ab.last_used_at %}
+                        {% set used_ts = ab.last_used_at | todatetime('utc') | unixtimestamp %}
+                        {% set cooldown_remaining = (used_ts + ab.cooldown) - now %}
+                        {% if cooldown_remaining < 0 %}{% set cooldown_remaining = 0 %}{% endif %}
+                    {% endif %}
+                    <div class="col-md-6">
+                        <div class="card border-secondary">
+                            <div class="card-body p-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="flex-grow-1">
+                                        <strong>{{ ab.name }}</strong>
+                                        <span class="badge bg-info">{{ ab.type }}</span><br>
+                                        <small class="text-muted">{{ ab.description }}</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-primary use-ability-battle-btn ms-2"
+                                            data-ability-id="{{ ab.id }}"
+                                            data-battle-id="{{ battle.id }}"
+                                            data-ability-type="{{ ab.type }}"
+                                            data-cooldown="{{ cooldown_remaining }}"
+                                            {% if cooldown_remaining > 0 %}disabled{% endif %}>
+                                        {% if cooldown_remaining > 0 %}
+                                            <span class="cooldown-timer">{{ cooldown_remaining }}</span>s
+                                        {% else %}
+                                            Use
+                                        {% endif %}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <div id="battle-ability-feedback" class="mt-2"></div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="card mt-4" id="question-card">
         <div class="card-header bg-info text-white">
             <h5><i class="bi bi-question-circle"></i> Question</h5>
@@ -109,9 +155,16 @@
 </div>
 {% endblock %}
 
+{% block super_extra_js %}
+<script src="{{ url_for('static', filename='js/abilities.js') }}"></script>
+{% endblock %}
+
 {% block scripts %}
 {{ super() }}
 <script>
+const BATTLE_ID = {{ battle.id }};
+const CHARACTER_ID = {{ character.id if character else 0 }};
+const MONSTER_ID = {{ battle.monster.id if battle.monster else 0 }};
     document.getElementById('answer-form').addEventListener('submit', function (e) {
         e.preventDefault();
 
@@ -205,5 +258,113 @@
         bar.style.width = percentage + '%';
         text.textContent = `${current} / ${max}`;
     }
+
+    // Update cooldown timers for battle abilities
+    function updateBattleCooldownTimers() {
+        document.querySelectorAll('.use-ability-battle-btn').forEach(function(btn) {
+            var cooldown = parseInt(btn.getAttribute('data-cooldown'));
+            if (cooldown > 0) {
+                cooldown--;
+                btn.setAttribute('data-cooldown', cooldown);
+                const timerSpan = btn.querySelector('.cooldown-timer');
+                if (timerSpan) {
+                    timerSpan.textContent = cooldown;
+                }
+                if (cooldown <= 0) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Use';
+                }
+            }
+        });
+    }
+    setInterval(updateBattleCooldownTimers, 1000);
+
+    // Handle ability usage in battle context
+    document.querySelectorAll('.use-ability-battle-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const btnElement = this;
+            const abilityId = btnElement.dataset.abilityId;
+            const abilityType = btnElement.dataset.abilityType;
+            const feedbackDiv = document.getElementById('battle-ability-feedback');
+            
+            // Determine target based on ability type
+            let targetId = CHARACTER_ID; // Default to self
+            if (abilityType === 'attack') {
+                targetId = MONSTER_ID; // Attack monster
+            }
+            
+            btnElement.disabled = true;
+            btnElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            
+            fetch('/student/abilities/use', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    ability_id: abilityId, 
+                    target_id: targetId, 
+                    context: 'battle',
+                    battle_id: BATTLE_ID
+                })
+            })
+            .then(r => r.json())
+            .then(resp => {
+                if (resp.success) {
+                    // Show feedback
+                    if (feedbackDiv) {
+                        feedbackDiv.innerHTML = `<div class="alert alert-success alert-sm">${resp.message}</div>`;
+                        setTimeout(() => { feedbackDiv.innerHTML = ''; }, 3000);
+                    }
+                    
+                    // Update health bars if ability affects health
+                    if (resp.effect && (resp.effect.type === 'heal' || resp.effect.type === 'attack')) {
+                        if (resp.target) {
+                            if (resp.target.id === CHARACTER_ID) {
+                                // Player healed
+                                updateHealthBar('player', resp.target.health, resp.target.max_health);
+                            } else if (resp.target.id === MONSTER_ID) {
+                                // Monster damaged
+                                updateHealthBar('monster', resp.target.health, resp.target.max_health);
+                            }
+                        }
+                    }
+                    
+                    // Update cooldown
+                    if (resp.cooldown !== undefined) {
+                        btnElement.setAttribute('data-cooldown', resp.cooldown);
+                        if (resp.cooldown > 0) {
+                            btnElement.disabled = true;
+                            btnElement.innerHTML = `<span class="cooldown-timer">${resp.cooldown}</span>s`;
+                        } else {
+                            btnElement.disabled = false;
+                            btnElement.innerHTML = 'Use';
+                        }
+                    }
+                    
+                    // Add to battle log
+                    const battleLog = document.getElementById('battle-log');
+                    const logEntry = document.createElement('div');
+                    logEntry.className = 'mb-2';
+                    logEntry.innerHTML = `<strong>Ability Used:</strong> <span class="text-info">${resp.message}</span>`;
+                    battleLog.appendChild(logEntry);
+                } else {
+                    if (feedbackDiv) {
+                        feedbackDiv.innerHTML = `<div class="alert alert-danger alert-sm">${resp.message}</div>`;
+                        setTimeout(() => { feedbackDiv.innerHTML = ''; }, 3000);
+                    }
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = 'Use';
+                }
+            })
+            .catch(error => {
+                console.error('Error using ability in battle:', error);
+                if (feedbackDiv) {
+                    feedbackDiv.innerHTML = '<div class="alert alert-danger alert-sm">Error using ability.</div>';
+                    setTimeout(() => { feedbackDiv.innerHTML = ''; }, 3000);
+                }
+                btnElement.disabled = false;
+                btnElement.innerHTML = 'Use';
+            });
+        });
+    });
 </script>
 {% endblock %}

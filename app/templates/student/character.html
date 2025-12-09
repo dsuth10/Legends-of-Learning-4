@@ -12,16 +12,28 @@
             </div>
             <div class="col-md-9">
                 <table class="table table-bordered w-auto">
-                    <tr><th>Name</th><td>{{ main_character.name }}</td></tr>
+                    <tr><th>Name</th><td id="char-name">{{ main_character.name }}</td></tr>
                     <tr><th>Class</th><td>{{ main_character.character_class }}</td></tr>
                     <tr><th>Gender</th><td>{{ main_character.gender }}</td></tr>
-                    <tr><th>Level</th><td>{{ main_character.level }}</td></tr>
-                    <tr><th>XP</th><td>{{ main_character.experience }}</td></tr>
-                    <tr><th>Health</th><td>{{ main_character.total_health }} <span class="text-muted small">(Base: {{ main_character.health }})</span></td></tr>
-                    <tr><th>Strength</th><td>{{ main_character.total_strength }} <span class="text-muted small">(Base: {{ main_character.strength }})</span></td></tr>
-                    <tr><th>Defense</th><td>{{ main_character.total_defense }} <span class="text-muted small">(Base: {{ main_character.defense }})</span></td></tr>
-                    <tr><th>Gold</th><td>{{ main_character.gold }}</td></tr>
+                    <tr><th>Level</th><td id="char-level">{{ main_character.level }}</td></tr>
+                    <tr><th>XP</th><td id="char-xp">{{ main_character.experience }}</td></tr>
+                    <tr><th>Health</th><td id="char-health">{{ main_character.total_health }} <span class="text-muted small">(Base: {{ main_character.health }})</span></td></tr>
+                    <tr><th>Strength</th><td id="char-strength">{{ main_character.total_strength }} <span class="text-muted small">(Base: {{ main_character.strength }})</span></td></tr>
+                    <tr><th>Defense</th><td id="char-defense">{{ main_character.total_defense }} <span class="text-muted small">(Base: {{ main_character.defense }})</span></td></tr>
+                    <tr><th>Gold</th><td id="char-gold">{{ main_character.gold }}</td></tr>
                 </table>
+                {% if active_status_effects %}
+                <h5 class="mt-3">Active Status Effects</h5>
+                <div id="status-effects-display" class="mb-3">
+                  {% for effect in active_status_effects %}
+                    <span class="status-effect-badge {{ effect.effect_type }}" title="{{ effect.source }}: {{ effect.stat_affected }} {{ effect.amount > 0 ? '+' : '' }}{{ effect.amount }} (expires {{ effect.expires_at.strftime('%H:%M') }})">
+                      {% if effect.effect_type == 'buff' %}⬆️{% elif effect.effect_type == 'debuff' %}⬇️{% elif effect.effect_type == 'protect' %}🛡️{% endif %}
+                      {{ effect.source }} ({{ effect.stat_affected }} {{ effect.amount > 0 ? '+' : '' }}{{ effect.amount }})
+                      <small class="text-muted">({{ effect.remaining_minutes }}m)</small>
+                    </span>
+                  {% endfor %}
+                </div>
+                {% endif %}
                 <h4>Equipment Slots</h4>
                 <div class="row mb-3">
                   <div class="col-md-4">
@@ -90,13 +102,39 @@
                             <span class="text-muted small">{{ ab.description }}</span><br>
                             <span class="text-muted">Power: {{ ab.power }} | Cooldown: {{ ab.cooldown }}s</span>
                           </div>
-                          <div class="d-flex align-items-center">
-                            <select class="form-select ability-target-select me-2" style="width:auto;display:inline-block;" data-ability-id="{{ ab.id }}">
-                              <option value="{{ main_character.id }}">Self</option>
-                              {% for t in ability_targets %}
-                                <option value="{{ t.id }}">{{ t.name }} ({{ t.character_class }})</option>
-                              {% endfor %}
-                            </select>
+                          <div class="d-flex align-items-center flex-wrap">
+                            <div class="me-2 mb-2">
+                              <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#target-select-{{ ab.id }}" aria-expanded="false">
+                                Select Target <i class="bi bi-chevron-down"></i>
+                              </button>
+                              <div class="collapse mt-2" id="target-select-{{ ab.id }}">
+                                <div class="card card-body p-2" style="max-width: 300px;">
+                                  <div class="target-selection-card mb-2 p-2 border rounded" data-target-id="{{ main_character.id }}" data-ability-id="{{ ab.id }}" style="cursor: pointer;">
+                                    <div class="d-flex align-items-center">
+                                      <img src="{{ main_character.avatar_url or '/static/avatars/default.png' }}" alt="Avatar" class="rounded me-2" style="width: 40px; height: 40px;">
+                                      <div class="flex-grow-1">
+                                        <strong>{{ main_character.name }}</strong> (Self)<br>
+                                        <small class="text-muted">{{ main_character.character_class }} | HP: {{ main_character.health }}/{{ main_character.max_health }}</small>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {% for t in ability_targets %}
+                                    <div class="target-selection-card mb-2 p-2 border rounded" data-target-id="{{ t.id }}" data-ability-id="{{ ab.id }}" style="cursor: pointer;">
+                                      <div class="d-flex align-items-center">
+                                        <div class="bg-secondary rounded me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white;">
+                                          {{ t.name[0] }}
+                                        </div>
+                                        <div class="flex-grow-1">
+                                          <strong>{{ t.name }}</strong><br>
+                                          <small class="text-muted">{{ t.character_class }}</small>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  {% endfor %}
+                                </div>
+                              </div>
+                              <input type="hidden" class="ability-target-select" data-ability-id="{{ ab.id }}" value="{{ main_character.id }}">
+                            </div>
                             <button class="btn btn-primary use-ability-btn" data-ability-id="{{ ab.id }}" data-cooldown="{{ cooldown_remaining }}" {% if cooldown_remaining > 0 %}disabled{% endif %}>
                               {% if cooldown_remaining > 0 %}
                                 Cooldown: <span class="cooldown-timer">{{ cooldown_remaining }}</span>s
@@ -112,6 +150,29 @@
                     <div class="text-muted">No abilities equipped.</div>
                   {% endif %}
                   <div id="ability-feedback" class="mt-2"></div>
+                </div>
+                <h4 class="mt-4">Ability History</h4>
+                <div id="ability-history-section">
+                  <div class="mb-2">
+                    <select id="history-filter-type" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                      <option value="">All Types</option>
+                      <option value="heal">Heal</option>
+                      <option value="attack">Attack</option>
+                      <option value="buff">Buff</option>
+                      <option value="debuff">Debuff</option>
+                      <option value="defense">Defense</option>
+                      <option value="utility">Utility</option>
+                    </select>
+                    <select id="history-filter-days" class="form-select form-select-sm d-inline-block ms-2" style="width: auto;">
+                      <option value="1">Last 24 hours</option>
+                      <option value="7" selected>Last 7 days</option>
+                      <option value="30">Last 30 days</option>
+                    </select>
+                    <button id="refresh-history" class="btn btn-sm btn-secondary ms-2">Refresh</button>
+                  </div>
+                  <div id="ability-history-list" class="list-group" style="max-height: 300px; overflow-y: auto;">
+                    <div class="text-muted text-center py-3">Loading history...</div>
+                  </div>
                 </div>
             </div>
         </div>
@@ -189,9 +250,15 @@ Sortable.create(document.getElementById('accessory-slot'), {
 </script>
 {% endblock %}
 
+{% block super_extra_js %}
+<script src="{{ url_for('static', filename='js/abilities.js') }}"></script>
+{% endblock %}
+
 {% block scripts %}
 {{ super() }}
 <script>
+const MAIN_CHARACTER_ID = {{ main_character.id if main_character else 0 }};
+
 function updateCooldownTimers() {
   document.querySelectorAll('.use-ability-btn').forEach(function(btn) {
     var cooldown = parseInt(btn.getAttribute('data-cooldown'));
@@ -212,11 +279,47 @@ function updateCooldownTimers() {
 setInterval(updateCooldownTimers, 1000);
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Handle target selection cards
+  document.querySelectorAll('.target-selection-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      const targetId = this.dataset.targetId;
+      const abilityId = this.dataset.abilityId;
+      
+      // Update hidden input
+      const targetInput = document.querySelector(`.ability-target-select[data-ability-id="${abilityId}"]`);
+      if (targetInput) {
+        targetInput.value = targetId;
+      }
+      
+      // Update visual selection
+      document.querySelectorAll(`.target-selection-card[data-ability-id="${abilityId}"]`).forEach(function(c) {
+        c.classList.remove('selected');
+      });
+      this.classList.add('selected');
+      
+      // Close collapse
+      const collapse = document.getElementById(`target-select-${abilityId}`);
+      if (collapse) {
+        const bsCollapse = bootstrap.Collapse.getInstance(collapse);
+        if (bsCollapse) {
+          bsCollapse.hide();
+        }
+      }
+    });
+  });
+  
   document.querySelectorAll('.use-ability-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      const abilityId = this.dataset.abilityId;
+      const btnElement = this;
+      const abilityId = btnElement.dataset.abilityId;
       const targetSelect = document.querySelector('.ability-target-select[data-ability-id="' + abilityId + '"]');
-      const targetId = targetSelect ? targetSelect.value : {{ main_character.id }};
+      const targetId = targetSelect ? targetSelect.value : MAIN_CHARACTER_ID;
+      const abilityName = btnElement.closest('.list-group-item').querySelector('strong').textContent;
+      
+      // Disable button during request
+      btnElement.disabled = true;
+      btnElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Using...';
+      
       fetch('/student/abilities/use', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -224,16 +327,101 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .then(r => r.json())
       .then(resp => {
-        const feedback = document.getElementById('ability-feedback');
+        // Show visual feedback
+        showAbilityFeedback(resp, abilityName, resp.target?.name || 'target');
+        
         if (resp.success) {
-          feedback.innerHTML = `<div class='alert alert-success'>${resp.message}</div>`;
-          setTimeout(() => window.location.reload(), 1000);
+          // Update character stats without reload
+          if (resp.character) {
+            updateCharacterStats(resp.character, resp.target, resp.effect);
+          }
+          
+          // Update cooldown
+          if (resp.cooldown !== undefined) {
+            updateAbilityCooldown(abilityId, resp.cooldown);
+          }
+          
+          // Refresh status effects if available
+          if (resp.target && resp.target.status_effects) {
+            // Status effects will be updated on next page load or via separate API call
+          }
         } else {
-          feedback.innerHTML = `<div class='alert alert-danger'>${resp.message}</div>`;
+          // Re-enable button on error
+          btnElement.disabled = false;
+          btnElement.innerHTML = 'Use';
         }
+      })
+      .catch(error => {
+        console.error('Error using ability:', error);
+        showAbilityFeedback({success: false, message: 'An error occurred. Please try again.'}, abilityName, '');
+        btnElement.disabled = false;
+        btnElement.innerHTML = 'Use';
       });
     });
   });
+  
+  // Load ability history
+  function loadAbilityHistory() {
+    const typeFilter = document.getElementById('history-filter-type').value;
+    const daysFilter = document.getElementById('history-filter-days').value;
+    const historyList = document.getElementById('ability-history-list');
+    
+    historyList.innerHTML = '<div class="text-muted text-center py-3">Loading...</div>';
+    
+    let url = '/student/abilities/history?limit=20&days=' + daysFilter;
+    if (typeFilter) {
+      url += '&type=' + typeFilter;
+    }
+    
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.history && data.history.length > 0) {
+          historyList.innerHTML = data.history.map(item => {
+            const icon = item.ability_type === 'heal' ? '💚' : 
+                        item.ability_type === 'attack' ? '⚔️' :
+                        item.ability_type === 'buff' ? '⬆️' :
+                        item.ability_type === 'debuff' ? '⬇️' :
+                        item.ability_type === 'defense' ? '🛡️' : '✨';
+            const timestamp = new Date(item.timestamp);
+            const timeStr = timestamp.toLocaleString();
+            const xpText = item.xp_awarded > 0 ? ` <span class="text-success">(+${item.xp_awarded} XP)</span>` : '';
+            const successClass = item.success ? '' : 'text-muted';
+            
+            return `
+              <div class="list-group-item ${successClass}">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <strong>${icon} ${item.ability_name}</strong>
+                    <span class="badge bg-secondary ms-2">${item.ability_type}</span>
+                    <br>
+                    <small class="text-muted">Used on ${item.target_name} | ${item.effect_type}: ${item.effect_amount > 0 ? '+' : ''}${item.effect_amount}${xpText}</small>
+                    ${item.context !== 'general' ? `<br><small class="text-info">Context: ${item.context}</small>` : ''}
+                  </div>
+                  <small class="text-muted">${timeStr}</small>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          historyList.innerHTML = '<div class="text-muted text-center py-3">No ability usage history found.</div>';
+        }
+      })
+      .catch(error => {
+        console.error('Error loading history:', error);
+        historyList.innerHTML = '<div class="text-danger text-center py-3">Error loading history.</div>';
+      });
+  }
+  
+  // Load history on page load
+  loadAbilityHistory();
+  
+  // Refresh button
+  document.getElementById('refresh-history')?.addEventListener('click', loadAbilityHistory);
+  
+  // Filter changes
+  document.getElementById('history-filter-type')?.addEventListener('change', loadAbilityHistory);
+  document.getElementById('history-filter-days')?.addEventListener('change', loadAbilityHistory);
 });
 </script>
 {% endblock %} 

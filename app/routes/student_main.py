@@ -57,6 +57,8 @@ def quests():
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
     main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
     assigned_quests = []
+    equipped_abilities = []
+    ability_targets = []
     if main_char:
         for log in main_char.quest_logs:
             print("DEBUG QUESTLOG:", log.quest_id, log.status, type(log.status), log.id)
@@ -68,7 +70,28 @@ def quests():
                 'y': log.y_coordinate,
                 'log': log
             })
-    return render_template('student/quests.html', student=current_user, assigned_quests=assigned_quests)
+        # Get equipped abilities for quest context
+        equipped_abilities = [
+            {
+                'id': ca.ability.id,
+                'name': ca.ability.name,
+                'type': ca.ability.type,
+                'description': ca.ability.description,
+                'power': ca.ability.power,
+                'cooldown': ca.ability.cooldown,
+                'duration': ca.ability.duration,
+                'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
+            }
+            for ca in main_char.abilities.filter_by(is_equipped=True).all()
+        ]
+        # Get ability targets (clanmates)
+        if main_char.clan:
+            ability_targets = [
+                {'id': member.id, 'name': member.name, 'character_class': member.character_class}
+                for member in main_char.clan.members if member.id != main_char.id
+            ]
+    now = int(time.time())
+    return render_template('student/quests.html', student=current_user, assigned_quests=assigned_quests, equipped_abilities=equipped_abilities, ability_targets=ability_targets, main_character=main_char, now=now)
 
 @student_bp.route('/quests/start/<int:quest_id>', methods=['POST'])
 @login_required
@@ -141,9 +164,13 @@ def clan():
 @login_required
 @student_required
 def character():
+    from datetime import datetime, timezone
+    from app.models.character import StatusEffect
+    
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
     main_character = None
     equipped_abilities = []
+    active_status_effects = []
     if student_profile:
         main_character = student_profile.characters.filter_by(is_active=True).first()
         if main_character:
@@ -161,6 +188,20 @@ def character():
                 }
                 for ca in main_character.abilities.filter_by(is_equipped=True).all()
             ]
+            # Get active status effects
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            active_effects = main_character.status_effects.filter(StatusEffect.expires_at > now).all()
+            active_status_effects = [
+                {
+                    'effect_type': effect.effect_type,
+                    'stat_affected': effect.stat_affected,
+                    'amount': effect.amount,
+                    'source': effect.source,
+                    'expires_at': effect.expires_at,
+                    'remaining_minutes': max(0, int((effect.expires_at - now).total_seconds() / 60))
+                }
+                for effect in active_effects
+            ]
     now = int(time.time())
     ability_targets = []
     if main_character and main_character.clan:
@@ -168,7 +209,7 @@ def character():
             {'id': member.id, 'name': member.name, 'character_class': member.character_class}
             for member in main_character.clan.members if member.id != main_character.id
         ]
-    return render_template('student/character.html', student=current_user, main_character=main_character, equipped_abilities=equipped_abilities, now=now, ability_targets=ability_targets)
+    return render_template('student/character.html', student=current_user, main_character=main_character, equipped_abilities=equipped_abilities, now=now, ability_targets=ability_targets, active_status_effects=active_status_effects)
 
 @student_bp.route('/shop')
 @login_required

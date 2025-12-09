@@ -19,6 +19,7 @@ class EventType(Enum):
     CLAN_JOIN = 'CLAN_JOIN'
     CLAN_LEAVE = 'CLAN_LEAVE'
     ABILITY_LEARN = 'ABILITY_LEARN'
+    ABILITY_USE = 'ABILITY_USE'
     EQUIPMENT_CHANGE = 'EQUIPMENT_CHANGE'
     GOLD_TRANSACTION = 'GOLD_TRANSACTION'
     XP_GAIN = 'XP_GAIN'
@@ -69,6 +70,7 @@ class AuditLog(Base):
         'CLAN_JOIN': 'Joined clan',
         'CLAN_LEAVE': 'Left clan',
         'ABILITY_LEARN': 'Learned ability',
+        'ABILITY_USE': 'Ability used',
         'EQUIPMENT_CHANGE': 'Equipment changed',
         'GOLD_TRANSACTION': 'Gold transaction',
         'XP_GAIN': 'Experience gained',

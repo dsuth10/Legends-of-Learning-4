@@ -102,14 +102,74 @@ def apply_ability_usage(user, character, ability, target, context):
     if char_ability:
         char_ability.last_used_at = datetime.utcnow()
     db.session.commit()
-    # Log event (stub)
-    # AuditLog.log_event(...)
+    
+    # Log ability usage event
+    try:
+        from flask import request
+        AuditLog.log_event(
+            AuditLog.EventType.ABILITY_USE,
+            event_data={
+                'ability_id': ability.id,
+                'ability_name': ability.name,
+                'ability_type': ability.type,
+                'target_id': target.id,
+                'target_name': target.name,
+                'effect_type': effect_type,
+                'effect_amount': amount,
+                'context': context,
+                'xp_awarded': xp_awarded,
+                'success': success
+            },
+            user_id=user.id if user else None,
+            character_id=character.id,
+            ip_address=request.remote_addr if request else None
+        )
+    except Exception as e:
+        # Log error but don't fail the ability usage
+        import logging
+        logging.error(f"Failed to log ability usage: {e}")
+    
+    # Get updated character and target data for response
+    db.session.refresh(character)
+    db.session.refresh(target)
+    
+    # Get active status effects for target
+    target_status_effects = []
+    if hasattr(target, 'status_effects'):
+        now = datetime.utcnow()
+        for effect in target.status_effects.filter(StatusEffect.expires_at > now).all():
+            target_status_effects.append({
+                'effect_type': effect.effect_type,
+                'stat_affected': effect.stat_affected,
+                'amount': effect.amount,
+                'source': effect.source,
+                'expires_at': effect.expires_at.isoformat()
+            })
+    
     return {
         'success': success,
         'message': message,
         'effect': {'type': effect_type, 'amount': amount, 'target_id': target.id},
         'cooldown': ability.cooldown,
-        'character': character.to_dict() if hasattr(character, 'to_dict') else {},
-        'target': target.to_dict() if hasattr(target, 'to_dict') else {},
+        'character': {
+            'id': character.id,
+            'name': character.name,
+            'health': character.health,
+            'max_health': character.max_health,
+            'strength': character.strength,
+            'defense': character.defense,
+            'level': character.level,
+            'experience': character.experience,
+            'gold': character.gold
+        },
+        'target': {
+            'id': target.id,
+            'name': target.name,
+            'health': target.health,
+            'max_health': target.max_health,
+            'strength': target.strength,
+            'defense': target.defense,
+            'status_effects': target_status_effects
+        },
         'xp_awarded': xp_awarded
     } 

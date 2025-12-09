@@ -8,6 +8,7 @@ from app.models.character import Character
 from app.routes.student_main import student_required
 import random
 import json
+import time
 
 student_battle_bp = Blueprint('student_battle', __name__, url_prefix='/student/battle')
 
@@ -117,9 +118,31 @@ def fight(battle_id):
     
     current_question = random.choice(questions)
     
+    # Get equipped abilities for battle context
+    equipped_abilities = []
+    if character:
+        from app.models.ability import CharacterAbility
+        equipped_abilities = [
+            {
+                'id': ca.ability.id,
+                'name': ca.ability.name,
+                'type': ca.ability.type,
+                'description': ca.ability.description,
+                'power': ca.ability.power,
+                'cooldown': ca.ability.cooldown,
+                'duration': ca.ability.duration,
+                'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
+            }
+            for ca in character.abilities.filter_by(is_equipped=True).all()
+        ]
+    
+    now = int(time.time())
     return render_template('student/battle/fight.html',
                          battle=battle,
                          question=current_question,
+                         character=character,
+                         equipped_abilities=equipped_abilities,
+                         now=now,
                          active_page='battle')
 
 @student_battle_bp.route('/<int:battle_id>/attack', methods=['POST'])

@@ -49,6 +49,48 @@
               <p class="text-success"><em>This quest is completed.</em></p>
             {% elif status == 'in_progress' %}
               <p class="text-info"><em>This quest is in progress.</em></p>
+              {% if equipped_abilities %}
+              <hr>
+              <h6>Use Abilities</h6>
+              <div id="quest-ability-section-{{ q.quest.id }}" class="quest-ability-section">
+                <div class="list-group list-group-flush">
+                  {% for ab in equipped_abilities %}
+                    {% set cooldown_remaining = 0 %}
+                    {% if ab.last_used_at %}
+                      {% set used_ts = ab.last_used_at | todatetime('utc') | unixtimestamp %}
+                      {% set cooldown_remaining = (used_ts + ab.cooldown) - now %}
+                      {% if cooldown_remaining < 0 %}{% set cooldown_remaining = 0 %}{% endif %}
+                    {% endif %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <div class="flex-grow-1">
+                        <strong>{{ ab.name }}</strong> <span class="badge bg-info">{{ ab.type }}</span><br>
+                        <small class="text-muted">{{ ab.description }}</small>
+                      </div>
+                      <div class="ms-2">
+                        <select class="form-select form-select-sm ability-target-select-quest" style="width: auto;" data-ability-id="{{ ab.id }}" data-quest-id="{{ q.quest.id }}">
+                          <option value="{{ main_character.id if main_character else '' }}">Self</option>
+                          {% for t in ability_targets %}
+                            <option value="{{ t.id }}">{{ t.name }}</option>
+                          {% endfor %}
+                        </select>
+                        <button class="btn btn-sm btn-primary use-ability-quest-btn mt-1" 
+                                data-ability-id="{{ ab.id }}" 
+                                data-quest-id="{{ q.quest.id }}"
+                                data-cooldown="{{ cooldown_remaining }}"
+                                {% if cooldown_remaining > 0 %}disabled{% endif %}>
+                          {% if cooldown_remaining > 0 %}
+                            <span class="cooldown-timer">{{ cooldown_remaining }}</span>s
+                          {% else %}
+                            Use
+                          {% endif %}
+                        </button>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+                <div id="quest-ability-feedback-{{ q.quest.id }}" class="mt-2"></div>
+              </div>
+              {% endif %}
             {% endif %}
           </div>
           <div class="modal-footer">
@@ -106,6 +148,10 @@
 </div>
 {% endblock %}
 
+{% block super_extra_js %}
+<script src="{{ url_for('static', filename='js/abilities.js') }}"></script>
+{% endblock %}
+
 {% block super_extra_css %}
 <style>
 .quest-map { position: relative; overflow: hidden; }
@@ -116,4 +162,90 @@
 .quest-marker a.completed-quest { color: #aaa; text-decoration: line-through; border-bottom: 2px solid #aaa; opacity: 0.7; }
 .quest-marker a:hover { background: rgba(255,255,255,0.18); }
 </style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+const MAIN_CHARACTER_ID_QUESTS = {{ main_character.id if main_character else 0 }};
+
+// Update cooldown timers for quest abilities
+function updateQuestCooldownTimers() {
+  document.querySelectorAll('.use-ability-quest-btn').forEach(function(btn) {
+    var cooldown = parseInt(btn.getAttribute('data-cooldown'));
+    if (cooldown > 0) {
+      cooldown--;
+      btn.setAttribute('data-cooldown', cooldown);
+      const timerSpan = btn.querySelector('.cooldown-timer');
+      if (timerSpan) {
+        timerSpan.textContent = cooldown;
+      }
+      if (cooldown <= 0) {
+        btn.disabled = false;
+        btn.innerHTML = 'Use';
+      }
+    }
+  });
+}
+setInterval(updateQuestCooldownTimers, 1000);
+
+// Handle ability usage in quest context
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.use-ability-quest-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const btnElement = this;
+      const abilityId = btnElement.dataset.abilityId;
+      const questId = btnElement.dataset.questId;
+      const targetSelect = document.querySelector(`.ability-target-select-quest[data-ability-id="${abilityId}"][data-quest-id="${questId}"]`);
+      const targetId = targetSelect ? targetSelect.value : MAIN_CHARACTER_ID_QUESTS;
+      const feedbackDiv = document.getElementById(`quest-ability-feedback-${questId}`);
+      
+      btnElement.disabled = true;
+      btnElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+      
+      fetch('/student/abilities/use', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ability_id: abilityId, target_id: targetId, context: 'quest' })
+      })
+      .then(r => r.json())
+      .then(resp => {
+        if (resp.success) {
+          if (feedbackDiv) {
+            feedbackDiv.innerHTML = `<div class="alert alert-success alert-sm">${resp.message}</div>`;
+            setTimeout(() => { feedbackDiv.innerHTML = ''; }, 3000);
+          }
+          if (resp.cooldown !== undefined) {
+            updateAbilityCooldown(abilityId, resp.cooldown);
+            btnElement.setAttribute('data-cooldown', resp.cooldown);
+            if (resp.cooldown > 0) {
+              btnElement.disabled = true;
+              btnElement.innerHTML = `<span class="cooldown-timer">${resp.cooldown}</span>s`;
+            } else {
+              btnElement.disabled = false;
+              btnElement.innerHTML = 'Use';
+            }
+          }
+        } else {
+          if (feedbackDiv) {
+            feedbackDiv.innerHTML = `<div class="alert alert-danger alert-sm">${resp.message}</div>`;
+            setTimeout(() => { feedbackDiv.innerHTML = ''; }, 3000);
+          }
+          btnElement.disabled = false;
+          btnElement.innerHTML = 'Use';
+        }
+      })
+      .catch(error => {
+        console.error('Error using ability in quest:', error);
+        if (feedbackDiv) {
+          feedbackDiv.innerHTML = '<div class="alert alert-danger alert-sm">Error using ability.</div>';
+          setTimeout(() => { feedbackDiv.innerHTML = ''; }, 3000);
+        }
+        btnElement.disabled = false;
+        btnElement.innerHTML = 'Use';
+      });
+    });
+  });
+});
+</script>
 {% endblock %} 
