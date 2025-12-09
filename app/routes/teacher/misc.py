@@ -1,6 +1,6 @@
 from .blueprint import teacher_bp, teacher_required
 from flask_login import login_required, current_user
-from flask import render_template, request, jsonify, flash
+from flask import render_template, request, jsonify, flash, send_file, abort
 from app.models import db
 from app.models.classroom import Classroom
 from app.models.clan import Clan
@@ -12,8 +12,19 @@ from app.models.shop import ShopPurchase
 from app.models.student import Student
 from app.models.equipment import Equipment
 from app.models.ability import Ability
+from app.services.backup_service import (
+    create_database_backup,
+    get_available_tables,
+    get_database_info,
+    export_table_to_csv,
+    export_table_to_json,
+    validate_table_name
+)
+from app.utils.backup_utils import format_file_size, generate_safe_filename
 import json
+import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 @teacher_bp.route('/dashboard')
 @login_required
@@ -174,7 +185,156 @@ def analytics_data():
 @login_required
 @teacher_required
 def backup():
-    return render_template('teacher/backup.html', active_page='backup')
+    """Display backup page with database info and export options."""
+    try:
+        db_info = get_database_info()
+        tables = get_available_tables()
+        
+        # Format file size for display
+        db_info['formatted_size'] = format_file_size(db_info['size']) if db_info['size'] > 0 else 'N/A'
+        
+        return render_template(
+            'teacher/backup.html',
+            active_page='backup',
+            db_info=db_info,
+            tables=tables
+        )
+    except Exception as e:
+        flash(f'Error loading backup page: {str(e)}', 'danger')
+        return render_template('teacher/backup.html', active_page='backup', db_info=None, tables=[])
+
+
+@teacher_bp.route('/backup/download')
+@login_required
+@teacher_required
+def backup_download():
+    """Download full database backup file."""
+    backup_path = None
+    try:
+        backup_path = create_database_backup()
+        
+        # Generate safe filename for download
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        download_filename = generate_safe_filename(f"legends_backup_{timestamp}", ".db")
+        
+        # Schedule cleanup after response is sent
+        try:
+            @request.after_this_request
+            def remove_file(response):
+                try:
+                    if backup_path and backup_path.exists():
+                        os.remove(backup_path)
+                except Exception:
+                    pass  # Ignore cleanup errors
+                return response
+        except AttributeError:
+            # Fallback for older Flask versions - temp files will be cleaned by OS
+            pass
+        
+        return send_file(
+            str(backup_path),
+            as_attachment=True,
+            download_name=download_filename,
+            mimetype='application/x-sqlite3'
+        )
+    except FileNotFoundError as e:
+        if backup_path and backup_path.exists():
+            try:
+                os.remove(backup_path)
+            except Exception:
+                pass
+        flash(f'Database file not found: {str(e)}', 'danger')
+        abort(404)
+    except PermissionError as e:
+        if backup_path and backup_path.exists():
+            try:
+                os.remove(backup_path)
+            except Exception:
+                pass
+        flash(f'Permission denied: {str(e)}', 'danger')
+        abort(403)
+    except Exception as e:
+        # Clean up on error
+        if backup_path and backup_path.exists():
+            try:
+                os.remove(backup_path)
+            except Exception:
+                pass
+        flash(f'Error creating backup: {str(e)}', 'danger')
+        abort(500)
+
+
+@teacher_bp.route('/backup/export')
+@login_required
+@teacher_required
+def backup_export_table():
+    """Export a specific table to CSV or JSON format."""
+    table_name = request.args.get('table')
+    format_type = request.args.get('format', 'csv').lower()
+    
+    if not table_name:
+        flash('Table name is required', 'danger')
+        abort(400)
+    
+    if format_type not in ['csv', 'json']:
+        flash('Invalid format. Use "csv" or "json"', 'danger')
+        abort(400)
+    
+    if not validate_table_name(table_name):
+        flash(f'Invalid or non-existent table: {table_name}', 'danger')
+        abort(400)
+    
+    export_path = None
+    try:
+        if format_type == 'csv':
+            export_path = export_table_to_csv(table_name)
+            mimetype = 'text/csv'
+            extension = '.csv'
+        else:  # json
+            export_path = export_table_to_json(table_name)
+            mimetype = 'application/json'
+            extension = '.json'
+        
+        # Generate safe filename for download
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        download_filename = generate_safe_filename(f"{table_name}_export_{timestamp}", extension)
+        
+        # Schedule cleanup after response is sent
+        try:
+            @request.after_this_request
+            def remove_file(response):
+                try:
+                    if export_path and export_path.exists():
+                        os.remove(export_path)
+                except Exception:
+                    pass  # Ignore cleanup errors
+                return response
+        except AttributeError:
+            # Fallback for older Flask versions - temp files will be cleaned by OS
+            pass
+        
+        return send_file(
+            str(export_path),
+            as_attachment=True,
+            download_name=download_filename,
+            mimetype=mimetype
+        )
+    except ValueError as e:
+        if export_path and export_path.exists():
+            try:
+                os.remove(export_path)
+            except Exception:
+                pass
+        flash(str(e), 'danger')
+        abort(400)
+    except Exception as e:
+        if export_path and export_path.exists():
+            try:
+                os.remove(export_path)
+            except Exception:
+                pass
+        flash(f'Error exporting table: {str(e)}', 'danger')
+        abort(500)
 
 @teacher_bp.route('/purchases')
 @login_required

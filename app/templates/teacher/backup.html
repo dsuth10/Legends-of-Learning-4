@@ -3,8 +3,176 @@
 <li class="breadcrumb-item active" aria-current="page">Backup</li>
 {% endblock %}
 {% block dashboard_content %}
-<div class="alert alert-info mt-4">
-  <h4 class="alert-heading">Backup</h4>
-  <p>This feature is coming soon.</p>
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-12">
+      <h2 class="mb-4"><i class="bi bi-database"></i> Database Backup</h2>
+      
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- Database Information Section -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-info-circle"></i> Database Information</h5>
+        </div>
+        <div class="card-body">
+          {% if db_info and db_info.exists %}
+            <dl class="row mb-0">
+              <dt class="col-sm-3">Database Path:</dt>
+              <dd class="col-sm-9"><code>{{ db_info.path }}</code></dd>
+              
+              <dt class="col-sm-3">File Size:</dt>
+              <dd class="col-sm-9">{{ db_info.formatted_size }}</dd>
+              
+              <dt class="col-sm-3">Last Modified:</dt>
+              <dd class="col-sm-9">
+                {% if db_info.last_modified %}
+                  {{ db_info.last_modified.strftime('%Y-%m-%d %H:%M:%S') }}
+                {% else %}
+                  N/A
+                {% endif %}
+              </dd>
+            </dl>
+          {% else %}
+            <div class="alert alert-warning mb-0">
+              <i class="bi bi-exclamation-triangle"></i> Database file not found or inaccessible.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Full Database Backup Section -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-download"></i> Full Database Backup</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Download a complete copy of the database file. This includes all tables and data.</p>
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> <strong>Note:</strong> The backup will be a SQLite database file (.db) that can be restored or opened with any SQLite-compatible tool.
+          </div>
+          {% if db_info and db_info.exists %}
+            <a href="{{ url_for('teacher.backup_download') }}" class="btn btn-primary btn-lg" id="downloadBackupBtn">
+              <i class="bi bi-download"></i> Download Full Database Backup
+            </a>
+          {% else %}
+            <button class="btn btn-primary btn-lg" disabled>
+              <i class="bi bi-download"></i> Download Full Database Backup
+            </button>
+            <p class="text-muted mt-2"><small>Database file is not available for backup.</small></p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Table Export Section -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-table"></i> Export Individual Tables</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Export specific tables to CSV or JSON format for analysis or backup.</p>
+          
+          {% if tables and tables|length > 0 %}
+            <form id="exportForm" method="GET" action="{{ url_for('teacher.backup_export_table') }}">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="tableSelect" class="form-label">Select Table:</label>
+                  <select class="form-select" id="tableSelect" name="table" required>
+                    <option value="">-- Choose a table --</option>
+                    {% for table in tables %}
+                      <option value="{{ table }}">{{ table }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="formatSelect" class="form-label">Export Format:</label>
+                  <select class="form-select" id="formatSelect" name="format" required>
+                    <option value="csv" selected>CSV (Comma Separated Values)</option>
+                    <option value="json">JSON (JavaScript Object Notation)</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-success" id="exportBtn">
+                <i class="bi bi-file-earmark-arrow-down"></i> Export Table
+              </button>
+            </form>
+          {% else %}
+            <div class="alert alert-warning">
+              <i class="bi bi-exclamation-triangle"></i> No tables available for export.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Help Section -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-question-circle"></i> Backup Help</h5>
+        </div>
+        <div class="card-body">
+          <h6>Full Database Backup</h6>
+          <ul>
+            <li>Creates a complete copy of your database file</li>
+            <li>Includes all tables, data, and database structure</li>
+            <li>Can be restored by replacing the current database file (advanced users only)</li>
+            <li>Recommended for regular backups before major changes</li>
+          </ul>
+          
+          <h6 class="mt-3">Table Export</h6>
+          <ul>
+            <li>Export individual tables for analysis in spreadsheet applications</li>
+            <li>CSV format works with Excel, Google Sheets, and other tools</li>
+            <li>JSON format is useful for programmatic access</li>
+            <li>Useful for creating reports or data analysis</li>
+          </ul>
+          
+          <div class="alert alert-warning mt-3">
+            <i class="bi bi-exclamation-triangle"></i> <strong>Important:</strong> Keep your backup files secure. They contain all user data including passwords (hashed) and personal information.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
-{% endblock %} 
+
+<script>
+// Add loading state to buttons
+document.addEventListener('DOMContentLoaded', function() {
+  const downloadBtn = document.getElementById('downloadBackupBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const exportForm = document.getElementById('exportForm');
+  
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', function() {
+      this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating backup...';
+      this.disabled = true;
+    });
+  }
+  
+  if (exportForm) {
+    exportForm.addEventListener('submit', function(e) {
+      const tableSelect = document.getElementById('tableSelect');
+      if (!tableSelect.value) {
+        e.preventDefault();
+        alert('Please select a table to export.');
+        return false;
+      }
+      
+      if (exportBtn) {
+        exportBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Exporting...';
+        exportBtn.disabled = true;
+      }
+    });
+  }
+});
+</script>
+{% endblock %}
