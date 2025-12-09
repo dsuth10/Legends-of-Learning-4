@@ -17,8 +17,6 @@ from app.models.clan import Clan
 from app.services.quest_map_utils import find_available_coordinates
 from sqlalchemy.exc import IntegrityError
 
-# TODO: Move relevant routes and helpers from students.py into this file.
-
 # --- API Endpoints and Helpers ---
 def teacher_owns_student(teacher_id, student_id):
     student = Student.query.filter_by(id=student_id).first()

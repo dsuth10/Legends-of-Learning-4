@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from flask import render_template, request, redirect, url_for, flash
 from app.models import db
 from app.models.classroom import Classroom
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.models.student import Student
 from app.models.character import Character
 from app.models.equipment import Equipment

@@ -6,12 +6,10 @@ from .blueprint import teacher_bp, teacher_required
 from flask_login import login_required, current_user
 from flask import render_template, request, redirect, url_for, flash, abort
 from app.models import db
-from app.models.classroom import Classroom, class_students
+from app.models.classroom import Classroom
 from app.models.user import User, UserRole
 from app.models.student import Student
 from app.models.character import Character
-from app.models.equipment import Equipment, Inventory
-from app.models.audit import AuditLog, EventType
 from app.forms.student import AddStudentForm
 from app.services.student_service import StudentService
 import logging
@@ -59,7 +57,6 @@ def edit_student(user_id):
     if not class_ids:
         abort(403)
     # Fetch character and inventory
-    character = None
     equipped_items = []
     unequipped_items = []
     character = Character.query.filter_by(student_id=user.id, is_active=True).first()
@@ -67,13 +64,18 @@ def edit_student(user_id):
         equipped_items = [item for item in character.inventory_items if item.is_equipped]
         unequipped_items = [item for item in character.inventory_items if not item.is_equipped]
     if request.method == 'POST':
-        user.first_name = request.form.get('first_name', user.first_name)
-        user.last_name = request.form.get('last_name', user.last_name)
-        user.email = request.form.get('email', user.email)
-        user.is_active = request.form.get('is_active', str(user.is_active)).lower() == 'true'
-        db.session.commit()
-        flash('Student information updated.', 'success')
-        return redirect(url_for('teacher.students', class_id=class_ids[0]))
+        try:
+            user.first_name = request.form.get('first_name', user.first_name)
+            user.last_name = request.form.get('last_name', user.last_name)
+            user.email = request.form.get('email', user.email)
+            user.is_active = request.form.get('is_active', str(user.is_active)).lower() == 'true'
+            db.session.commit()
+            flash('Student information updated.', 'success')
+            return redirect(url_for('teacher.students', class_id=class_ids[0]))
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Error updating student: {e}")
+            flash(f'Error updating student: {e}', 'danger')
     return render_template('teacher/edit_student.html', student=user, character=character, equipped_items=equipped_items, unequipped_items=unequipped_items)
 
 @teacher_bp.route('/students/<int:user_id>/remove', methods=['POST'])
@@ -86,10 +88,6 @@ def remove_student(user_id):
         flash('Class ID missing. Please try again from the class view.', 'danger')
         return redirect(url_for('teacher.students'))
     classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
-    # Debug: log students before removal
-
-    # Log association table before
-
     if not classroom or not classroom.students.filter_by(id=user.id).first():
         flash('You do not have permission to remove this student from the selected class.', 'danger')
         return redirect(url_for('teacher.students', class_id=class_id))
@@ -97,7 +95,6 @@ def remove_student(user_id):
         # Remove from classroom association
         classroom.remove_student(user)
         db.session.commit()
-        # Log association table after
 
         # Set student profile to unassigned
         student_profile = Student.query.filter_by(user_id=user.id, class_id=class_id).first()
@@ -109,11 +106,10 @@ def remove_student(user_id):
         else:
             db.session.commit()
             flash('Student removed from class.', 'warning')
-        # Debug: log students after removal
-        classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
 
     except Exception as e:
-        logging.error(f"[ERROR] Exception during student removal: {e}")
+        db.session.rollback()
+        logging.error(f"Error during student removal: {e}")
         flash(f"Error removing student: {e}", 'danger')
     return redirect(url_for('teacher.students', class_id=class_id))
 
@@ -126,7 +122,12 @@ def toggle_student_status(user_id):
     class_ids = [c.id for c in user.classes if c.teacher_id == current_user.id]
     if not class_ids:
         abort(403)
-    user.is_active = not user.is_active
-    db.session.commit()
-    flash(f'Student status set to {"Active" if user.is_active else "Inactive"}.', 'success')
+    try:
+        user.is_active = not user.is_active
+        db.session.commit()
+        flash(f'Student status set to {"Active" if user.is_active else "Inactive"}.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error toggling student status: {e}")
+        flash(f'Error updating student status: {e}', 'danger')
     return redirect(url_for('teacher.students', class_id=class_ids[0]))

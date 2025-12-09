@@ -41,11 +41,15 @@ def reassign_unassigned_student(user_id):
     class_id = request.form.get('class_id', type=int)
     student_profile = Student.query.filter_by(user_id=user_id, class_id=None, status='unassigned').first_or_404()
     classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first_or_404()
-    # Reassign student
-    student_profile.class_id = class_id
-    student_profile.status = 'active'
-    db.session.commit()
-    flash('Student reassigned to class.', 'success')
+    try:
+        # Reassign student
+        student_profile.class_id = class_id
+        student_profile.status = 'active'
+        db.session.commit()
+        flash('Student reassigned to class.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error reassigning student: {e}', 'danger')
     return redirect(url_for('teacher.unassigned_students'))
 
 @teacher_bp.route('/unassigned-students/<int:user_id>/delete', methods=['POST'])
@@ -54,8 +58,12 @@ def reassign_unassigned_student(user_id):
 def delete_unassigned_student(user_id):
     student_profile = Student.query.filter_by(user_id=user_id, class_id=None, status='unassigned').first_or_404()
     user = User.query.filter_by(id=user_id, role=UserRole.STUDENT).first_or_404()
-    db.session.delete(student_profile)
-    db.session.delete(user)
-    db.session.commit()
-    flash('Unassigned student permanently deleted.', 'success')
+    try:
+        db.session.delete(student_profile)
+        db.session.delete(user)
+        db.session.commit()
+        flash('Unassigned student permanently deleted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting student: {e}', 'danger')
     return redirect(url_for('teacher.unassigned_students'))

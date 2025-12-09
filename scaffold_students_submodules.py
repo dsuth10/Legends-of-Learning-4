@@ -16,8 +16,6 @@ template = '''"""
 
 from .blueprint import teacher_bp, teacher_required
 from flask_login import login_required, current_user
-
-# TODO: Move relevant routes and helpers from students.py into this file.
 '''
 
 descriptions = {
