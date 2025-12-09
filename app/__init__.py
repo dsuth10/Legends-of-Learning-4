@@ -24,7 +24,9 @@ def create_app(config=None):
     
     # Session and cookie security settings
     app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour in seconds
-    app.config['SESSION_COOKIE_SECURE'] = True  # Only send cookies over HTTPS
+    # Only use secure cookies in production (HTTPS required)
+    # In development, set to False to allow HTTP
+    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
     app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JS access to cookies
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Mitigate CSRF
     # For production, ensure HTTPS is enforced (see Flask-Talisman or reverse proxy setup)

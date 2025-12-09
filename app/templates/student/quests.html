@@ -44,7 +44,6 @@
                 {{ q.quest.rewards.filter_by(type='gold').first().amount if q.quest.rewards.filter_by(type='gold').first() else 0 }} Gold,
                 {{ q.quest.rewards.filter_by(type='experience').first().amount if q.quest.rewards.filter_by(type='experience').first() else 0 }} XP
             </p>
-            <p style="color: red;">DEBUG: {{ q.quest.title }} status = {{ q.status }} (type: {{ q.status.__class__.__name__ }})</p>
             {% if status == 'completed' %}
               <p class="text-success"><em>This quest is completed.</em></p>
             {% elif status == 'in_progress' %}

@@ -17,6 +17,11 @@ from app.models.character import Character
 from app.models.clan import Clan
 from app.models.equipment import Equipment
 from app.models.ability import Ability
+from app.models.quest import Quest, QuestLog, Reward, Consequence
+from app.models.battle import Monster, Battle
+from app.models.education import QuestionSet, Question
+from app.models.student import Student
+from app.models.teacher import Teacher
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

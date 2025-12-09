@@ -26,9 +26,9 @@
                 <h5 class="mt-3">Active Status Effects</h5>
                 <div id="status-effects-display" class="mb-3">
                   {% for effect in active_status_effects %}
-                    <span class="status-effect-badge {{ effect.effect_type }}" title="{{ effect.source }}: {{ effect.stat_affected }} {{ effect.amount > 0 ? '+' : '' }}{{ effect.amount }} (expires {{ effect.expires_at.strftime('%H:%M') }})">
+                    <span class="status-effect-badge {{ effect.effect_type }}" title="{{ effect.source }}: {{ effect.stat_affected }} {{ '+' if effect.amount > 0 else '' }}{{ effect.amount }} (expires {{ effect.expires_at.strftime('%H:%M') }})">
                       {% if effect.effect_type == 'buff' %}⬆️{% elif effect.effect_type == 'debuff' %}⬇️{% elif effect.effect_type == 'protect' %}🛡️{% endif %}
-                      {{ effect.source }} ({{ effect.stat_affected }} {{ effect.amount > 0 ? '+' : '' }}{{ effect.amount }})
+                      {{ effect.source }} ({{ effect.stat_affected }} {{ '+' if effect.amount > 0 else '' }}{{ effect.amount }})
                       <small class="text-muted">({{ effect.remaining_minutes }}m)</small>
                     </span>
                   {% endfor %}
