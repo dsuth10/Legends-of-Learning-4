@@ -7,27 +7,89 @@
     <tr>
       <th>Title</th>
       <th>Type</th>
-      <th>Description</th>
+      <th>Level Req.</th>
+      <th>Prerequisite</th>
+      <th>Time Constraints</th>
       <th>Gold Reward</th>
       <th>XP Reward</th>
+      <th>Advanced</th>
       <th>Actions</th>
     </tr>
   </thead>
   <tbody>
     {% for quest in quests %}
     <tr>
-      <td>{{ quest.title }}</td>
-      <td>{{ quest.type }}</td>
-      <td>{{ quest.description }}</td>
+      <td>
+        <strong>{{ quest.title }}</strong>
+        {% set has_children = quests | selectattr('parent_quest_id', 'equalto', quest.id) | list %}
+        {% if quest.parent_quest_id or has_children %}
+          <i class="bi bi-link-45deg text-info" title="Part of quest chain"></i>
+        {% endif %}
+      </td>
+      <td>
+        <span class="badge bg-secondary">{{ quest.type.value }}</span>
+      </td>
+      <td>{{ quest.level_requirement }}</td>
+      <td>
+        {% if quest.parent_quest_id %}
+          {% set parent = quests | selectattr('id', 'equalto', quest.parent_quest_id) | first %}
+          {% if parent %}
+            <a href="{{ url_for('teacher_quests.edit_quest', quest_id=parent.id) }}" class="text-decoration-none">
+              {{ parent.title }}
+            </a>
+          {% else %}
+            <span class="text-muted">Quest #{{ quest.parent_quest_id }} (deleted)</span>
+          {% endif %}
+        {% else %}
+          <span class="text-muted">None</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if quest.start_date or quest.end_date or quest.time_limit_hours %}
+          <small>
+            {% if quest.start_date %}
+              <div>Start: {{ quest.start_date.strftime('%Y-%m-%d %H:%M') }}</div>
+            {% endif %}
+            {% if quest.end_date %}
+              <div>End: {{ quest.end_date.strftime('%Y-%m-%d %H:%M') }}</div>
+            {% endif %}
+            {% if quest.time_limit_hours %}
+              <div>Limit: {{ quest.time_limit_hours }}h</div>
+            {% endif %}
+          </small>
+        {% else %}
+          <span class="text-muted">None</span>
+        {% endif %}
+      </td>
       <td>{{ quest.rewards.filter_by(type='gold').first().amount if quest.rewards.filter_by(type='gold').first() else 0 }}</td>
       <td>{{ quest.rewards.filter_by(type='experience').first().amount if quest.rewards.filter_by(type='experience').first() else 0 }}</td>
       <td>
-        <a href="{{ url_for('teacher_quests.edit_quest', quest_id=quest.id) }}" class="btn btn-sm btn-warning">Edit</a>
-        <form action="{{ url_for('teacher_quests.delete_quest', quest_id=quest.id) }}" method="post" style="display:inline;">
-          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-        </form>
-        <!-- Assign Button -->
-        <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#assignModal{{ quest.id }}">Assign</button>
+        {% if quest.requirements and quest.requirements != {} %}
+          <i class="bi bi-check-circle text-success" title="Has requirements"></i>
+        {% endif %}
+        {% if quest.completion_criteria and quest.completion_criteria != {} %}
+          <i class="bi bi-list-check text-info" title="Has completion criteria"></i>
+        {% endif %}
+        {% if not quest.requirements or quest.requirements == {} %}
+          {% if not quest.completion_criteria or quest.completion_criteria == {} %}
+            <span class="text-muted">-</span>
+          {% endif %}
+        {% endif %}
+      </td>
+      <td>
+        <div class="btn-group" role="group">
+          <a href="{{ url_for('teacher_quests.edit_quest', quest_id=quest.id) }}" class="btn btn-sm btn-warning">Edit</a>
+          {% set has_children = quests | selectattr('parent_quest_id', 'equalto', quest.id) | list %}
+          {% if quest.parent_quest_id or has_children %}
+            <a href="{{ url_for('teacher_quests.view_quest_chain', quest_id=quest.id) }}" class="btn btn-sm btn-outline-primary" title="View Quest Chain">
+              <i class="bi bi-diagram-3"></i>
+            </a>
+          {% endif %}
+          <form action="{{ url_for('teacher_quests.delete_quest', quest_id=quest.id) }}" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+          <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#assignModal{{ quest.id }}">Assign</button>
+        </div>
         <!-- Assign Modal -->
         <div class="modal fade" id="assignModal{{ quest.id }}" tabindex="-1" aria-labelledby="assignModalLabel{{ quest.id }}" aria-hidden="true">
           <div class="modal-dialog">
@@ -87,6 +149,32 @@
     {% endfor %}
   </tbody>
 </table>
+
+<!-- Quest Chain Summary -->
+<div class="card mt-4">
+  <div class="card-header">
+    <h5>Quest Chains Overview</h5>
+  </div>
+  <div class="card-body">
+    {% set root_quests = quests | selectattr('parent_quest_id', 'none') | list %}
+    {% if root_quests %}
+      <p>Root quests (no prerequisites):</p>
+      <ul>
+        {% for root in root_quests %}
+          {% set children = quests | selectattr('parent_quest_id', 'equalto', root.id) | list %}
+          <li>
+            <a href="{{ url_for('teacher_quests.view_quest_chain', quest_id=root.id) }}">{{ root.title }}</a>
+            {% if children %}
+              <small class="text-muted">({{ children | length }} follow-up quest{{ 's' if children | length != 1 else '' }})</small>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted">No quest chains found. All quests are independent.</p>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}

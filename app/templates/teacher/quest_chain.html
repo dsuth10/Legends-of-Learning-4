@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Quest Chain: {{ quest.title }}</h2>
+
+<div class="mb-3">
+  <a href="{{ url_for('teacher_quests.list_quests') }}" class="btn btn-secondary">Back to Quests</a>
+  <a href="{{ url_for('teacher_quests.edit_quest', quest_id=quest.id) }}" class="btn btn-primary">Edit Quest</a>
+</div>
+
+<!-- Quest Chain Visualization -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5>Quest Chain Structure</h5>
+  </div>
+  <div class="card-body">
+    {% if ancestors or children %}
+      <div class="quest-chain">
+        <!-- Ancestors (parents) -->
+        {% if ancestors %}
+          <div class="mb-3">
+            <h6>Prerequisites (Must Complete Before):</h6>
+            <div class="d-flex flex-wrap align-items-center">
+              {% for ancestor in ancestors %}
+                <div class="quest-chain-item me-2 mb-2">
+                  <a href="{{ url_for('teacher_quests.view_quest_chain', quest_id=ancestor.id) }}" class="btn btn-sm btn-outline-primary">
+                    {{ ancestor.title }}
+                  </a>
+                </div>
+                {% if not loop.last %}
+                  <i class="bi bi-arrow-right me-2"></i>
+                {% endif %}
+              {% endfor %}
+              <i class="bi bi-arrow-right me-2"></i>
+              <div class="quest-chain-item">
+                <span class="btn btn-sm btn-primary">{{ quest.title }} <small>(Current)</small></span>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+        
+        <!-- Current Quest Info -->
+        <div class="alert alert-info mb-3">
+          <strong>Current Quest:</strong> {{ quest.title }}<br>
+          <small>Type: {{ quest.type.value }} | Level Requirement: {{ quest.level_requirement }}</small>
+        </div>
+        
+        <!-- Children (follow-up quests) -->
+        {% if children %}
+          <div class="mb-3">
+            <h6>Follow-up Quests (Unlocked After This):</h6>
+            <div class="d-flex flex-wrap align-items-center">
+              <div class="quest-chain-item me-2 mb-2">
+                <span class="btn btn-sm btn-primary">{{ quest.title }} <small>(Current)</small></span>
+              </div>
+              <i class="bi bi-arrow-right me-2"></i>
+              {% for child in children %}
+                <div class="quest-chain-item me-2 mb-2">
+                  <a href="{{ url_for('teacher_quests.view_quest_chain', quest_id=child.id) }}" class="btn btn-sm btn-outline-success">
+                    {{ child.title }}
+                  </a>
+                </div>
+                {% if not loop.last %}
+                  <i class="bi bi-arrow-right me-2"></i>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="alert alert-secondary">
+        This quest is not part of a chain. It has no prerequisites and no follow-up quests.
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Detailed Chain Information -->
+<div class="row">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <h6>Prerequisite Chain</h6>
+      </div>
+      <div class="card-body">
+        {% if ancestors %}
+          <ol>
+            {% for ancestor in ancestors %}
+              <li>
+                <a href="{{ url_for('teacher_quests.edit_quest', quest_id=ancestor.id) }}">{{ ancestor.title }}</a>
+                <small class="text-muted">({{ ancestor.type.value }})</small>
+              </li>
+            {% endfor %}
+            <li><strong>{{ quest.title }}</strong> <small class="text-muted">(Current - {{ quest.type.value }})</small></li>
+          </ol>
+        {% else %}
+          <p class="text-muted">No prerequisites</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <h6>Follow-up Quests</h6>
+      </div>
+      <div class="card-body">
+        {% if children %}
+          <ul>
+            {% for child in children %}
+              <li>
+                <a href="{{ url_for('teacher_quests.edit_quest', quest_id=child.id) }}">{{ child.title }}</a>
+                <small class="text-muted">({{ child.type.value }})</small>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted">No follow-up quests</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- All Descendants Tree -->
+{% if all_descendants %}
+<div class="card mt-4">
+  <div class="card-header">
+    <h6>Complete Quest Tree (All Descendants)</h6>
+  </div>
+  <div class="card-body">
+    <div class="quest-tree">
+      <ul class="list-unstyled">
+        <li>
+          <strong>{{ quest.title }}</strong> <small class="text-muted">(Root)</small>
+          {% if all_descendants %}
+            <ul class="list-unstyled ms-4">
+              {% for descendant in all_descendants %}
+                <li>
+                  <a href="{{ url_for('teacher_quests.edit_quest', quest_id=descendant.id) }}">{{ descendant.title }}</a>
+                  <small class="text-muted">({{ descendant.type.value }})</small>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<style>
+.quest-chain {
+  padding: 1rem;
+}
+.quest-chain-item {
+  display: inline-block;
+}
+</style>
+{% endblock %}
+

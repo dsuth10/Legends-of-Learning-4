@@ -1,31 +1,371 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>{{ quest and "Edit" or "Create" }} Quest</h2>
-<form method="post">
-  <div class="mb-3">
-    <label for="title" class="form-label">Title</label>
-    <input type="text" class="form-control" name="title" id="title" value="{{ quest.title if quest else '' }}" required>
+<form method="post" id="questForm">
+  <!-- Basic Information -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <h5>Basic Information</h5>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label for="title" class="form-label">Title</label>
+        <input type="text" class="form-control" name="title" id="title" value="{{ quest.title if quest else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label for="type" class="form-label">Type</label>
+        <select class="form-control" name="type" id="type" required>
+          <option value="story" {% if quest and quest.type.value == 'story' %}selected{% endif %}>Story</option>
+          <option value="daily" {% if quest and quest.type.value == 'daily' %}selected{% endif %}>Daily</option>
+          <option value="weekly" {% if quest and quest.type.value == 'weekly' %}selected{% endif %}>Weekly</option>
+          <option value="achievement" {% if quest and quest.type.value == 'achievement' %}selected{% endif %}>Achievement</option>
+          <option value="event" {% if quest and quest.type.value == 'event' %}selected{% endif %}>Event</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" name="description" id="description" required>{{ quest.description if quest else '' }}</textarea>
+      </div>
+      <div class="mb-3">
+        <label for="level_requirement" class="form-label">Level Requirement</label>
+        <input type="number" class="form-control" name="level_requirement" id="level_requirement" min="1" value="{{ quest.level_requirement if quest else 1 }}" required>
+        <div class="form-text">Minimum character level required to start this quest</div>
+      </div>
+    </div>
   </div>
-  <div class="mb-3">
-    <label for="type" class="form-label">Type</label>
-    <select class="form-control" name="type" id="type">
-      <option value="daily" {% if quest and quest.type == 'daily' %}selected{% endif %}>Daily</option>
-      <option value="weekly" {% if quest and quest.type == 'weekly' %}selected{% endif %}>Weekly</option>
-    </select>
+
+  <!-- Rewards -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <h5>Rewards</h5>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label for="gold_reward" class="form-label">Gold Reward</label>
+        <input type="number" class="form-control" name="gold_reward" id="gold_reward" min="0" value="{{ gold_reward if gold_reward is defined else (quest.rewards.filter_by(type='gold').first().amount if quest and quest.rewards.filter_by(type='gold').first() else 0) }}">
+      </div>
+      <div class="mb-3">
+        <label for="xp_reward" class="form-label">XP Reward</label>
+        <input type="number" class="form-control" name="xp_reward" id="xp_reward" min="0" value="{{ xp_reward if xp_reward is defined else (quest.rewards.filter_by(type='experience').first().amount if quest and quest.rewards.filter_by(type='experience').first() else 0) }}">
+      </div>
+      <div class="alert alert-info">
+        <small><strong>Note:</strong> Conditional rewards based on performance can be configured in the Completion Criteria section below.</small>
+      </div>
+    </div>
   </div>
-  <div class="mb-3">
-    <label for="description" class="form-label">Description</label>
-    <textarea class="form-control" name="description" id="description" required>{{ quest.description if quest else '' }}</textarea>
+
+  <!-- Advanced Configuration -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <button class="btn btn-link text-white text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#advancedConfig" aria-expanded="false" aria-controls="advancedConfig">
+        <h5 class="mb-0">Advanced Configuration <i class="bi bi-chevron-down"></i></h5>
+      </button>
+    </div>
+    <div class="collapse" id="advancedConfig">
+      <div class="card-body">
+        <!-- Time Constraints -->
+        <div class="mb-4">
+          <h6>Time Constraints</h6>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="start_date" class="form-label">Start Date/Time (Optional)</label>
+              <input type="datetime-local" class="form-control" name="start_date" id="start_date" value="{% if quest and quest.start_date %}{% set dt = quest.start_date %}{% if dt.tzinfo %}{{ dt.replace(tzinfo=None).strftime('%Y-%m-%dT%H:%M') }}{% else %}{{ dt.strftime('%Y-%m-%dT%H:%M') }}{% endif %}{% endif %}">
+              <div class="form-text">Quest becomes available at this time</div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="end_date" class="form-label">End Date/Time (Optional)</label>
+              <input type="datetime-local" class="form-control" name="end_date" id="end_date" value="{% if quest and quest.end_date %}{% set dt = quest.end_date %}{% if dt.tzinfo %}{{ dt.replace(tzinfo=None).strftime('%Y-%m-%dT%H:%M') }}{% else %}{{ dt.strftime('%Y-%m-%dT%H:%M') }}{% endif %}{% endif %}">
+              <div class="form-text">Quest expires at this time</div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="time_limit_hours" class="form-label">Time Limit (Hours) (Optional)</label>
+            <input type="number" class="form-control" name="time_limit_hours" id="time_limit_hours" min="0" value="{{ quest.time_limit_hours if quest and quest.time_limit_hours else '' }}">
+            <div class="form-text">Maximum time allowed to complete quest once started (0 = no limit)</div>
+          </div>
+        </div>
+
+        <!-- Prerequisite Quest -->
+        <div class="mb-4">
+          <h6>Quest Chain</h6>
+          <div class="mb-3">
+            <label for="parent_quest_id" class="form-label">Prerequisite Quest (Optional)</label>
+            <select class="form-control" name="parent_quest_id" id="parent_quest_id">
+              <option value="">None (This is a starting quest)</option>
+              {% for available_quest in available_quests %}
+                {% if not quest or available_quest.id != quest.id %}
+                  <option value="{{ available_quest.id }}" {% if quest and quest.parent_quest_id == available_quest.id %}selected{% endif %}>
+                    {{ available_quest.title }} ({{ available_quest.type.value }})
+                  </option>
+                {% endif %}
+              {% endfor %}
+            </select>
+            <div class="form-text">This quest must be completed before this quest becomes available</div>
+          </div>
+          {% if quest and quest.parent_quest_id %}
+            <div class="alert alert-info">
+              <small><strong>Current Prerequisite:</strong> 
+                {% if parent_quest %}
+                  <a href="{{ url_for('teacher_quests.edit_quest', quest_id=parent_quest.id) }}">{{ parent_quest.title }}</a>
+                {% else %}
+                  Quest #{{ quest.parent_quest_id }} (may have been deleted)
+                {% endif %}
+              </small>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Requirements JSON -->
+        <div class="mb-4">
+          <h6>Quest Requirements</h6>
+          <p class="text-muted small">Define prerequisites for starting this quest (e.g., {"min_level": 5, "required_items": ["sword"], "completed_quests": [1, 2]})</p>
+          <div class="mb-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addRequirementHelper('min_level')">Add Min Level</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addRequirementHelper('required_items')">Add Required Items</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addRequirementHelper('completed_quests')">Add Completed Quests</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearRequirements()">Clear</button>
+          </div>
+          <textarea class="form-control font-monospace" name="requirements" id="requirements" rows="6" placeholder='{"min_level": 5, "required_items": ["sword"]}'>{{ quest.requirements | tojson(indent=2) if quest and quest.requirements else '{}' }}</textarea>
+          <div class="form-text">Enter valid JSON. Leave as {} for no special requirements.</div>
+          <div id="requirements_error" class="text-danger small mt-1" style="display: none;"></div>
+        </div>
+
+        <!-- Completion Criteria JSON -->
+        <div class="mb-4">
+          <h6>Completion Criteria & Conditional Rewards</h6>
+          <p class="text-muted small">Define what must be accomplished to complete this quest. You can also specify conditional rewards based on performance (e.g., time bonuses, performance tiers).</p>
+          <div class="mb-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addCompletionHelper('kill_count')">Add Kill Count</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addCompletionHelper('collect_items')">Add Collect Items</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addCompletionHelper('time_bonus')">Add Time Bonus</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addConditionalReward()">Add Conditional Reward</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearCompletion()">Clear</button>
+          </div>
+          <textarea class="form-control font-monospace" name="completion_criteria" id="completion_criteria" rows="8" placeholder='{"kill_count": 5, "collect_items": ["gem"], "conditional_rewards": [{"condition": "time_bonus", "threshold_hours": 1, "bonus_xp": 50, "bonus_gold": 25}]}'>{{ quest.completion_criteria | tojson(indent=2) if quest and quest.completion_criteria else '{}' }}</textarea>
+          <div class="form-text">
+            <strong>Completion Criteria Examples:</strong><br>
+            • <code>{"kill_count": 5}</code> - Must kill 5 enemies<br>
+            • <code>{"collect_items": ["gem", "potion"]}</code> - Must collect specific items<br>
+            • <code>{"conditional_rewards": [{"condition": "time_bonus", "threshold_hours": 1, "bonus_xp": 50}]}</code> - Bonus XP if completed within 1 hour<br>
+            • <code>{"conditional_rewards": [{"condition": "performance_tier", "tier": "excellent", "min_score": 90, "bonus_xp": 100}]}</code> - Bonus for high performance
+          </div>
+          <div id="completion_error" class="text-danger small mt-1" style="display: none;"></div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="mb-3">
-    <label for="gold_reward" class="form-label">Gold Reward</label>
-    <input type="number" class="form-control" name="gold_reward" id="gold_reward" min="0" value="{{ gold_reward if gold_reward is defined else (quest.rewards.filter_by(type='gold').first().amount if quest and quest.rewards.filter_by(type='gold').first() else 0) }}">
-  </div>
-  <div class="mb-3">
-    <label for="xp_reward" class="form-label">XP Reward</label>
-    <input type="number" class="form-control" name="xp_reward" id="xp_reward" min="0" value="{{ xp_reward if xp_reward is defined else (quest.rewards.filter_by(type='experience').first().amount if quest and quest.rewards.filter_by(type='experience').first() else 0) }}">
-  </div>
+
   <button type="submit" class="btn btn-success">Save</button>
   <a href="{{ url_for('teacher_quests.list_quests') }}" class="btn btn-secondary">Cancel</a>
 </form>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+// JSON validation
+function validateJSON(textareaId, errorId) {
+  const textarea = document.getElementById(textareaId);
+  const errorDiv = document.getElementById(errorId);
+  const value = textarea.value.trim();
+  
+  if (value === '' || value === '{}') {
+    errorDiv.style.display = 'none';
+    textarea.classList.remove('is-invalid');
+    return true;
+  }
+  
+  try {
+    JSON.parse(value);
+    errorDiv.style.display = 'none';
+    textarea.classList.remove('is-invalid');
+    return true;
+  } catch (e) {
+    errorDiv.textContent = 'Invalid JSON: ' + e.message;
+    errorDiv.style.display = 'block';
+    textarea.classList.add('is-invalid');
+    return false;
+  }
+}
+
+// Helper functions for requirements
+function addRequirementHelper(type) {
+  const textarea = document.getElementById('requirements');
+  let current = {};
+  try {
+    const text = textarea.value.trim();
+    if (text && text !== '{}') {
+      current = JSON.parse(text);
+    }
+  } catch (e) {
+    alert('Current requirements JSON is invalid. Please fix it first.');
+    return;
+  }
+  
+  if (type === 'min_level') {
+    const level = prompt('Enter minimum level:', '5');
+    if (level) {
+      current.min_level = parseInt(level) || 5;
+    }
+  } else if (type === 'required_items') {
+    const items = prompt('Enter required items (comma-separated):', 'sword, shield');
+    if (items) {
+      current.required_items = items.split(',').map(i => i.trim());
+    }
+  } else if (type === 'completed_quests') {
+    const quests = prompt('Enter completed quest IDs (comma-separated):', '1, 2');
+    if (quests) {
+      current.completed_quests = quests.split(',').map(q => parseInt(q.trim())).filter(q => !isNaN(q));
+    }
+  }
+  
+  textarea.value = JSON.stringify(current, null, 2);
+  validateJSON('requirements', 'requirements_error');
+}
+
+function clearRequirements() {
+  if (confirm('Clear all requirements?')) {
+    document.getElementById('requirements').value = '{}';
+    validateJSON('requirements', 'requirements_error');
+  }
+}
+
+// Helper functions for completion criteria
+function addCompletionHelper(type) {
+  const textarea = document.getElementById('completion_criteria');
+  let current = {};
+  try {
+    const text = textarea.value.trim();
+    if (text && text !== '{}') {
+      current = JSON.parse(text);
+    }
+  } catch (e) {
+    alert('Current completion criteria JSON is invalid. Please fix it first.');
+    return;
+  }
+  
+  if (type === 'kill_count') {
+    const count = prompt('Enter kill count required:', '5');
+    if (count) {
+      current.kill_count = parseInt(count) || 5;
+    }
+  } else if (type === 'collect_items') {
+    const items = prompt('Enter items to collect (comma-separated):', 'gem, potion');
+    if (items) {
+      current.collect_items = items.split(',').map(i => i.trim());
+    }
+  } else if (type === 'time_bonus') {
+    current.time_bonus = true;
+    const hours = prompt('Complete within how many hours for bonus?', '1');
+    if (hours) {
+      current.time_bonus_hours = parseFloat(hours) || 1;
+    }
+  }
+  
+  textarea.value = JSON.stringify(current, null, 2);
+  validateJSON('completion_criteria', 'completion_error');
+}
+
+function addConditionalReward() {
+  const textarea = document.getElementById('completion_criteria');
+  let current = {};
+  try {
+    const text = textarea.value.trim();
+    if (text && text !== '{}') {
+      current = JSON.parse(text);
+    }
+  } catch (e) {
+    alert('Current completion criteria JSON is invalid. Please fix it first.');
+    return;
+  }
+  
+  if (!current.conditional_rewards) {
+    current.conditional_rewards = [];
+  }
+  
+  const rewardType = prompt('Reward type:\n1 = Time Bonus (complete within X hours)\n2 = Performance Tier (score-based)\n\nEnter 1 or 2:', '1');
+  
+  if (rewardType === '1') {
+    const hours = prompt('Complete within how many hours?', '1');
+    const bonusXP = prompt('Bonus XP amount:', '50');
+    const bonusGold = prompt('Bonus Gold amount (0 for none):', '25');
+    
+    if (hours && bonusXP) {
+      current.conditional_rewards.push({
+        condition: 'time_bonus',
+        threshold_hours: parseFloat(hours) || 1,
+        bonus_xp: parseInt(bonusXP) || 50,
+        bonus_gold: parseInt(bonusGold) || 0
+      });
+    }
+  } else if (rewardType === '2') {
+    const tier = prompt('Performance tier name (e.g., "excellent", "good"):', 'excellent');
+    const minScore = prompt('Minimum score required (0-100):', '90');
+    const bonusXP = prompt('Bonus XP amount:', '100');
+    const bonusGold = prompt('Bonus Gold amount (0 for none):', '50');
+    
+    if (tier && minScore && bonusXP) {
+      current.conditional_rewards.push({
+        condition: 'performance_tier',
+        tier: tier,
+        min_score: parseInt(minScore) || 90,
+        bonus_xp: parseInt(bonusXP) || 100,
+        bonus_gold: parseInt(bonusGold) || 0
+      });
+    }
+  }
+  
+  textarea.value = JSON.stringify(current, null, 2);
+  validateJSON('completion_criteria', 'completion_error');
+}
+
+function clearCompletion() {
+  if (confirm('Clear all completion criteria?')) {
+    document.getElementById('completion_criteria').value = '{}';
+    validateJSON('completion_criteria', 'completion_error');
+  }
+}
+
+// Validate on input
+document.addEventListener('DOMContentLoaded', function() {
+  const requirementsTextarea = document.getElementById('requirements');
+  const completionTextarea = document.getElementById('completion_criteria');
+  
+  if (requirementsTextarea) {
+    requirementsTextarea.addEventListener('blur', function() {
+      validateJSON('requirements', 'requirements_error');
+    });
+  }
+  
+  if (completionTextarea) {
+    completionTextarea.addEventListener('blur', function() {
+      validateJSON('completion_criteria', 'completion_error');
+    });
+  }
+  
+  // Form submission validation
+  const form = document.getElementById('questForm');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      const reqValid = validateJSON('requirements', 'requirements_error');
+      const compValid = validateJSON('completion_criteria', 'completion_error');
+      
+      if (!reqValid || !compValid) {
+        e.preventDefault();
+        alert('Please fix JSON errors before submitting.');
+        return false;
+      }
+      
+      // Validate date range
+      const startDate = document.getElementById('start_date').value;
+      const endDate = document.getElementById('end_date').value;
+      if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
+        e.preventDefault();
+        alert('End date must be after start date.');
+        return false;
+      }
+    });
+  }
+});
+</script>
 {% endblock %} 
