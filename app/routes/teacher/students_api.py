@@ -220,6 +220,13 @@ def api_assign_quest():
     quest_id = data.get('quest_id')
     target_type = data.get('target_type')
     target_id = data.get('target_id')
+    auto_assign = data.get('auto_assign', False)  # Can be boolean or string '1'/'true'
+    # Handle both boolean and string values
+    if isinstance(auto_assign, str):
+        auto_assign = auto_assign.lower() in ('1', 'true', 'yes')
+    elif not isinstance(auto_assign, bool):
+        auto_assign = False
+    
     if not quest_id or not target_type or not target_id:
         return jsonify({'success': False, 'message': 'Missing required parameters'}), 400
     # Validate quest
@@ -263,6 +270,12 @@ def api_assign_quest():
         return jsonify({'success': False, 'message': 'Invalid target_type'}), 400
     if not characters:
         return jsonify({'success': False, 'message': 'No target characters found'}), 404
+    
+    # Determine initial status and started_at based on auto_assign
+    from app.utils.date_utils import get_utc_now
+    initial_status = QuestStatus.IN_PROGRESS if auto_assign else QuestStatus.NOT_STARTED
+    started_at = get_utc_now() if auto_assign else None
+    
     # Assign quest to each character
     assigned = 0
     skipped = 0
@@ -282,9 +295,10 @@ def api_assign_quest():
         new_log = QuestLog(
             character_id=char.id,
             quest_id=quest.id,
-            status=QuestStatus.NOT_STARTED,
+            status=initial_status,
             x_coordinate=x,
-            y_coordinate=y
+            y_coordinate=y,
+            started_at=started_at
         )
         db.session.add(new_log)
         try:
@@ -297,9 +311,11 @@ def api_assign_quest():
             db.session.rollback()
             errors.append(str(e))
             skipped += 1
+    assignment_type = "Auto-assigned" if auto_assign else "Assigned"
     return jsonify({
         'success': True,
         'assigned': assigned,
         'skipped': skipped,
-        'errors': errors
+        'errors': errors,
+        'assignment_type': assignment_type
     })

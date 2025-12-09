@@ -7,9 +7,17 @@ from app.models.character import Character
 from app.models.clan import Clan
 from app.models.classroom import Classroom
 from app.models.quest import QuestLog, QuestStatus
+from app.models.user import User
+from app.models.audit import AuditLog, EventType
+from app.models.equipment import Inventory
+from app.models.ability import CharacterAbility
 from app.services.quest_map_utils import find_available_coordinates
+from app.routes.teacher.blueprint import teacher_required
 from datetime import datetime
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 teacher_quests_bp = Blueprint('teacher_quests', __name__, url_prefix='/teacher/quests')
 
@@ -268,6 +276,7 @@ def assign_quest():
     class_id = int(request.form['class_id'])
     target_type = request.form['target_type']
     target_ids = request.form.getlist('target_ids')  # List of selected clan or student IDs
+    auto_assign = request.form.get('auto_assign') == '1'  # Checkbox value
 
     # Determine the list of character IDs to assign the quest to
     character_ids = []
@@ -294,6 +303,11 @@ def assign_quest():
     # Remove duplicates
     character_ids = list(set(character_ids))
 
+    # Determine initial status and started_at based on auto_assign
+    from app.utils.date_utils import get_utc_now
+    initial_status = QuestStatus.IN_PROGRESS if auto_assign else QuestStatus.NOT_STARTED
+    started_at = get_utc_now() if auto_assign else None
+
     # Assign the quest to each character
     assigned = 0
     skipped = 0
@@ -312,14 +326,16 @@ def assign_quest():
         new_log = QuestLog(
             character_id=char_id,
             quest_id=quest_id,
-            status='NOT_STARTED',
+            status=initial_status,
             x_coordinate=coords[0],
-            y_coordinate=coords[1]
+            y_coordinate=coords[1],
+            started_at=started_at
         )
         db.session.add(new_log)
         assigned += 1
     db.session.commit()
-    msg = f"Assigned quest to {assigned} character(s)."
+    assignment_type = "Auto-assigned" if auto_assign else "Assigned"
+    msg = f"{assignment_type} quest to {assigned} character(s)."
     if skipped:
         msg += f" Skipped {skipped} already assigned."
     if errors:
@@ -399,4 +415,318 @@ def view_quest_chain(quest_id):
                          quest=quest, 
                          ancestors=ancestors, 
                          children=children,
-                         all_descendants=all_descendants) 
+                         all_descendants=all_descendants)
+
+@teacher_quests_bp.route('/progress', methods=['GET'])
+@login_required
+@teacher_required
+def quest_progress():
+    """View student quest progress with filtering options."""
+    # Get filter parameters
+    class_id = request.args.get('class_id', type=int)
+    quest_id = request.args.get('quest_id', type=int)
+    chain_quest_id = request.args.get('chain_quest_id', type=int)  # Show all quests in this chain
+    
+    # Get all classes for the teacher
+    classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
+    selected_class = None
+    
+    # Get all quests for filtering
+    all_quests = Quest.query.order_by(Quest.title).all()
+    
+    # Build query for quest logs
+    query = db.session.query(QuestLog, Quest, Character, Student, User, Classroom).\
+        join(Quest, QuestLog.quest_id == Quest.id).\
+        join(Character, QuestLog.character_id == Character.id).\
+        join(Student, Character.student_id == Student.id).\
+        join(User, Student.user_id == User.id).\
+        join(Classroom, Student.class_id == Classroom.id).\
+        filter(Classroom.teacher_id == current_user.id)
+    
+    # Apply filters
+    if class_id:
+        query = query.filter(Student.class_id == class_id)
+        selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+    
+    if quest_id:
+        query = query.filter(Quest.id == quest_id)
+    
+    if chain_quest_id:
+        # Get all quests in the chain
+        chain_quest = Quest.query.get(chain_quest_id)
+        if chain_quest:
+            chain_context = chain_quest.get_quest_chain_context()
+            chain_quest_ids = [q.id for q in chain_context['ancestors']]
+            chain_quest_ids.append(chain_quest.id)
+            chain_quest_ids.extend([q.id for q in chain_context['all_descendants']])
+            query = query.filter(Quest.id.in_(chain_quest_ids))
+    
+    # Execute query and group by quest
+    results = query.order_by(Quest.title, User.display_name).all()
+    
+    # Group results by quest
+    quest_groups = {}
+    for quest_log, quest, character, student, user, classroom in results:
+        if quest.id not in quest_groups:
+            quest_groups[quest.id] = {
+                'quest': quest,
+                'students': []
+            }
+        
+        quest_groups[quest.id]['students'].append({
+            'quest_log': quest_log,
+            'character': character,
+            'student': student,
+            'user': user,
+            'classroom': classroom
+        })
+    
+    # Get chain context for navigation if viewing a specific quest
+    chain_context = None
+    if quest_id:
+        quest = Quest.query.get(quest_id)
+        if quest:
+            chain_context = quest.get_quest_chain_context()
+    
+    return render_template('teacher/quest_progress.html',
+                         quest_groups=quest_groups,
+                         classes=classes,
+                         selected_class=selected_class,
+                         all_quests=all_quests,
+                         selected_quest_id=quest_id,
+                         selected_chain_quest_id=chain_quest_id,
+                         chain_context=chain_context)
+
+@teacher_quests_bp.route('/start/<int:quest_log_id>', methods=['POST'])
+@login_required
+@teacher_required
+def start_quest_for_student(quest_log_id):
+    """Start a quest for a student (move from NOT_STARTED to IN_PROGRESS)."""
+    logger.info(f"Quest start request received for quest_log_id={quest_log_id} by user={current_user.id}")
+    try:
+        # Get quest log with all necessary relationships
+        quest_log = QuestLog.query.get_or_404(quest_log_id)
+        character = Character.query.get_or_404(quest_log.character_id)
+        student = Student.query.get_or_404(character.student_id)
+        classroom = Classroom.query.get_or_404(student.class_id)
+        quest = Quest.query.get_or_404(quest_log.quest_id)
+        
+        # Permission check: ensure teacher owns this student's class
+        if classroom.teacher_id != current_user.id:
+            return jsonify({'success': False, 'error': 'Unauthorized access'}), 403
+        
+        # Validate quest status
+        if quest_log.status != QuestStatus.NOT_STARTED:
+            return jsonify({
+                'success': False,
+                'error': f'Quest must be NOT_STARTED to start. Current status: {quest_log.status.value}'
+            }), 400
+        
+        # Start the quest (sets status to IN_PROGRESS and started_at timestamp)
+        quest_log.start_quest()
+        db.session.commit()
+        
+        logger.info(f"Quest {quest.id} started successfully for character {character.id}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Quest "{quest.title}" started successfully for {student.user.display_name if hasattr(student, "user") and student.user else "student"}!',
+            'quest_log_id': quest_log.id,
+            'new_status': quest_log.status.value,
+            'started_at': quest_log.started_at.isoformat() if quest_log.started_at else None
+        })
+        
+    except ValueError as e:
+        db.session.rollback()
+        logger.warning(f"ValueError starting quest {quest_log_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error starting quest {quest_log_id}: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Error starting quest: {str(e)}'
+        }), 500
+
+@teacher_quests_bp.route('/complete/<int:quest_log_id>', methods=['POST'])
+@login_required
+@teacher_required
+def complete_quest_for_student(quest_log_id):
+    """Mark a quest as completed for a student and unlock next quest in chain."""
+    logger.info(f"Quest completion request received for quest_log_id={quest_log_id} by user={current_user.id}")
+    try:
+        # Get quest log with all necessary relationships
+        quest_log = QuestLog.query.get_or_404(quest_log_id)
+        character = Character.query.get_or_404(quest_log.character_id)
+        student = Student.query.get_or_404(character.student_id)
+        classroom = Classroom.query.get_or_404(student.class_id)
+        quest = Quest.query.get_or_404(quest_log.quest_id)
+        
+        # Permission check: ensure teacher owns this student's class
+        if classroom.teacher_id != current_user.id:
+            return jsonify({'success': False, 'error': 'Unauthorized access'}), 403
+        
+        # Validate quest status
+        if quest_log.status != QuestStatus.IN_PROGRESS:
+            return jsonify({
+                'success': False,
+                'error': f'Quest must be IN_PROGRESS to complete. Current status: {quest_log.status.value}'
+            }), 400
+        
+        # Import models needed for reward tracking
+        from app.models.equipment import Equipment
+        from app.models.ability import Ability
+        
+        # Capture character state before completion
+        old_gold = character.gold
+        old_experience = character.experience
+        old_level = character.level
+        
+        # Get current equipment IDs
+        old_equipment_ids = set(
+            inv.item_id for inv in Inventory.query.filter_by(character_id=character.id).all()
+        )
+        
+        # Get current ability IDs
+        old_ability_ids = set(
+            ca.ability_id for ca in CharacterAbility.query.filter_by(character_id=character.id).all()
+        )
+        
+        # Complete the quest (this awards rewards)
+        quest_log.complete_quest()
+        
+        # Refresh character to get updated values
+        db.session.refresh(character)
+        
+        # Calculate rewards distributed
+        gold_gained = character.gold - old_gold
+        xp_gained = character.experience - old_experience
+        levels_gained = character.level - old_level
+        
+        # Get new equipment IDs
+        new_equipment_ids = set(
+            inv.item_id for inv in Inventory.query.filter_by(character_id=character.id).all()
+        )
+        equipment_awarded_ids = list(new_equipment_ids - old_equipment_ids)
+        
+        # Get equipment names for awarded items
+        equipment_awarded = []
+        for item_id in equipment_awarded_ids:
+            item = Equipment.query.get(item_id)
+            if item:
+                equipment_awarded.append({'id': item_id, 'name': item.name})
+        
+        # Get new ability IDs
+        new_ability_ids = set(
+            ca.ability_id for ca in CharacterAbility.query.filter_by(character_id=character.id).all()
+        )
+        abilities_awarded_ids = list(new_ability_ids - old_ability_ids)
+        
+        # Get ability names for awarded abilities
+        abilities_awarded = []
+        for ability_id in abilities_awarded_ids:
+            ability = Ability.query.get(ability_id)
+            if ability:
+                abilities_awarded.append({'id': ability_id, 'name': ability.name})
+        
+        # Collect reward details from quest.rewards
+        rewards_detail = []
+        for reward in quest.rewards:
+            reward_info = {
+                'type': reward.type.value,
+                'amount': reward.amount
+            }
+            if reward.type == RewardType.EQUIPMENT and reward.item_id:
+                item = Equipment.query.get(reward.item_id)
+                if item:
+                    reward_info['item_id'] = reward.item_id
+                    reward_info['item_name'] = item.name
+            elif reward.type == RewardType.ABILITY and reward.ability_id:
+                ability = Ability.query.get(reward.ability_id)
+                if ability:
+                    reward_info['ability_id'] = reward.ability_id
+                    reward_info['ability_name'] = ability.name
+            rewards_detail.append(reward_info)
+        
+        # Unlock next quests in chain
+        next_quests = quest.get_next_quests_in_chain()
+        unlocked_quests = []
+        
+        for next_quest in next_quests:
+            # Check if already assigned
+            existing = QuestLog.query.filter_by(
+                character_id=character.id,
+                quest_id=next_quest.id
+            ).first()
+            
+            if not existing:
+                try:
+                    # Assign next quest with available coordinates
+                    coords = find_available_coordinates(character.id, db.session)
+                    new_log = QuestLog(
+                        character_id=character.id,
+                        quest_id=next_quest.id,
+                        status=QuestStatus.NOT_STARTED,
+                        x_coordinate=coords[0],
+                        y_coordinate=coords[1]
+                    )
+                    db.session.add(new_log)
+                    unlocked_quests.append({
+                        'id': next_quest.id,
+                        'title': next_quest.title
+                    })
+                except ValueError as e:
+                    # No coordinates available - log but don't fail
+                    logger.warning(f"Could not assign next quest {next_quest.id} to character {character.id}: {str(e)}")
+        
+        # Create audit log entry
+        event_data = {
+            'quest_id': quest.id,
+            'quest_title': quest.title,
+            'student_id': student.id,
+            'student_name': student.user.get_display_name() if student.user else 'Unknown',
+            'character_id': character.id,
+            'character_name': character.name,
+            'rewards_distributed': {
+                'gold': gold_gained,
+                'experience': xp_gained,
+                'levels_gained': levels_gained,
+                'equipment': equipment_awarded,
+                'abilities': abilities_awarded
+            },
+            'rewards_detail': rewards_detail,
+            'completed_at': quest_log.completed_at.isoformat() if quest_log.completed_at else None,
+            'unlocked_quests': unlocked_quests,
+            'marked_complete_by': {
+                'user_id': current_user.id,
+                'user_name': current_user.get_display_name() if hasattr(current_user, 'get_display_name') else current_user.username
+            }
+        }
+        
+        AuditLog.log_event(
+            event_type=EventType.QUEST_COMPLETE,
+            event_data=event_data,
+            user_id=current_user.id,
+            character_id=character.id
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Quest "{quest.title}" completed successfully!',
+            'unlocked_quests': unlocked_quests,
+            'quest_log_id': quest_log.id,
+            'new_status': quest_log.status.value
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error completing quest {quest_log_id}: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Error completing quest: {str(e)}'
+        }), 500 

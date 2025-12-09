@@ -107,6 +107,51 @@ class Quest(Base):
         
         return True
     
+    def get_next_quests_in_chain(self):
+        """Get all quests that have this quest as their parent (next in chain)."""
+        return Quest.query.filter_by(parent_quest_id=self.id).all()
+    
+    def get_quest_chain_context(self):
+        """Get full quest chain context: ancestors, current, and descendants."""
+        # Build ancestors (parents, grandparents, etc.)
+        ancestors = []
+        current = self
+        visited = set()
+        while current and current.parent_quest_id and current.parent_quest_id not in visited:
+            visited.add(current.parent_quest_id)
+            parent = Quest.query.get(current.parent_quest_id)
+            if parent:
+                ancestors.append(parent)
+                current = parent
+            else:
+                break
+        ancestors.reverse()  # Show from root to current
+        
+        # Get direct children
+        children = Quest.query.filter_by(parent_quest_id=self.id).order_by(Quest.title).all()
+        
+        # Get all descendants recursively
+        def get_descendants(quest_id, visited=None):
+            if visited is None:
+                visited = set()
+            if quest_id in visited:
+                return []
+            visited.add(quest_id)
+            direct_children = Quest.query.filter_by(parent_quest_id=quest_id).all()
+            descendants = list(direct_children)
+            for child in direct_children:
+                descendants.extend(get_descendants(child.id, visited))
+            return descendants
+        
+        all_descendants = get_descendants(self.id)
+        
+        return {
+            'ancestors': ancestors,
+            'current': self,
+            'children': children,
+            'all_descendants': all_descendants
+        }
+    
     def __repr__(self):
         return f'<Quest {self.title} ({self.type.value})>'
 

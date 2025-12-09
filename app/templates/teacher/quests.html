@@ -135,6 +135,16 @@
                     <label for="student_select_{{ quest.id }}" class="form-label">Select Students</label>
                     <div id="student_select_{{ quest.id }}" class="form-check-group"></div>
                   </div>
+                  <hr class="my-3">
+                  <div class="mb-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="auto_assign" value="1" id="auto_assign_{{ quest.id }}">
+                      <label class="form-check-label fw-bold" for="auto_assign_{{ quest.id }}">
+                        Auto-assign quest (students don't need to accept)
+                      </label>
+                      <small class="form-text text-muted d-block mt-1">If checked, the quest will be automatically started for students. They won't need to accept it.</small>
+                    </div>
+                  </div>
                 </div>
                 <div class="modal-footer">
                   <button type="submit" class="btn btn-success">Assign</button>

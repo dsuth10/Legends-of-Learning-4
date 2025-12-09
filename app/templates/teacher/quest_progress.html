@@ -1,0 +1,226 @@
+{% extends "teacher/base_dashboard.html" %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Quest Progress</li>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="container-fluid mt-4">
+  <h2 class="mb-4">
+    <i class="fas fa-tasks me-2"></i>Student Quest Progress
+  </h2>
+
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="GET" action="{{ url_for('teacher_quests.quest_progress') }}" id="filterForm">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label for="class_id" class="form-label">Filter by Class</label>
+            <select class="form-select" id="class_id" name="class_id" onchange="this.form.submit()">
+              <option value="">All Classes</option>
+              {% for class in classes %}
+              <option value="{{ class.id }}" {% if selected_class and class.id == selected_class.id %}selected{% endif %}>
+                {{ class.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="quest_id" class="form-label">Filter by Quest</label>
+            <select class="form-select" id="quest_id" name="quest_id" onchange="this.form.submit()">
+              <option value="">All Quests</option>
+              {% for quest in all_quests %}
+              <option value="{{ quest.id }}" {% if selected_quest_id == quest.id %}selected{% endif %}>
+                {{ quest.title }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label for="chain_quest_id" class="form-label">Filter by Quest Chain</label>
+            <select class="form-select" id="chain_quest_id" name="chain_quest_id" onchange="this.form.submit()">
+              <option value="">No Chain Filter</option>
+              {% for quest in all_quests %}
+              <option value="{{ quest.id }}" {% if selected_chain_quest_id == quest.id %}selected{% endif %}>
+                {{ quest.title }} (Chain)
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="button" class="btn btn-outline-secondary w-100" id="clearFiltersBtn">
+              <i class="fas fa-times me-1"></i>Clear Filters
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Quest Chain Navigation (if viewing a specific quest) -->
+  {% if chain_context %}
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">Quest Chain Navigation</h5>
+      <div class="d-flex flex-wrap align-items-center">
+        {% if chain_context.ancestors %}
+          {% for ancestor in chain_context.ancestors %}
+            <a href="{{ url_for('teacher_quests.quest_progress', quest_id=ancestor.id) }}" class="btn btn-sm btn-outline-primary me-2 mb-2">
+              {{ ancestor.title }}
+            </a>
+            <i class="fas fa-arrow-right me-2 mb-2"></i>
+          {% endfor %}
+        {% endif %}
+        <span class="btn btn-sm btn-primary me-2 mb-2">
+          {{ chain_context.current.title }} <small>(Current)</small>
+        </span>
+        {% if chain_context.children %}
+          {% for child in chain_context.children %}
+            <i class="fas fa-arrow-right me-2 mb-2"></i>
+            <a href="{{ url_for('teacher_quests.quest_progress', quest_id=child.id) }}" class="btn btn-sm btn-outline-success me-2 mb-2">
+              {{ child.title }}
+            </a>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Quest Groups -->
+  {% if quest_groups %}
+    {% for quest_id, group in quest_groups.items() %}
+    <div class="card mb-4 quest-group" data-quest-id="{{ quest_id }}">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-0">
+            <a href="{{ url_for('teacher_quests.view_quest_chain', quest_id=quest_id) }}" class="text-decoration-none">
+              {{ group.quest.title }}
+            </a>
+            <span class="badge bg-secondary ms-2">{{ group.quest.type.value }}</span>
+          </h5>
+          <small class="text-muted">{{ group.quest.description }}</small>
+        </div>
+        <div>
+          <span class="badge bg-info">{{ group.students|length }} student(s)</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Character</th>
+                <th>Class</th>
+                <th>Status</th>
+                <th>Started</th>
+                <th>Start Quest</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in group.students %}
+              <tr data-quest-log-id="{{ item.quest_log.id }}" data-student-name="{{ item.user.get_display_name() }}">
+                <td>
+                  <strong>{{ item.user.get_display_name() }}</strong>
+                  <br>
+                  <small class="text-muted">{{ item.user.email }}</small>
+                </td>
+                <td>{{ item.character.name }}</td>
+                <td>{{ item.classroom.name }}</td>
+                <td>
+                  {% if item.quest_log.status.value == 'not_started' %}
+                    <span class="badge bg-secondary">Not Started</span>
+                  {% elif item.quest_log.status.value == 'in_progress' %}
+                    <span class="badge bg-warning">In Progress</span>
+                  {% elif item.quest_log.status.value == 'completed' %}
+                    <span class="badge bg-success">Completed</span>
+                  {% elif item.quest_log.status.value == 'failed' %}
+                    <span class="badge bg-danger">Failed</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if item.quest_log.started_at %}
+                    {{ item.quest_log.started_at.strftime('%Y-%m-%d %H:%M') }}
+                  {% else %}
+                    <span class="text-muted">Not started</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if item.quest_log.status.value == 'not_started' %}
+                    <div class="form-check">
+                      <input class="form-check-input start-quest-checkbox" 
+                             type="checkbox" 
+                             id="start_quest_{{ item.quest_log.id }}"
+                             data-quest-log-id="{{ item.quest_log.id }}"
+                             data-quest-title="{{ group.quest.title }}"
+                             data-student-name="{{ item.user.get_display_name() }}">
+                      <label class="form-check-label" for="start_quest_{{ item.quest_log.id }}">
+                        Start
+                      </label>
+                    </div>
+                  {% else %}
+                    <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if item.quest_log.status.value == 'in_progress' %}
+                    <button type="button" class="btn btn-sm btn-success complete-quest-btn" 
+                            data-quest-log-id="{{ item.quest_log.id }}"
+                            data-quest-title="{{ group.quest.title }}"
+                            data-student-name="{{ item.user.get_display_name() }}">
+                      <i class="fas fa-check me-1"></i>Mark Complete
+                    </button>
+                  {% elif item.quest_log.status.value == 'completed' %}
+                    <span class="text-muted">
+                      <i class="fas fa-check-circle text-success me-1"></i>Completed
+                      {% if item.quest_log.completed_at %}
+                        <br><small>{{ item.quest_log.completed_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                      {% endif %}
+                    </span>
+                  {% else %}
+                    <span class="text-muted">No action available</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle me-2"></i>
+      No quest progress found matching your filters. Try adjusting your filter criteria.
+    </div>
+  {% endif %}
+</div>
+
+<!-- Success/Error Messages -->
+<div id="messageContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; display: none;">
+  <div id="messageAlert" class="alert alert-dismissible fade show" role="alert">
+    <span id="messageText"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Debug: Check if script loads
+  console.log('Quest Progress template loaded');
+  
+  // Ensure buttons work even if script fails to load
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, checking for buttons...');
+    const buttons = document.querySelectorAll('.complete-quest-btn');
+    console.log('Found buttons:', buttons.length);
+  });
+</script>
+<script src="{{ url_for('static', filename='js/teacher_quest_progress.js') }}"></script>
+{% endblock %}
+
