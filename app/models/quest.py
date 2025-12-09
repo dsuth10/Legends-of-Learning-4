@@ -56,12 +56,21 @@ class Quest(Base):
     time_limit_hours = db.Column(db.Integer, nullable=True)  # Time limit once started
     
     # Quest chain/prerequisites
+    # Quest chain/prerequisites
     parent_quest_id = db.Column(db.Integer, db.ForeignKey('quests.id', ondelete='SET NULL'), nullable=True)
+    
+    # Verification Links
+    question_set_id = db.Column(db.Integer, db.ForeignKey('question_sets.id', ondelete='SET NULL'), nullable=True)
+    monster_id = db.Column(db.Integer, db.ForeignKey('monsters.id', ondelete='SET NULL'), nullable=True)
     
     # Relationships
     rewards = db.relationship('Reward', backref='quest', lazy='dynamic', cascade='all, delete-orphan')
     consequences = db.relationship('Consequence', backref='quest', lazy='dynamic', cascade='all, delete-orphan')
     quest_logs = db.relationship('QuestLog', backref='quest', lazy='dynamic', cascade='all, delete-orphan')
+    
+    # New Relationships for verification
+    question_set = db.relationship('QuestionSet', backref='linked_quests')
+    monster = db.relationship('Monster', backref='linked_quests')
     
     __table_args__ = (
         db.Index('idx_quest_type', 'type'),  # For filtering quests by type
@@ -143,7 +152,92 @@ class QuestLog(Base):
         """Update quest progress."""
         self.progress_data.update(progress_data)
         self.save()
-    
+        
+    def check_completion(self):
+        """
+        Verify if the quest completion criteria are partially or fully met.
+        Returns True if the quest is ready to be completed.
+        """
+        if self.status == QuestStatus.COMPLETED:
+            return True
+        
+        is_complete = False
+        
+        # 1. Check Monster Criteria
+        if self.quest.monster_id:
+            from app.models.battle import Battle, BattleStatus
+            # QuestLog matches to Character, but Battle matches to Student.
+            # Character has student_id.
+            if not self.character:
+                return False # Should not happen if constraint holds
+                
+            student_id = self.character.student_id
+            
+            won_battles = Battle.query.filter_by(
+                student_id=student_id,
+                monster_id=self.quest.monster_id,
+                status=BattleStatus.WON
+            ).count()
+            
+            required_count = self.quest.completion_criteria.get('count', 1)
+            if won_battles >= required_count:
+                is_complete = True
+            else:
+                return False # Failed monster requirement
+
+        # 2. Check Question Set Criteria
+        if self.quest.question_set_id:
+            from app.models.battle import Battle, BattleStatus
+            
+            if not self.character:
+                return False
+                
+            student_id = self.character.student_id
+            
+            # Find battles with this question set
+            battles = Battle.query.filter_by(
+                student_id=student_id,
+                question_set_id=self.quest.question_set_id,
+                status=BattleStatus.WON # Must win the battle? Or just pass the quiz?
+                # Usually "Complete the Algebra Quiz" implies passing it.
+            ).all()
+            
+            min_score = self.quest.completion_criteria.get('min_score_percent', 0)
+            passed = False
+            
+            for battle in battles:
+                # Calculate score from turn_log
+                # turn_log example: [{correct: true}, {correct: false}]
+                if not battle.turn_log:
+                    continue
+                    
+                total_questions = len(battle.turn_log)
+                if total_questions == 0:
+                    continue
+                    
+                correct_answers = sum(1 for turn in battle.turn_log if turn.get('correct'))
+                score_percent = (correct_answers / total_questions) * 100
+                
+                if score_percent >= min_score:
+                    passed = True
+                    break
+            
+            if passed:
+                is_complete = True
+            else:
+                return False
+
+        # If we have no specific linked criteria but are in progress, 
+        # check manual progress metrics (existing behavior support)
+        if not self.quest.monster_id and not self.quest.question_set_id:
+            # Fallback to existing manual progress checks if any
+            required_progress = self.quest.completion_criteria.get('progress', 100)
+            current_progress = self.progress_data.get('progress', 0)
+            if current_progress >= required_progress:
+                is_complete = True
+                
+        return is_complete
+
     def complete_quest(self):
         """Mark quest as completed and distribute rewards."""
         if self.status != QuestStatus.IN_PROGRESS:
