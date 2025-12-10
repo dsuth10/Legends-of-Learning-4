@@ -98,22 +98,42 @@ class Character(Base):
         return self.abilities
 
     # Helper properties for equipped items
+    # Note: These are for UI display only. Stat calculations use ALL equipped items from all slots.
     @property
     def equipped_weapon(self):
-        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'weapon'), None)
+        """Get the first equipped weapon (for UI display). Returns None if no weapon is equipped."""
+        from app.models.equipment import Inventory, Equipment
+        return Inventory.query.join(Equipment).filter(
+            Inventory.character_id == self.id,
+            Inventory.is_equipped == True,
+            Equipment.type == 'weapon'
+        ).first()
 
     @property
     def equipped_armor(self):
-        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'armor'), None)
+        """Get the first equipped armor (for UI display). Returns None if no armor is equipped."""
+        from app.models.equipment import Inventory, Equipment
+        return Inventory.query.join(Equipment).filter(
+            Inventory.character_id == self.id,
+            Inventory.is_equipped == True,
+            Equipment.type == 'armor'
+        ).first()
 
     @property
     def equipped_accessory(self):
-        return next((item for item in self.inventory_items if item.is_equipped and getattr(item.equipment, 'type', None) and str(item.equipment.type).lower() == 'accessory'), None)
+        """Get the first equipped accessory (for UI display). Returns None if no accessory is equipped."""
+        from app.models.equipment import Inventory, Equipment
+        return Inventory.query.join(Equipment).filter(
+            Inventory.character_id == self.id,
+            Inventory.is_equipped == True,
+            Equipment.type == 'accessory'
+        ).first()
 
     @property
     def total_health(self):
         bonus = 0
-        for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
+        # Sum bonuses from ALL equipped items (all slots: MAIN_HAND, OFF_HAND, HEAD, CHEST, LEGS, FEET, NECK, RING)
+        for item in self.inventory_items.filter_by(is_equipped=True):
             if item and item.equipment and hasattr(item.equipment, 'health_bonus'):
                 bonus += item.equipment.health_bonus
         # Add active status effects
@@ -129,7 +149,8 @@ class Character(Base):
     @property
     def total_strength(self):
         bonus = 0
-        for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
+        # Sum bonuses from ALL equipped items (all slots: MAIN_HAND, OFF_HAND, HEAD, CHEST, LEGS, FEET, NECK, RING)
+        for item in self.inventory_items.filter_by(is_equipped=True):
             if item and item.equipment and hasattr(item.equipment, 'strength_bonus'):
                 bonus += item.equipment.strength_bonus
         now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -144,7 +165,8 @@ class Character(Base):
     @property
     def total_defense(self):
         bonus = 0
-        for item in [self.equipped_weapon, self.equipped_armor, self.equipped_accessory]:
+        # Sum bonuses from ALL equipped items (all slots: MAIN_HAND, OFF_HAND, HEAD, CHEST, LEGS, FEET, NECK, RING)
+        for item in self.inventory_items.filter_by(is_equipped=True):
             if item and item.equipment and hasattr(item.equipment, 'defense_bonus'):
                 bonus += item.equipment.defense_bonus
         now = datetime.now(timezone.utc).replace(tzinfo=None)

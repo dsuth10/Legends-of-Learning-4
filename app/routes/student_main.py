@@ -32,7 +32,12 @@ def dashboard():
         main_character = student_profile.characters.filter_by(is_active=True).first()
     clan = main_character.clan if main_character and main_character.clan else None
     active_quests = main_character.quest_logs.filter_by(status='in_progress').all() if main_character else []
-    recent_activities = list(current_user.audit_logs.order_by(db.desc('event_timestamp')).limit(10))
+    try:
+        recent_activities = list(current_user.audit_logs.order_by(db.desc('event_timestamp')).limit(10))
+    except Exception as e:
+        # Handle case where audit_log table doesn't exist yet
+        logger.warning(f"Could not query audit logs: {e}")
+        recent_activities = []
     return render_template(
         'student/dashboard.html',
         student=current_user,
@@ -233,20 +238,25 @@ def shop():
     char_class = main_character.character_class if main_character else ''
     # Query all items and abilities for the shop
     items = Equipment.query.all()
+    ability_items = Ability.query.all()
     print(f"[DEBUG] Shop route: Equipment.query.all() count = {len(items)}")
+    print(f"[DEBUG] Shop route: Ability.query.all() count = {len(ability_items)}")
     # Query overrides for the student's active classroom
     overrides_map = {}
     if main_character and student_profile:
-        # Assuming student is in at least one active class and the main character belongs to it?
-        # Actually character is linked to student, student to classrooms.
-        # We need the classroom ID for the CURRENT context. 
-        # Usually checking the first active class or similar.
-        # Check if student_profile.classes has items.
-        active_class = next((c for c in student_profile.classes), None)
-        if active_class:
-            overrides = ShopItemOverride.query.filter_by(classroom_id=active_class.id).all()
-            for ov in overrides:
-                overrides_map[(ov.item_type, ov.item_id)] = ov
+        # Student has a direct relationship to one classroom via class_id
+        # Use student_profile.classroom (singular) instead of classes
+        active_class = student_profile.classroom
+        if active_class and active_class.is_active:
+            try:
+                overrides = ShopItemOverride.query.filter_by(classroom_id=active_class.id).all()
+                for ov in overrides:
+                    overrides_map[(ov.item_type, ov.item_id)] = ov
+            except Exception as e:
+                # Handle case where shop_item_overrides table doesn't exist yet
+                # This can happen if migrations haven't been run
+                logger.warning(f"Could not query shop item overrides: {e}")
+                overrides_map = {}
 
     items_list = []
     print(f"[DEBUG] Shop route: Equipment.query.all() count = {len(items)}")
@@ -658,11 +668,18 @@ def unequip_weapon():
     from app.models.character import Character
     from app.models.equipment import EquipmentType
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
-    if not student_profile or not student_profile.characters.filter_by(is_active=True).first().equipped_weapon:
-        flash('No weapon equipped.', 'warning')
+    if not student_profile:
+        flash('No student profile found.', 'warning')
         return redirect(url_for('student.character'))
     main_character = student_profile.characters.filter_by(is_active=True).first()
-    main_character.equipped_weapon.is_equipped = False
+    if not main_character:
+        flash('No character found.', 'warning')
+        return redirect(url_for('student.character'))
+    equipped_weapon = main_character.equipped_weapon
+    if not equipped_weapon:
+        flash('No weapon equipped.', 'warning')
+        return redirect(url_for('student.character'))
+    equipped_weapon.is_equipped = False
     db.session.commit()
     flash('Weapon unequipped and moved to inventory.', 'success')
     return redirect(url_for('student.character'))
@@ -675,11 +692,18 @@ def unequip_armor():
     from app.models.character import Character
     from app.models.equipment import EquipmentType
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
-    if not student_profile or not student_profile.characters.filter_by(is_active=True).first().equipped_armor:
-        flash('No armor equipped.', 'warning')
+    if not student_profile:
+        flash('No student profile found.', 'warning')
         return redirect(url_for('student.character'))
     main_character = student_profile.characters.filter_by(is_active=True).first()
-    main_character.equipped_armor.is_equipped = False
+    if not main_character:
+        flash('No character found.', 'warning')
+        return redirect(url_for('student.character'))
+    equipped_armor = main_character.equipped_armor
+    if not equipped_armor:
+        flash('No armor equipped.', 'warning')
+        return redirect(url_for('student.character'))
+    equipped_armor.is_equipped = False
     db.session.commit()
     flash('Armor unequipped and moved to inventory.', 'success')
     return redirect(url_for('student.character'))
@@ -692,11 +716,18 @@ def unequip_accessory():
     from app.models.character import Character
     from app.models.equipment import EquipmentType
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
-    if not student_profile or not student_profile.characters.filter_by(is_active=True).first().equipped_accessory:
-        flash('No accessory equipped.', 'warning')
+    if not student_profile:
+        flash('No student profile found.', 'warning')
         return redirect(url_for('student.character'))
     main_character = student_profile.characters.filter_by(is_active=True).first()
-    main_character.equipped_accessory.is_equipped = False
+    if not main_character:
+        flash('No character found.', 'warning')
+        return redirect(url_for('student.character'))
+    equipped_accessory = main_character.equipped_accessory
+    if not equipped_accessory:
+        flash('No accessory equipped.', 'warning')
+        return redirect(url_for('student.character'))
+    equipped_accessory.is_equipped = False
     db.session.commit()
     flash('Accessory unequipped and moved to inventory.', 'success')
     return redirect(url_for('student.character'))
@@ -718,11 +749,11 @@ def api_equip_item():
     if not item:
         return jsonify({'success': False, 'message': 'Item not found.'}), 404
     # Validate slot directly
-    if item.item.slot != slot:
-        return jsonify({'success': False, 'message': f'Cannot equip {item.item.type} in {slot} slot.'}), 400
+    if item.equipment.slot != slot:
+        return jsonify({'success': False, 'message': f'Cannot equip {item.equipment.type} in {slot} slot.'}), 400
     # Unequip any currently equipped item in the same slot
     for inv in main_character.inventory_items:
-        if inv.is_equipped and inv.item.slot == item.item.slot:
+        if inv.is_equipped and inv.equipment.slot == item.equipment.slot:
             inv.is_equipped = False
     item.is_equipped = True
     db.session.commit()

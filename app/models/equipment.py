@@ -92,7 +92,7 @@ class Inventory(Base):
             current_equipped = Inventory.query.join(Equipment).filter(
                 Inventory.character_id == self.character_id,
                 Inventory.is_equipped == True,
-                Equipment.slot == self.item.slot
+                Equipment.slot == self.equipment.slot
             ).first()
             
             if current_equipped:
@@ -111,7 +111,7 @@ class Inventory(Base):
     
     def __repr__(self):
         status = "equipped" if self.is_equipped else "in inventory"
-        return f'<Inventory {self.item.name} ({status})>'
+        return f'<Inventory {self.equipment.name} ({status})>'
 
 # Default image filenames for test items
 TEST_ARMOR_IMAGE = '/static/images/test_armor.png'

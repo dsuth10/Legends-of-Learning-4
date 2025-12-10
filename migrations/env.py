@@ -22,6 +22,10 @@ from app.models.battle import Monster, Battle
 from app.models.education import QuestionSet, Question
 from app.models.student import Student
 from app.models.teacher import Teacher
+from app.models.shop_config import ShopItemOverride
+from app.models.shop import ShopPurchase
+from app.models.audit import AuditLog
+from app.models.assist_log import AssistLog
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
