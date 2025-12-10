@@ -3,8 +3,51 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.models import db
 from app.models.user import User, UserRole
 from app.forms.auth import LoginForm, SignupForm
+from urllib.parse import urlparse
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+def is_safe_redirect_url(url, user_role):
+    """
+    Validate that a redirect URL is safe and appropriate for the user's role.
+    
+    Args:
+        url: The URL to validate (can be None)
+        user_role: The UserRole of the user (UserRole.TEACHER, UserRole.STUDENT, etc.)
+    
+    Returns:
+        The sanitized URL path if valid, None otherwise
+    """
+    if not url:
+        return None
+    
+    # Parse the URL to check if it's external
+    parsed = urlparse(url)
+    
+    # Reject external URLs (must be relative path starting with /)
+    if parsed.scheme or parsed.netloc:
+        return None
+    
+    # Must start with / to be a valid internal path
+    if not url.startswith('/'):
+        return None
+    
+    # Reject URLs containing // (potential protocol-relative or path traversal)
+    if '//' in url:
+        return None
+    
+    # Validate role-appropriateness
+    if user_role == UserRole.STUDENT:
+        # Students should not be redirected to teacher routes
+        if url.startswith('/teacher'):
+            return None
+    elif user_role == UserRole.TEACHER:
+        # Teachers should not be redirected to student routes
+        if url.startswith('/student'):
+            return None
+    
+    # URL is safe and role-appropriate
+    return url
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -28,12 +71,15 @@ def login():
                 login_user(user)
                 flash('Logged in successfully.', 'success')
                 next_page = request.args.get('next')
+                # Validate and sanitize the next parameter
+                safe_next = is_safe_redirect_url(next_page, user.role)
+                
                 if user.role == UserRole.TEACHER:
-                    return redirect(next_page or url_for('teacher.dashboard'))
+                    return redirect(safe_next or url_for('teacher.dashboard'))
                 elif user.role == UserRole.STUDENT:
-                    return redirect(next_page or url_for('student.dashboard'))
+                    return redirect(safe_next or url_for('student.dashboard'))
                 else:
-                    return redirect(next_page or url_for('main.index'))
+                    return redirect(safe_next or url_for('main.index'))
         else:
             flash('Invalid username/email or password.', 'danger')
             

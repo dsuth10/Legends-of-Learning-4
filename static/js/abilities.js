@@ -194,3 +194,4 @@ function showStatusEffectIndicator(effectType, statAffected, amount, duration) {
   // Implementation depends on where status effects are shown
 }
 
+
