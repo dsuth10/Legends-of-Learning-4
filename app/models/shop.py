@@ -40,8 +40,15 @@ class ShopPurchase(Base):
     @validates('gold_spent')
     def validate_gold_spent(self, key, value):
         """Validate that gold_spent is a positive integer."""
-        if not isinstance(value, int) or value <= 0:
-            raise ValueError("gold_spent must be a positive integer")
+        # Convert to int if possible
+        if value is None:
+            raise ValueError("gold_spent cannot be None")
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"gold_spent must be an integer, got {type(value).__name__}: {value}")
+        if value <= 0:
+            raise ValueError(f"gold_spent must be a positive integer, got {value}")
         return value
     
     def get_purchased_item(self):

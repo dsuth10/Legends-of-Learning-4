@@ -147,10 +147,16 @@
                 credentials: 'same-origin' // Include cookies
             })
             .then(function(res) {
-                if (!res.ok) {
+                // Try to parse JSON even for error statuses
+                return res.json().catch(function() {
+                    // If JSON parsing fails, create error object
                     throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                }
-                return res.json();
+                }).then(function(data) {
+                    if (!res.ok) {
+                        throw new Error(data.message || `HTTP ${res.status}: ${res.statusText}`);
+                    }
+                    return data;
+                });
             })
             .then(function(data) {
                 if (data.success) {

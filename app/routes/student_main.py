@@ -818,9 +818,11 @@ def shop_buy():
         student_profile = Student.query.filter_by(user_id=current_user.id).first()
         if not student_profile:
             return jsonify({'success': False, 'message': 'No student profile found.'}), 404
+        # characters relationship is lazy='dynamic', so we need to call filter_by on the query object
         character = student_profile.characters.filter_by(is_active=True).first()
         if not character:
             return jsonify({'success': False, 'message': 'No active character found.'}), 404
+        logger.info(f"Character found: id={character.id}, name={character.name}, gold={character.gold}, level={character.level}")
         # Determine item type and fetch item
         item = None
         purchase_type = None
@@ -834,6 +836,8 @@ def shop_buy():
                 purchase_type = PurchaseType.ABILITY.value
         if not item:
             return jsonify({'success': False, 'message': 'Item not found.'}), 404
+        if not purchase_type:
+            return jsonify({'success': False, 'message': 'Could not determine item type.'}), 400
         # Check ownership
         if purchase_type == PurchaseType.EQUIPMENT.value:
             already_owned = Inventory.query.filter_by(character_id=character.id, item_id=item.id).first()
@@ -842,23 +846,30 @@ def shop_buy():
         if already_owned:
             return jsonify({'success': False, 'message': 'Item already owned.'}), 400
         # Check for overrides
-        active_class = next((c for c in student_profile.classes), None)
+        # Student has a direct classroom relationship (singular), not classes
+        active_class = student_profile.classroom
         effective_cost = getattr(item, 'cost', 0)
         effective_level_req = getattr(item, 'level_requirement', 1)
         
         if active_class:
-            override = ShopItemOverride.query.filter_by(
-                classroom_id=active_class.id,
-                item_type='equipment' if purchase_type == PurchaseType.EQUIPMENT.value else 'ability',
-                item_id=item.id
-            ).first()
-            if override:
-                if not override.is_visible:
-                    return jsonify({'success': False, 'message': 'Item is not available.'}), 400
-                if override.override_cost is not None:
-                    effective_cost = override.override_cost
-                if override.override_level_req is not None:
-                    effective_level_req = override.override_level_req
+            try:
+                override = ShopItemOverride.query.filter_by(
+                    classroom_id=active_class.id,
+                    item_type='equipment' if purchase_type == PurchaseType.EQUIPMENT.value else 'ability',
+                    item_id=item.id
+                ).first()
+                if override:
+                    if not override.is_visible:
+                        return jsonify({'success': False, 'message': 'Item is not available.'}), 400
+                    if override.override_cost is not None:
+                        effective_cost = override.override_cost
+                    if override.override_level_req is not None:
+                        effective_level_req = override.override_level_req
+            except Exception as e:
+                # Handle case where shop_item_overrides table doesn't exist yet
+                # This can happen if migrations haven't been run
+                logger.warning(f"Could not query shop item overrides: {e}")
+                # Continue with default values
 
         # Validate gold
         if character.gold < effective_cost:
@@ -872,13 +883,14 @@ def shop_buy():
             return jsonify({'success': False, 'message': f'Class restriction: {class_restr}.'}), 400
         # Deduct gold
         character.gold -= effective_cost
-        # Set gold_spent to the item's price (or gold deducted)
-        gold_spent = effective_cost
+        # Convert and validate gold_spent before creating ShopPurchase
+        try:
+            gold_spent = int(effective_cost)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Invalid item cost. Please contact your teacher/admin.'}), 400
 
-        if gold_spent is None:
-            return jsonify({'success': False, 'message': 'Item has no cost set. Please contact your teacher/admin.'}), 400
         if gold_spent <= 0:
-            return jsonify({'success': False, 'message': 'Invalid gold_spent value.'}), 400
+            return jsonify({'success': False, 'message': 'Item has no cost set. Please contact your teacher/admin.'}), 400
         # Add to inventory or abilities
         if purchase_type == PurchaseType.EQUIPMENT.value:
             new_inv = Inventory(character_id=character.id, item_id=item.id, is_equipped=False)
@@ -901,14 +913,20 @@ def shop_buy():
         logger.info(f"Shop purchase successful: character={character.id}, item={item_id}, gold_spent={gold_spent}, remaining_gold={character.gold}")
         
         # Prepare updated info
+        # inventory_items relationship is lazy='dynamic', so we need to call .all() on it
         inventory = [
             {'item_id': inv.item_id, 'is_equipped': inv.is_equipped}
-            for inv in character.inventory_items
+            for inv in character.inventory_items.all()
         ]
-        abilities = [
-            {'ability_id': ab.ability_id, 'level': ab.level}
-            for ab in getattr(character, 'abilities', [])
-        ]
+        # abilities relationship is lazy='dynamic', so we need to call .all() on it
+        character_abilities = getattr(character, 'abilities', None)
+        if character_abilities is not None:
+            abilities = [
+                {'ability_id': ab.ability_id, 'level': ab.level}
+                for ab in character_abilities.all()
+            ]
+        else:
+            abilities = []
         return jsonify({
             'success': True,
             'message': 'Item purchased successfully.',
@@ -921,10 +939,22 @@ def shop_buy():
             'inventory': inventory,
             'abilities': abilities
         })
-    except Exception as e:
+    except ValueError as ve:
+        # Handle validation errors specifically
         db.session.rollback()
-        logger.error(f"Shop purchase error: user={current_user.id}, item_id={item_id}, error={str(e)}", exc_info=True)
+        logger.error(f"Shop purchase validation error: user={current_user.id}, item_id={item_id}, error={str(ve)}", exc_info=True)
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}'
+            'message': f'Purchase validation failed: {str(ve)}',
+            'error_type': 'ValidationError'
+        }), 400
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        error_traceback = traceback.format_exc()
+        logger.error(f"Shop purchase error: user={current_user.id}, item_id={item_id}, error={str(e)}\n{error_traceback}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}',
+            'error_type': type(e).__name__
         }), 500 
