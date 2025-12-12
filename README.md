@@ -7,18 +7,18 @@ A gamified learning platform where students complete quests, earn gold, and upgr
 If you're setting up the project for the first time:
 
 ```bash
-# 1. Create and activate virtual environment
+# 1. Create and activate virtual environment (recommended)
 python -m venv venv
 source venv/Scripts/activate  # Windows Git Bash/PowerShell
 # OR: venv\Scripts\activate  # Windows Command Prompt
 # OR: source venv/bin/activate  # macOS/Linux
 
-# 2. Install dependencies
+# 2. Install dependencies (REQUIRED - do this first!)
 pip install -r requirements.txt
 
 # 3. Set up database
-flask db upgrade
-flask seed-db
+alembic upgrade head  # Apply database migrations (REQUIRED)
+flask seed-db  # Seed initial data (optional, only needed once)
 
 # 4. Run the application
 python run.py
@@ -26,9 +26,11 @@ python run.py
 
 Then open `http://127.0.0.1:5000` or `http://localhost:5000` in your browser.
 
-**Important**: 
-- Always activate the virtual environment (`source venv/Scripts/activate`) before running the application!
-- If you see "Connection refused", make sure the server is actually running in a terminal window
+**Important Notes**: 
+- **Always install dependencies first**: If you see `ModuleNotFoundError` (e.g., "No module named 'flask_login'"), run `pip install -r requirements.txt` before starting the server
+- **Virtual environment is recommended** but not strictly required if dependencies are installed globally
+- **If you see "Connection refused"**: Make sure the server is actually running in a terminal window and you see "Running on http://127.0.0.1:5000" in the output
+- **After database changes**: Always run `alembic upgrade head` to ensure your database schema is up to date
 
 ## Features
 
@@ -104,13 +106,17 @@ TEACHER_ACCESS_CODE=your-secure-teacher-code
 
 ### 4. Database Initialization
 
-**Note**: Make sure your virtual environment is activated before running these commands.
+**Note**: Make sure your virtual environment is activated (if using one) before running these commands.
 
 1.  **Apply Migrations**:
     ```bash
-    flask db upgrade
+    alembic upgrade head
     ```
-    This ensures your database schema is up to date with the latest migrations.
+    This ensures your database schema is up to date with the latest migrations. **Always run this after:**
+    - Setting up the project for the first time
+    - Pulling new code that includes database changes
+    - Resetting or modifying the database schema
+    - Seeing version mismatch warnings in the application logs
 
 2.  **Seed Initial Data** (Equipment, etc.):
     ```bash
@@ -120,9 +126,15 @@ TEACHER_ACCESS_CODE=your-secure-teacher-code
 
 ### 5. Running the Application
 
-**IMPORTANT**: Always activate your virtual environment before running the application.
+**IMPORTANT**: Ensure dependencies are installed before running the application.
 
-1. **Activate the virtual environment**:
+1. **Verify dependencies are installed** (if you're unsure):
+   ```bash
+   pip install -r requirements.txt
+   ```
+   This ensures all required packages (Flask, Flask-Login, Flask-WTF, etc.) are installed.
+
+2. **Activate the virtual environment** (recommended):
    ```bash
    # Windows (Git Bash / PowerShell)
    source venv/Scripts/activate
@@ -135,35 +147,62 @@ TEACHER_ACCESS_CODE=your-secure-teacher-code
    ```
    
    You should see `(venv)` at the beginning of your command prompt when activated.
+   
+   **Note**: If dependencies are installed globally, you can skip this step, but using a virtual environment is strongly recommended.
 
-2. **Verify the database is up to date** (recommended before first run):
+3. **Verify the database is up to date** (recommended before first run or after schema changes):
    ```bash
-   flask db upgrade
+   alembic upgrade head
    ```
+   This applies all pending database migrations and ensures your database schema matches the latest version.
 
-3. **Start the development server**:
+4. **Start the development server**:
    ```bash
    python run.py
    ```
+   
+   You should see output indicating the server is running, such as:
+   ```
+   * Running on http://127.0.0.1:5000
+   * Running on http://0.0.0.0:5000
+   ```
 
-4. **Access the application**:
+5. **Access the application**:
    - **Recommended**: Open your browser and navigate to: `http://127.0.0.1:5000` or `http://localhost:5000`
    - The server is also accessible on your network IP (e.g., `http://192.168.0.45:5000`) if you need to access it from other devices on your local network
    - The server will run until you stop it
 
-5. **Stop the server**:
+6. **Stop the server**:
    - Press `Ctrl+C` in the terminal where the server is running
    - The server will shut down gracefully
 
 **Troubleshooting**:
-- **`ModuleNotFoundError`**: Make sure the virtual environment is activated and dependencies are installed (`pip install -r requirements.txt`)
-- **Database errors**: Run `flask db upgrade` to apply migrations
-- **Port 5000 already in use**: Change the port in `run.py` or stop the other process using that port
+
+- **`ModuleNotFoundError` (e.g., "No module named 'flask_login'")**: 
+  - **Solution**: Run `pip install -r requirements.txt` to install all required dependencies
+  - This is the most common issue when starting the application for the first time or on a new machine
+  - You don't necessarily need to activate the virtual environment if dependencies are installed globally, but it's recommended
+
+- **Database errors or version mismatch warnings**: 
+  - Run `alembic upgrade head` to apply all pending migrations
+  - This ensures your database schema is up to date with the latest code changes
+  - Always run this after pulling new code or resetting the database
+
+- **Port 5000 already in use**: 
+  - Change the port in `run.py` (modify the `port=5000` parameter) or stop the other process using that port
+  - On Windows, you can find the process using: `netstat -ano | findstr ":5000"`
+
 - **Connection refused / ERR_CONNECTION_REFUSED**: 
-  - Make sure the server is running (you should see "Running on http://127.0.0.1:5000" in the terminal)
+  - Make sure the server is actually running (you should see "Running on http://127.0.0.1:5000" in the terminal output)
   - Try accessing `http://127.0.0.1:5000` or `http://localhost:5000` instead of the network IP
   - If accessing from another device on your network, Windows Firewall may be blocking the connection. You may need to allow Python through the firewall or add a firewall rule for port 5000
-- **Server not starting**: Ensure the virtual environment is activated (you should see `(venv)` in your terminal prompt)
+  - Verify the server process is running: `netstat -ano | findstr ":5000.*LISTENING"` (Windows) or `netstat -tuln | grep 5000` (Linux/macOS)
+
+- **Server not starting or crashes immediately**: 
+  - Check that all dependencies are installed: `pip install -r requirements.txt`
+  - Verify the database exists and is accessible (check `instance/legends.db`)
+  - Look for error messages in the terminal output when starting the server
+  - Ensure Python 3.8+ is being used: `python --version`
 
 ## Testing
 
