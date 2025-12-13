@@ -53,85 +53,98 @@ def dashboard():
 @login_required
 @student_required
 def profile():
-    return render_template('student/profile.html', student=current_user)
+    try:
+        return render_template('student/profile.html', student=current_user)
+    except Exception as e:
+        logger.error(f"Error loading profile page: {str(e)}", exc_info=True)
+        flash('An error occurred while loading your profile. Please try again.', 'danger')
+        return redirect(url_for('student.dashboard'))
 
 @student_bp.route('/quests')
 @login_required
 @student_required
 def quests():
-    student_profile = Student.query.filter_by(user_id=current_user.id).first()
-    main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
-    assigned_quests = []
-    equipped_abilities = []
-    ability_targets = []
-    if main_char:
-        for log in main_char.quest_logs:
-            print("DEBUG QUESTLOG:", log.quest_id, log.status, type(log.status), log.id)
-            quest = log.quest
-            assigned_quests.append({
-                'quest': quest,
-                'status': log.status,
-                'x': log.x_coordinate,
-                'y': log.y_coordinate,
-                'log': log
-            })
-        # Get equipped abilities for quest context
-        equipped_abilities = [
-            {
-                'id': ca.ability.id,
-                'name': ca.ability.name,
-                'type': ca.ability.type,
-                'description': ca.ability.description,
-                'power': ca.ability.power,
-                'cooldown': ca.ability.cooldown,
-                'duration': ca.ability.duration,
-                'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
-            }
-            for ca in main_char.abilities.filter_by(is_equipped=True).all()
-        ]
-        # Get ability targets (clanmates)
-        if main_char.clan:
-            ability_targets = [
-                {'id': member.id, 'name': member.name, 'character_class': member.character_class}
-                for member in main_char.clan.members if member.id != main_char.id
+    try:
+        student_profile = Student.query.filter_by(user_id=current_user.id).first()
+        main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
+        assigned_quests = []
+        equipped_abilities = []
+        ability_targets = []
+        if main_char:
+            for log in main_char.quest_logs:
+                logger.debug(f"Quest log: quest_id={log.quest_id}, status={log.status}, log_id={log.id}")
+                quest = log.quest
+                assigned_quests.append({
+                    'quest': quest,
+                    'status': log.status,
+                    'x': log.x_coordinate,
+                    'y': log.y_coordinate,
+                    'log': log
+                })
+            # Get equipped abilities for quest context
+            equipped_abilities = [
+                {
+                    'id': ca.ability.id,
+                    'name': ca.ability.name,
+                    'type': ca.ability.type,
+                    'description': ca.ability.description,
+                    'power': ca.ability.power,
+                    'cooldown': ca.ability.cooldown,
+                    'duration': ca.ability.duration,
+                    'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
+                }
+                for ca in main_char.abilities.filter_by(is_equipped=True).all()
             ]
-    now = int(time.time())
-    return render_template('student/quests.html', student=current_user, assigned_quests=assigned_quests, equipped_abilities=equipped_abilities, ability_targets=ability_targets, main_character=main_char, now=now)
+            # Get ability targets (clanmates)
+            if main_char.clan:
+                ability_targets = [
+                    {'id': member.id, 'name': member.name, 'character_class': member.character_class}
+                    for member in main_char.clan.members if member.id != main_char.id
+                ]
+        now = int(time.time())
+        return render_template('student/quests.html', student=current_user, assigned_quests=assigned_quests, equipped_abilities=equipped_abilities, ability_targets=ability_targets, main_character=main_char, now=now)
+    except Exception as e:
+        logger.error(f"Error loading quests page: {str(e)}", exc_info=True)
+        flash('An error occurred while loading quests. Please try again.', 'danger')
+        return redirect(url_for('student.dashboard'))
 
 @student_bp.route('/quests/start/<int:quest_id>', methods=['POST'])
 @login_required
 @student_required
 def start_quest(quest_id):
-    student_profile = Student.query.filter_by(user_id=current_user.id).first()
-    main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
-    quest = Quest.query.get_or_404(quest_id)
-    if not main_char:
-        flash('No active character found.', 'danger')
+    try:
+        student_profile = Student.query.filter_by(user_id=current_user.id).first()
+        main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
+        quest = Quest.query.get_or_404(quest_id)
+        if not main_char:
+            flash('No active character found.', 'danger')
+            return redirect(url_for('student.quests'))
+        existing_log = QuestLog.query.filter_by(character_id=main_char.id, quest_id=quest.id).first()
+        if existing_log:
+            if existing_log.status == QuestStatus.NOT_STARTED:
+                existing_log.status = QuestStatus.IN_PROGRESS
+                db.session.commit()
+                db.session.refresh(existing_log)
+                logger.debug(f"Quest started: quest_id={quest.id}, character_id={main_char.id}, status={existing_log.status}")
+                flash('Quest started!', 'success')
+            elif existing_log.status == QuestStatus.IN_PROGRESS:
+                flash('You have already started this quest.', 'info')
+            elif existing_log.status == QuestStatus.COMPLETED:
+                flash('You have already completed this quest.', 'info')
+            else:
+                flash('Quest already in progress or completed.', 'info')
+            return redirect(url_for('student.quests'))
+        # If no log exists, create a new one (should not happen with current assign flow)
+        new_log = QuestLog(character_id=main_char.id, quest_id=quest.id, status=QuestStatus.IN_PROGRESS)
+        db.session.add(new_log)
+        db.session.commit()
+        flash('Quest accepted!', 'success')
         return redirect(url_for('student.quests'))
-    existing_log = QuestLog.query.filter_by(character_id=main_char.id, quest_id=quest.id).first()
-    if existing_log:
-        if existing_log.status == QuestStatus.NOT_STARTED:
-            existing_log.status = QuestStatus.IN_PROGRESS
-            db.session.commit()
-            db.session.refresh(existing_log)
-            print("AFTER REFRESH:", existing_log.status)
-            print("DEBUG: All quest logs for character after start_quest:")
-            for log in QuestLog.query.filter_by(character_id=main_char.id).all():
-                print(log.quest_id, log.status, type(log.status), log.id)
-            flash('Quest started!', 'success')
-        elif existing_log.status == QuestStatus.IN_PROGRESS:
-            flash('You have already started this quest.', 'info')
-        elif existing_log.status == QuestStatus.COMPLETED:
-            flash('You have already completed this quest.', 'info')
-        else:
-            flash('Quest already in progress or completed.', 'info')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error starting quest {quest_id}: {str(e)}", exc_info=True)
+        flash('An error occurred while starting the quest. Please try again.', 'danger')
         return redirect(url_for('student.quests'))
-    # If no log exists, create a new one (should not happen with current assign flow)
-    new_log = QuestLog(character_id=main_char.id, quest_id=quest.id, status=QuestStatus.IN_PROGRESS)
-    db.session.add(new_log)
-    db.session.commit()
-    flash('Quest accepted!', 'success')
-    return redirect(url_for('student.quests'))
 
 @student_bp.route('/quests/complete/<int:quest_id>', methods=['POST'])
 @login_required
@@ -147,11 +160,19 @@ def complete_quest(quest_id):
         flash('Quest not in progress or already completed.', 'warning')
         return redirect(url_for('student.quests'))
     try:
-        logger.info(f"Completing quest: quest_id={quest_id}, character_id={main_char.id}")
-        quest_log.complete_quest()
-        # Refresh character to get updated gold/XP
+        logger.info(f"Completing quest: quest_id={quest_id}, character_id={main_char.id}, current_gold={main_char.gold}, current_level={main_char.level}, current_xp={main_char.experience}")
+        
+        # Ensure character and quest_log are in session before completing quest
+        db.session.add(main_char)
+        db.session.add(quest_log)
+        
+        # Complete quest - this distributes rewards and commits in a single transaction
+        quest_log.complete_quest()  # This calls self.save() which commits all changes
+        
+        # Character is already refreshed in complete_quest(), but refresh again to be safe
         db.session.refresh(main_char)
-        logger.info(f"Quest completed successfully: quest_id={quest_id}, character_id={main_char.id}, gold={main_char.gold}, level={main_char.level}")
+        
+        logger.info(f"Quest completed successfully: quest_id={quest_id}, character_id={main_char.id}, gold={main_char.gold}, level={main_char.level}, experience={main_char.experience}")
         flash('Quest completed! Rewards granted.', 'success')
     except Exception as e:
         db.session.rollback()
@@ -169,163 +190,173 @@ def clan():
 @login_required
 @student_required
 def character():
-    from datetime import datetime, timezone
-    from app.models.character import StatusEffect
-    
-    student_profile = Student.query.filter_by(user_id=current_user.id).first()
-    main_character = None
-    equipped_abilities = []
-    active_status_effects = []
-    if student_profile:
-        main_character = student_profile.characters.filter_by(is_active=True).first()
-        if main_character:
-            equipped_abilities = [
-                {
-                    'id': ca.ability.id,
-                    'name': ca.ability.name,
-                    'type': ca.ability.type,
-                    'description': ca.ability.description,
-                    'power': ca.ability.power,
-                    'cooldown': ca.ability.cooldown,
-                    'duration': ca.ability.duration,
-                    'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
-                    'is_equipped': ca.is_equipped
-                }
-                for ca in main_character.abilities.filter_by(is_equipped=True).all()
+    try:
+        from datetime import datetime, timezone
+        from app.models.character import StatusEffect
+        
+        student_profile = Student.query.filter_by(user_id=current_user.id).first()
+        main_character = None
+        equipped_abilities = []
+        active_status_effects = []
+        if student_profile:
+            main_character = student_profile.characters.filter_by(is_active=True).first()
+            if main_character:
+                equipped_abilities = [
+                    {
+                        'id': ca.ability.id,
+                        'name': ca.ability.name,
+                        'type': ca.ability.type,
+                        'description': ca.ability.description,
+                        'power': ca.ability.power,
+                        'cooldown': ca.ability.cooldown,
+                        'duration': ca.ability.duration,
+                        'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
+                        'is_equipped': ca.is_equipped
+                    }
+                    for ca in main_character.abilities.filter_by(is_equipped=True).all()
+                ]
+                # Get active status effects
+                now = datetime.now(timezone.utc).replace(tzinfo=None)
+                active_effects = main_character.status_effects.filter(StatusEffect.expires_at > now).all()
+                active_status_effects = [
+                    {
+                        'effect_type': effect.effect_type,
+                        'stat_affected': effect.stat_affected,
+                        'amount': effect.amount,
+                        'source': effect.source,
+                        'expires_at': effect.expires_at,
+                        'remaining_minutes': max(0, int((effect.expires_at - now).total_seconds() / 60))
+                    }
+                    for effect in active_effects
+                ]
+        now = int(time.time())
+        ability_targets = []
+        if main_character and main_character.clan:
+            ability_targets = [
+                {'id': member.id, 'name': member.name, 'character_class': member.character_class}
+                for member in main_character.clan.members if member.id != main_character.id
             ]
-            # Get active status effects
-            now = datetime.now(timezone.utc).replace(tzinfo=None)
-            active_effects = main_character.status_effects.filter(StatusEffect.expires_at > now).all()
-            active_status_effects = [
-                {
-                    'effect_type': effect.effect_type,
-                    'stat_affected': effect.stat_affected,
-                    'amount': effect.amount,
-                    'source': effect.source,
-                    'expires_at': effect.expires_at,
-                    'remaining_minutes': max(0, int((effect.expires_at - now).total_seconds() / 60))
-                }
-                for effect in active_effects
-            ]
-    now = int(time.time())
-    ability_targets = []
-    if main_character and main_character.clan:
-        ability_targets = [
-            {'id': member.id, 'name': member.name, 'character_class': member.character_class}
-            for member in main_character.clan.members if member.id != main_character.id
-        ]
-    return render_template('student/character.html', student=current_user, main_character=main_character, equipped_abilities=equipped_abilities, now=now, ability_targets=ability_targets, active_status_effects=active_status_effects)
+        return render_template('student/character.html', student=current_user, main_character=main_character, equipped_abilities=equipped_abilities, now=now, ability_targets=ability_targets, active_status_effects=active_status_effects)
+    except Exception as e:
+        logger.error(f"Error loading character page: {str(e)}", exc_info=True)
+        flash('An error occurred while loading your character. Please try again.', 'danger')
+        return redirect(url_for('student.dashboard'))
 
 @student_bp.route('/shop')
 @login_required
 @student_required
 def shop():
-    student_profile = Student.query.filter_by(user_id=current_user.id).first()
-    main_character = None
-    owned_item_ids = set()
-    owned_ability_ids = set()
-    if student_profile:
-        main_character = student_profile.characters.filter_by(is_active=True).first()
-        if main_character:
-            # Get owned item IDs
-            owned_item_ids = set(inv.item_id for inv in main_character.inventory_items)
-            # Get owned ability IDs
-            if hasattr(main_character, 'abilities'):
-                owned_ability_ids = set(a.ability_id for a in main_character.abilities)
-    # Always define these, even if main_character is None
-    char_gold = main_character.gold if main_character else 0
-    char_level = main_character.level if main_character else 1
-    char_class = main_character.character_class if main_character else ''
-    # Query all items and abilities for the shop
-    items = Equipment.query.all()
-    ability_items = Ability.query.all()
-    print(f"[DEBUG] Shop route: Equipment.query.all() count = {len(items)}")
-    print(f"[DEBUG] Shop route: Ability.query.all() count = {len(ability_items)}")
-    # Query overrides for the student's active classroom
-    overrides_map = {}
-    if main_character and student_profile:
-        # Student has a direct relationship to one classroom via class_id
-        # Use student_profile.classroom (singular) instead of classes
-        active_class = student_profile.classroom
-        if active_class and active_class.is_active:
-            try:
-                overrides = ShopItemOverride.query.filter_by(classroom_id=active_class.id).all()
-                for ov in overrides:
-                    overrides_map[(ov.item_type, ov.item_id)] = ov
-            except Exception as e:
-                # Handle case where shop_item_overrides table doesn't exist yet
-                # This can happen if migrations haven't been run
-                logger.warning(f"Could not query shop item overrides: {e}")
-                overrides_map = {}
+    try:
+        student_profile = Student.query.filter_by(user_id=current_user.id).first()
+        main_character = None
+        owned_item_ids = set()
+        owned_ability_ids = set()
+        if student_profile:
+            main_character = student_profile.characters.filter_by(is_active=True).first()
+            if main_character:
+                # Get owned item IDs
+                owned_item_ids = set(inv.item_id for inv in main_character.inventory_items)
+                # Get owned ability IDs
+                if hasattr(main_character, 'abilities'):
+                    owned_ability_ids = set(a.ability_id for a in main_character.abilities)
+        # Always define these, even if main_character is None
+        char_gold = main_character.gold if main_character else 0
+        char_level = main_character.level if main_character else 1
+        char_class = main_character.character_class if main_character else ''
+        # Query all items and abilities for the shop
+        items = Equipment.query.all()
+        ability_items = Ability.query.all()
+        logger.debug(f"Shop route: Equipment count={len(items)}, Ability count={len(ability_items)}")
+        # Query overrides for the student's active classroom
+        overrides_map = {}
+        if main_character and student_profile:
+            # Student has a direct relationship to one classroom via class_id
+            # Use student_profile.classroom (singular) instead of classes
+            active_class = student_profile.classroom
+            if active_class and active_class.is_active:
+                try:
+                    overrides = ShopItemOverride.query.filter_by(classroom_id=active_class.id).all()
+                    for ov in overrides:
+                        overrides_map[(ov.item_type, ov.item_id)] = ov
+                except Exception as e:
+                    # Handle case where shop_item_overrides table doesn't exist yet
+                    # This can happen if migrations haven't been run
+                    logger.warning(f"Could not query shop item overrides: {e}")
+                    overrides_map = {}
 
-    items_list = []
-    print(f"[DEBUG] Shop route: Equipment.query.all() count = {len(items)}")
-    for eq in items:
-        # Apply Overrides
-        override = overrides_map.get(('equipment', eq.id))
-        effective_cost = override.override_cost if override and override.override_cost is not None else eq.cost
-        effective_level = override.override_level_req if override and override.override_level_req is not None else getattr(eq, 'level_requirement', 1)
-        visible = override.is_visible if override else True
-        
-        if not visible:
-            continue
+        items_list = []
+        logger.debug(f"Shop route: Processing {len(items)} equipment items")
+        for eq in items:
+            # Apply Overrides
+            override = overrides_map.get(('equipment', eq.id))
+            effective_cost = override.override_cost if override and override.override_cost is not None else eq.cost
+            effective_level = override.override_level_req if override and override.override_level_req is not None else getattr(eq, 'level_requirement', 1)
+            visible = override.is_visible if override else True
+            
+            if not visible:
+                continue
 
-        owned = eq.id in owned_item_ids
-        can_afford = char_gold >= effective_cost
-        unlocked = (char_level >= effective_level) and (not eq.class_restriction or eq.class_restriction.lower() == char_class.lower())
-        can_buy = (not owned) and can_afford and unlocked
+            owned = eq.id in owned_item_ids
+            can_afford = char_gold >= effective_cost
+            unlocked = (char_level >= effective_level) and (not eq.class_restriction or eq.class_restriction.lower() == char_class.lower())
+            can_buy = (not owned) and can_afford and unlocked
+            
+            items_list.append({
+                'id': eq.id,
+                'name': eq.name,
+                'price': effective_cost,
+                'original_price': eq.cost if effective_cost != eq.cost else None,
+                'image': eq.image_url or '/static/images/default_item.png',
+                'category': 'equipment',
+                'tier': getattr(eq, 'rarity', 1),
+                'description': eq.description or '',
+                'level_requirement': effective_level,
+                'original_level_requirement': getattr(eq, 'level_requirement', 1) if effective_level != getattr(eq, 'level_requirement', 1) else None,
+                'class_restriction': getattr(eq, 'class_restriction', None),
+                'owned': owned,
+                'can_afford': can_afford,
+                'unlocked': unlocked,
+                'can_buy': can_buy,
+            })
         
-        items_list.append({
-            'id': eq.id,
-            'name': eq.name,
-            'price': effective_cost,
-            'original_price': eq.cost if effective_cost != eq.cost else None,
-            'image': eq.image_url or '/static/images/default_item.png',
-            'category': 'equipment',
-            'tier': getattr(eq, 'rarity', 1),
-            'description': eq.description or '',
-            'level_requirement': effective_level,
-            'original_level_requirement': getattr(eq, 'level_requirement', 1) if effective_level != getattr(eq, 'level_requirement', 1) else None,
-            'class_restriction': getattr(eq, 'class_restriction', None),
-            'owned': owned,
-            'can_afford': can_afford,
-            'unlocked': unlocked,
-            'can_buy': can_buy,
-        })
-    
-    for ab in ability_items:
-        # Apply Overrides
-        override = overrides_map.get(('ability', ab.id))
-        effective_cost = override.override_cost if override and override.override_cost is not None else ab.cost
-        effective_level = override.override_level_req if override and override.override_level_req is not None else getattr(ab, 'level_requirement', 1)
-        visible = override.is_visible if override else True
-        
-        if not visible:
-            continue
+        for ab in ability_items:
+            # Apply Overrides
+            override = overrides_map.get(('ability', ab.id))
+            effective_cost = override.override_cost if override and override.override_cost is not None else ab.cost
+            effective_level = override.override_level_req if override and override.override_level_req is not None else getattr(ab, 'level_requirement', 1)
+            visible = override.is_visible if override else True
+            
+            if not visible:
+                continue
 
-        owned = ab.id in owned_ability_ids
-        can_afford = char_gold >= effective_cost
-        unlocked = (char_level >= effective_level)
-        can_buy = (not owned) and can_afford and unlocked
+            owned = ab.id in owned_ability_ids
+            can_afford = char_gold >= effective_cost
+            unlocked = (char_level >= effective_level)
+            can_buy = (not owned) and can_afford and unlocked
+            
+            items_list.append({
+                'id': ab.id,
+                'name': ab.name,
+                'price': effective_cost,
+                'original_price': ab.cost if effective_cost != ab.cost else None,
+                'image': '/static/images/default_item.png',
+                'category': 'ability',
+                'tier': getattr(ab, 'tier', 1),
+                'description': ab.description or '',
+                'level_requirement': effective_level,
+                'original_level_requirement': getattr(ab, 'level_requirement', 1) if effective_level != getattr(ab, 'level_requirement', 1) else None,
+                'class_restriction': None,
+                'owned': owned,
+                'can_afford': can_afford,
+                'unlocked': unlocked,
+                'can_buy': can_buy,
+            })
         
-        items_list.append({
-            'id': ab.id,
-            'name': ab.name,
-            'price': effective_cost,
-            'original_price': ab.cost if effective_cost != ab.cost else None,
-            'image': '/static/images/default_item.png',
-            'category': 'ability',
-            'tier': getattr(ab, 'tier', 1),
-            'description': ab.description or '',
-            'level_requirement': effective_level,
-            'original_level_requirement': getattr(ab, 'level_requirement', 1) if effective_level != getattr(ab, 'level_requirement', 1) else None,
-            'class_restriction': None,
-            'owned': owned,
-            'can_afford': can_afford,
-            'unlocked': unlocked,
-            'can_buy': can_buy,
-        })
-    return render_template('student/shop.html', student=current_user, main_character=main_character, items=items_list)
+        return render_template('student/shop.html', student=current_user, main_character=main_character, items=items_list)
+    except Exception as e:
+        logger.error(f"Error loading shop page: {str(e)}", exc_info=True)
+        flash('An error occurred while loading the shop. Please try again.', 'danger')
+        return redirect(url_for('student.dashboard'))
 
 @student_bp.route('/progress')
 @login_required
@@ -908,7 +939,7 @@ def shop_buy():
         )
         db.session.add(purchase)
         db.session.commit()
-        # Refresh character to get updated gold
+        # Refresh character to get updated gold after commit
         db.session.refresh(character)
         logger.info(f"Shop purchase successful: character={character.id}, item={item_id}, gold_spent={gold_spent}, remaining_gold={character.gold}")
         
@@ -927,14 +958,21 @@ def shop_buy():
             ]
         else:
             abilities = []
+        
+        # Return consistent JSON response with all necessary data
         return jsonify({
             'success': True,
             'message': 'Item purchased successfully.',
             'character': {
                 'id': character.id,
-                'gold': character.gold,  # Now refreshed
+                'gold': character.gold,  # Refreshed from database
                 'level': character.level,
                 'character_class': character.character_class
+            },
+            'item': {
+                'id': item.id,
+                'name': item.name,
+                'type': purchase_type
             },
             'inventory': inventory,
             'abilities': abilities
@@ -946,7 +984,8 @@ def shop_buy():
         return jsonify({
             'success': False,
             'message': f'Purchase validation failed: {str(ve)}',
-            'error_type': 'ValidationError'
+            'error_type': 'ValidationError',
+            'error_code': 'VALIDATION_ERROR'
         }), 400
     except Exception as e:
         db.session.rollback()
@@ -955,6 +994,7 @@ def shop_buy():
         logger.error(f"Shop purchase error: user={current_user.id}, item_id={item_id}, error={str(e)}\n{error_traceback}", exc_info=True)
         return jsonify({
             'success': False,
-            'message': f'Error: {str(e)}',
-            'error_type': type(e).__name__
+            'message': f'An error occurred while processing your purchase. Please try again.',
+            'error_type': type(e).__name__,
+            'error_code': 'INTERNAL_ERROR'
         }), 500 

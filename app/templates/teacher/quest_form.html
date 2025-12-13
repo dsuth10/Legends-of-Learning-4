@@ -90,7 +90,7 @@
           <h6>Quest Chain</h6>
           <div class="mb-3">
             <label for="parent_quest_id" class="form-label">Prerequisite Quest (Optional)</label>
-            <select class="form-control" name="parent_quest_id" id="parent_quest_id">
+            <select class="form-control" name="parent_quest_id" id="parent_quest_id" onchange="updateQuestChainVisualization()">
               <option value="">None (This is a starting quest)</option>
               {% for available_quest in available_quests %}
                 {% if not quest or available_quest.id != quest.id %}
@@ -100,18 +100,35 @@
                 {% endif %}
               {% endfor %}
             </select>
-            <div class="form-text">This quest must be completed before this quest becomes available</div>
+            <div class="form-text">Select a quest that must be completed before this one can be started</div>
           </div>
-          {% if quest and quest.parent_quest_id %}
-            <div class="alert alert-info">
-              <small><strong>Current Prerequisite:</strong> 
-                {% if parent_quest %}
-                  <a href="{{ url_for('teacher_quests.edit_quest', quest_id=parent_quest.id) }}">{{ parent_quest.title }}</a>
-                {% else %}
-                  Quest #{{ quest.parent_quest_id }} (may have been deleted)
-                {% endif %}
-              </small>
+          
+          <!-- Quest Chain Visualization -->
+          <div id="questChainVisualization" class="mt-3" style="display: none;">
+            <h6 class="small">Quest Chain Preview</h6>
+            <div class="border rounded p-3 bg-light">
+              <div id="chainDisplay" class="d-flex align-items-center flex-wrap gap-2">
+                <!-- Will be populated by JavaScript -->
+              </div>
             </div>
+          </div>
+          
+          {% if quest %}
+          <!-- Show child quests if this quest has children -->
+          {% set child_quests = available_quests | selectattr('parent_quest_id', 'equalto', quest.id) | list %}
+          {% if child_quests %}
+          <div class="mt-3">
+            <h6 class="small text-info">Child Quests (Unlocked by this quest)</h6>
+            <ul class="list-group list-group-flush">
+              {% for child in child_quests %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>{{ child.title }} <small class="text-muted">({{ child.type.value }})</small></span>
+                <a href="{{ url_for('teacher_quests.edit_quest', quest_id=child.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
           {% endif %}
         </div>
 
@@ -189,9 +206,11 @@ function validateJSON(textareaId, errorId) {
 }
 
 // Helper functions for requirements
-function addRequirementHelper(type) {
+function addRequirementFromInput(type, inputId) {
   const textarea = document.getElementById('requirements');
+  const input = document.getElementById(inputId);
   let current = {};
+  
   try {
     const text = textarea.value.trim();
     if (text && text !== '{}') {
@@ -203,24 +222,52 @@ function addRequirementHelper(type) {
   }
   
   if (type === 'min_level') {
-    const level = prompt('Enter minimum level:', '5');
-    if (level) {
-      current.min_level = parseInt(level) || 5;
+    const level = parseInt(input.value);
+    if (level && level > 0) {
+      current.min_level = level;
+      input.value = '';
+    } else {
+      alert('Please enter a valid level (1 or higher)');
+      return;
     }
   } else if (type === 'required_items') {
-    const items = prompt('Enter required items (comma-separated):', 'sword, shield');
+    const items = input.value.trim();
     if (items) {
-      current.required_items = items.split(',').map(i => i.trim());
+      current.required_items = items.split(',').map(i => i.trim()).filter(i => i);
+      input.value = '';
+    } else {
+      alert('Please enter at least one item');
+      return;
     }
   } else if (type === 'completed_quests') {
-    const quests = prompt('Enter completed quest IDs (comma-separated):', '1, 2');
+    const quests = input.value.trim();
     if (quests) {
       current.completed_quests = quests.split(',').map(q => parseInt(q.trim())).filter(q => !isNaN(q));
+      input.value = '';
+    } else {
+      alert('Please enter at least one quest ID');
+      return;
     }
   }
   
   textarea.value = JSON.stringify(current, null, 2);
   validateJSON('requirements', 'requirements_error');
+}
+
+function addRequirementHelper(type) {
+  // Legacy function for backward compatibility
+  if (type === 'min_level') {
+    document.getElementById('req_min_level').focus();
+  } else if (type === 'required_items') {
+    document.getElementById('req_items').focus();
+  } else if (type === 'completed_quests') {
+    document.getElementById('req_quests').focus();
+  }
+}
+
+function toggleRequirementsJSON() {
+  const textarea = document.getElementById('requirements');
+  textarea.style.display = textarea.style.display === 'none' ? 'block' : 'none';
 }
 
 function clearRequirements() {
@@ -366,6 +413,40 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+  
+  // Initialize quest chain visualization
+  updateQuestChainVisualization();
 });
+
+// Quest Chain Visualization
+function updateQuestChainVisualization() {
+  const parentSelect = document.getElementById('parent_quest_id');
+  const visualization = document.getElementById('questChainVisualization');
+  const chainDisplay = document.getElementById('chainDisplay');
+  
+  if (!parentSelect || !visualization || !chainDisplay) return;
+  
+  const selectedParentId = parentSelect.value;
+  
+  if (!selectedParentId) {
+    visualization.style.display = 'none';
+    return;
+  }
+  
+  // Get selected option text
+  const selectedOption = parentSelect.options[parentSelect.selectedIndex];
+  const parentTitle = selectedOption.text.split(' (')[0]; // Remove type from text
+  
+  // Build chain display
+  chainDisplay.innerHTML = `
+    <div class="badge bg-secondary p-2">${parentTitle}</div>
+    <i class="bi bi-arrow-right text-muted"></i>
+    <div class="badge bg-primary p-2">${document.getElementById('title').value || 'This Quest'}</div>
+    <i class="bi bi-arrow-right text-muted"></i>
+    <div class="badge bg-light text-dark p-2 border">Next Quest...</div>
+  `;
+  
+  visualization.style.display = 'block';
+}
 </script>
 {% endblock %} 

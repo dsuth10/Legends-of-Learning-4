@@ -3,6 +3,8 @@ from app.models import db, init_db  # Use the single db instance from app.models
 from flask_login import LoginManager
 from flask_migrate import Migrate
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 from flask_jwt_extended import JWTManager
 
 from app.models.db_config import get_sqlalchemy_config
@@ -79,6 +81,32 @@ def create_app(config=None):
     # check_db_version(app)
     # start_weekly_integrity_check(app)
     # --------------------------------------------------------------
+
+    # Configure logging
+    if not app.debug:
+        # Production logging: log to file
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+        file_handler = RotatingFileHandler('logs/legends_of_learning.log', maxBytes=10240000, backupCount=10)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('Legends of Learning startup')
+    else:
+        # Development logging: log to console with more detail
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        console_handler.setLevel(logging.DEBUG)
+        app.logger.addHandler(console_handler)
+        app.logger.setLevel(logging.DEBUG)
+    
+    # Set logging level for SQLAlchemy to reduce noise
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
 
     # Register CLI commands
     from app.commands import seed_db_command

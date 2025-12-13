@@ -11,6 +11,7 @@ from app.models import db
 from app.models.base import Base
 from app.models.equipment import Equipment
 from app.models.ability import Ability
+from app.models.audit import AuditLog, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -284,19 +285,30 @@ class QuestLog(Base):
         return is_complete
 
     def complete_quest(self):
-        """Mark quest as completed and distribute rewards."""
+        """Mark quest as completed and distribute rewards.
+        
+        This method distributes all rewards in a single transaction to ensure
+        atomicity and prevent race conditions. All changes are committed together.
+        """
         if self.status != QuestStatus.IN_PROGRESS:
             raise ValueError("Quest must be in progress to complete")
+        
+        # Ensure character is in session before modifying
+        from app.models import db
+        db.session.add(self.character)
         
         self.status = QuestStatus.COMPLETED
         self.completed_at = get_utc_now()
         
-        # Distribute all rewards in a single transaction
+        # Distribute all rewards in a single transaction (no commits in distribute)
         for reward in self.quest.rewards:
             reward.distribute(self.character, commit=False)
         
-        # Single commit for all changes
+        # Single commit for all changes (quest status, rewards, character updates)
         self.save()
+        
+        # Refresh character to ensure we have the latest values from database
+        db.session.refresh(self.character)
     
     def fail_quest(self):
         """Mark quest as failed and apply consequences."""
@@ -348,8 +360,29 @@ class Reward(Base):
             # Manually handle experience and level up to avoid premature commit
             # This maintains the single transaction guarantee
             old_level = character.level
+            old_experience = character.experience
             character.experience += self.amount
             logger.debug(f"Character {character.id} gained {self.amount} XP")
+            
+            # Log XP gain to AuditLog for progress tracking
+            # Add to session without committing (will be committed with quest completion)
+            try:
+                user_id = character.student.user_id if character.student and character.student.user_id else None
+                audit_log = AuditLog(
+                    event_type=EventType.XP_GAIN.value,
+                    event_data={
+                        'amount': self.amount,
+                        'old_experience': old_experience,
+                        'new_experience': character.experience,
+                        'source': 'quest_reward',
+                        'quest_id': self.quest_id
+                    },
+                    user_id=user_id,
+                    character_id=character.id
+                )
+                session.add(audit_log)
+            except Exception as e:
+                logger.warning(f"Failed to log XP gain to AuditLog: {str(e)}", exc_info=True)
             
             # Calculate new level (level = experience // 1000 + 1)
             new_level = (character.experience // 1000) + 1
@@ -363,12 +396,52 @@ class Reward(Base):
                 character.strength += 2 * levels_gained
                 character.defense += 2 * levels_gained
                 logger.debug(f"Character {character.id} leveled up to {character.level} (gained {levels_gained} levels)")
+                
+                # Log level up to AuditLog
+                # Add to session without committing (will be committed with quest completion)
+                try:
+                    user_id = character.student.user_id if character.student and character.student.user_id else None
+                    audit_log = AuditLog(
+                        event_type=EventType.LEVEL_UP.value,
+                        event_data={
+                            'old_level': old_level,
+                            'new_level': character.level,
+                            'levels_gained': levels_gained,
+                            'source': 'quest_reward',
+                            'quest_id': self.quest_id
+                        },
+                        user_id=user_id,
+                        character_id=character.id
+                    )
+                    session.add(audit_log)
+                except Exception as e:
+                    logger.warning(f"Failed to log level up to AuditLog: {str(e)}", exc_info=True)
         elif self.type == RewardType.GOLD:
             # Ensure character is in session before modifying
             session.add(character)
             old_gold = character.gold
             character.gold += self.amount
             logger.debug(f"Character {character.id} gold: {old_gold} -> {character.gold}")
+            
+            # Log gold transaction to AuditLog for progress tracking
+            # Add to session without committing (will be committed with quest completion)
+            try:
+                user_id = character.student.user_id if character.student and character.student.user_id else None
+                audit_log = AuditLog(
+                    event_type=EventType.GOLD_TRANSACTION.value,
+                    event_data={
+                        'amount': self.amount,
+                        'old_gold': old_gold,
+                        'new_gold': character.gold,
+                        'source': 'quest_reward',
+                        'quest_id': self.quest_id
+                    },
+                    user_id=user_id,
+                    character_id=character.id
+                )
+                session.add(audit_log)
+            except Exception as e:
+                logger.warning(f"Failed to log gold transaction to AuditLog: {str(e)}", exc_info=True)
         elif self.type == RewardType.EQUIPMENT and self.item_id:
             from app.models.equipment import Inventory
             inventory = Inventory(

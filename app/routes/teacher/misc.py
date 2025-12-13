@@ -24,8 +24,11 @@ from app.utils.backup_utils import format_file_size, generate_safe_filename
 from app.models.shop_config import ShopItemOverride
 import json
 import os
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 @teacher_bp.route('/dashboard')
 @login_required
@@ -267,25 +270,123 @@ def analytics():
 @login_required
 @teacher_required
 def analytics_data():
-    class_id = request.args.get('class_id', type=int)
-    if not class_id:
-        return {'error': 'Missing class_id'}, 400
-    selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
-    if not selected_class:
-        return {'error': 'Class not found or not authorized'}, 404
-    class_labels = [selected_class.name]
-    total = selected_class.students.count()
-    class_counts = [total]
-    active = sum(1 for s in selected_class.students if s.is_active)
-    inactive = total - active
-    active_counts = [active]
-    inactive_counts = [inactive]
-    return {
-        'class_labels': class_labels,
-        'class_counts': class_counts,
-        'active_counts': active_counts,
-        'inactive_counts': inactive_counts
-    }
+    try:
+        class_id = request.args.get('class_id', type=int)
+        days = request.args.get('days', type=int, default=90)
+        if not class_id:
+            return jsonify({'error': 'Missing class_id'}), 400
+        selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+        if not selected_class:
+            return jsonify({'error': 'Class not found or not authorized'}), 404
+        
+        from app.services.analytics_service import (
+            get_student_performance_data,
+            get_engagement_metrics,
+            get_quest_completion_analytics
+        )
+        
+        # Basic class composition
+        class_labels = [selected_class.name]
+        total = selected_class.students.count()
+        class_counts = [total]
+        active = sum(1 for s in selected_class.students if s.is_active)
+        inactive = total - active
+        active_counts = [active]
+        inactive_counts = [inactive]
+        
+        # Enhanced analytics
+        performance_data = get_student_performance_data(class_id, days=days)
+        engagement_data = get_engagement_metrics(class_id, days=min(days, 30))
+        quest_data = get_quest_completion_analytics(class_id, days=days)
+        
+        return jsonify({
+            'class_labels': class_labels,
+            'class_counts': class_counts,
+            'active_counts': active_counts,
+            'inactive_counts': inactive_counts,
+            'performance': performance_data,
+            'engagement': engagement_data,
+            'quests': quest_data
+        })
+    except Exception as e:
+        logger.error(f"Error fetching analytics data: {str(e)}", exc_info=True)
+        return jsonify({'error': 'An error occurred while fetching analytics data'}), 500
+
+
+@teacher_bp.route('/analytics/export')
+@login_required
+@teacher_required
+def export_analytics():
+    """Export analytics data as CSV or JSON."""
+    try:
+        class_id = request.args.get('class_id', type=int)
+        format_type = request.args.get('format', 'json').lower()  # 'json' or 'csv'
+        days = request.args.get('days', type=int, default=90)
+        
+        if not class_id:
+            return jsonify({'error': 'Missing class_id'}), 400
+        
+        selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+        if not selected_class:
+            return jsonify({'error': 'Class not found or not authorized'}), 404
+        
+        from app.services.analytics_service import get_student_performance_data
+        performance_data = get_student_performance_data(class_id, days=days)
+        
+        if format_type == 'csv':
+            # Create CSV
+            import csv
+            import io
+            output = io.StringIO()
+            writer = csv.writer(output)
+            
+            # Header
+            writer.writerow([
+                'Student ID', 'Character Name', 'Level', 'Experience', 'Gold',
+                'Quests Completed', 'Total Quests', 'Completion Rate %',
+                'Gold Earned', 'Gold Spent', 'Login Count'
+            ])
+            
+            # Data rows
+            for student in performance_data['students']:
+                writer.writerow([
+                    student['student_id'],
+                    student['name'],
+                    student['level'],
+                    student['experience'],
+                    student['gold'],
+                    student['quests_completed'],
+                    student['quests_total'],
+                    round(student['quest_completion_rate'], 2),
+                    student['gold_earned'],
+                    student['gold_spent'],
+                    student['login_count']
+                ])
+            
+            # Create file response
+            output.seek(0)
+            filename = f"analytics_{selected_class.name.replace(' ', '_')}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+            
+            return send_file(
+                io.BytesIO(output.getvalue().encode('utf-8')),
+                mimetype='text/csv',
+                as_attachment=True,
+                download_name=filename
+            )
+        else:
+            # JSON export
+            import io
+            filename = f"analytics_{selected_class.name.replace(' ', '_')}_{datetime.utcnow().strftime('%Y%m%d')}.json"
+            
+            return send_file(
+                io.BytesIO(json.dumps(performance_data, indent=2, default=str).encode('utf-8')),
+                mimetype='application/json',
+                as_attachment=True,
+                download_name=filename
+            )
+    except Exception as e:
+        logger.error(f"Error exporting analytics: {str(e)}", exc_info=True)
+        return jsonify({'error': 'An error occurred while exporting analytics data'}), 500
 
 @teacher_bp.route('/backup')
 @login_required

@@ -1,0 +1,156 @@
+# Workflow Status - BMad Method
+# Generated: 2025-01-27
+# Project: Legends-of-Learning-4
+# Track: BMad Method (bmad-method)
+# Field Type: brownfield
+
+generated: "2025-01-27"
+project: "Legends-of-Learning-4"
+project_type: "brownfield"
+selected_track: "bmad-method"
+field_type: "brownfield"
+workflow_path: ".bmad/bmm/workflows/workflow-status/paths/method-brownfield.yaml"
+
+workflow_status:
+  # Prerequisite Phase - Documentation
+  - phase: "prerequisite"
+    name: "Documentation"
+    conditional: "if_undocumented"
+    note: "NOT a phase - prerequisite for brownfield without docs"
+    status: "required"
+    workflows:
+      - id: "document-project"
+        required: true
+        agent: "analyst"
+        command: "document-project"
+        output: "Comprehensive project documentation"
+        purpose: "Understand existing codebase before planning"
+        status: "required"
+        completed: true
+        completed_date: "2025-01-27"
+        output_file: "docs/index.md"
+
+  # Phase 0 - Discovery (Optional)
+  - phase: 0
+    name: "Discovery (Optional)"
+    optional: true
+    note: "User-selected during workflow-init"
+    status: "optional"
+    workflows:
+      - id: "brainstorm-project"
+        optional: true
+        agent: "analyst"
+        command: "brainstorm-project"
+        included_by: "user_choice"
+        note: "Uses core brainstorming workflow with project context template"
+        status: "optional"
+        completed: false
+
+      - id: "research"
+        optional: true
+        agent: "analyst"
+        command: "research"
+        included_by: "user_choice"
+        status: "optional"
+        completed: false
+
+      - id: "product-brief"
+        optional: true
+        agent: "analyst"
+        command: "product-brief"
+        included_by: "user_choice"
+        note: "Optional for brownfield, less common than greenfield"
+        status: "optional"
+        completed: false
+
+  # Phase 1 - Planning
+  - phase: 1
+    name: "Planning"
+    required: true
+    status: "required"
+    workflows:
+      - id: "prd"
+        required: true
+        agent: "pm"
+        command: "prd"
+        output: "PRD focused on new features/changes"
+        note: "Must consider existing system constraints"
+        status: "required"
+        completed: false
+
+      - id: "create-ux-design"
+        conditional: "if_has_ui"
+        agent: "ux-designer"
+        command: "create-ux-design"
+        status: "conditional"
+        completed: false
+
+  # Phase 2 - Solutioning
+  - phase: 2
+    name: "Solutioning"
+    required: true
+    status: "required"
+    workflows:
+      - id: "create-architecture"
+        recommended: true
+        agent: "architect"
+        command: "create-architecture"
+        output: "Integration architecture - solution design for THIS project"
+        note: "HIGHLY RECOMMENDED: Distills massive brownfield context into focused solution design. Prevents agent confusion."
+        status: "recommended"
+        completed: false
+
+      - id: "create-epics-and-stories"
+        required: true
+        agent: "pm"
+        command: "create-epics-and-stories"
+        note: "Required: Break down PRD into implementable epics and stories with full context (PRD + UX + Architecture)"
+        status: "required"
+        completed: false
+
+      - id: "test-design"
+        recommended: true
+        agent: "tea"
+        command: "test-design"
+        output: "System-level testability review"
+        note: "Testability assessment before gate check - auto-detects system-level mode"
+        status: "recommended"
+        completed: false
+
+      - id: "validate-architecture"
+        optional: true
+        agent: "architect"
+        command: "validate-architecture"
+        status: "optional"
+        completed: false
+
+      - id: "implementation-readiness"
+        required: true
+        agent: "architect"
+        command: "implementation-readiness"
+        note: "Validates PRD + Architecture + Epics + UX (optional)"
+        status: "required"
+        completed: false
+
+  # Phase 3 - Implementation
+  - phase: 3
+    name: "Implementation"
+    required: true
+    status: "required"
+    workflows:
+      - id: "sprint-planning"
+        required: true
+        agent: "sm"
+        command: "sprint-planning"
+        note: "Creates sprint plan with stories"
+        status: "required"
+        completed: false
+
+# Next workflow recommendation
+next_workflow:
+  id: "prd"
+  agent: "pm"
+  command: "prd"
+  phase: 1
+  reason: "Required planning workflow. Create PRD focused on new features/changes, considering existing system constraints."
+

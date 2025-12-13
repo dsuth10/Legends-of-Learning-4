@@ -211,8 +211,10 @@
 
 {% block extra_js %}
 <script>
-  // Debug: Check if script loads
-  console.log('Quest Progress template loaded');
+  // Quest Progress template loaded
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    console.log('Quest Progress template loaded');
+  }
   
   // Ensure buttons work even if script fails to load
   document.addEventListener('DOMContentLoaded', function() {

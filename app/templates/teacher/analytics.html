@@ -4,7 +4,27 @@
 {% endblock %}
 {% block dashboard_content %}
 <div class="container mt-4">
-  <h4>Analytics</h4>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>Analytics</h4>
+    <div>
+      <select id="timePeriod" class="form-select form-select-sm d-inline-block" style="width: auto;">
+        <option value="30">Last 30 days</option>
+        <option value="90" selected>Last 90 days</option>
+        <option value="180">Last 180 days</option>
+        <option value="365">Last year</option>
+      </select>
+      <div class="btn-group ms-2">
+        <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+          Export
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="#" id="exportCSV">Export as CSV</a></li>
+          <li><a class="dropdown-item" href="#" id="exportJSON">Export as JSON</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
   <form class="mb-4" id="class-selector-form" onsubmit="return false;">
     <div class="form-group row">
       <label for="class_id" class="col-sm-2 col-form-label">Select Class:</label>
@@ -18,22 +38,79 @@
       </div>
     </div>
   </form>
+  
   <div id="analytics-charts">
     {% if selected_class %}
-    <div class="row mb-4">
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-header">Class Composition</div>
-          <div class="card-body">
-            <canvas id="classCompositionChart"></canvas>
+    <div id="loadingIndicator" class="text-center my-4" style="display: none;">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+    <div id="analyticsContent">
+      <!-- Basic Charts -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">Class Composition</div>
+            <div class="card-body">
+              <canvas id="classCompositionChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">Class Activity</div>
+            <div class="card-body">
+              <canvas id="classActivityChart"></canvas>
+            </div>
           </div>
         </div>
       </div>
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-header">Class Activity</div>
-          <div class="card-body">
-            <canvas id="classActivityChart"></canvas>
+      
+      <!-- Enhanced Analytics -->
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-header">Student Performance Overview</div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover" id="studentPerformanceTable">
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Level</th>
+                      <th>Quest Completion</th>
+                      <th>Gold Earned</th>
+                      <th>Gold Spent</th>
+                      <th>Logins</th>
+                      <th>vs Class Avg</th>
+                    </tr>
+                  </thead>
+                  <tbody id="studentPerformanceBody">
+                    <tr><td colspan="7" class="text-center">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">Quest Completion Timeline</div>
+            <div class="card-body">
+              <canvas id="questCompletionChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">Daily Activity</div>
+            <div class="card-body">
+              <canvas id="dailyActivityChart"></canvas>
+            </div>
           </div>
         </div>
       </div>
@@ -49,24 +126,68 @@
 {{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-let classCompositionChart = null;
-let classActivityChart = null;
+let charts = {};
+let currentClassId = null;
+let currentDays = 90;
 
-function renderCharts(classLabels, classCounts, activeCounts, inactiveCounts) {
+function loadAnalytics(classId, days) {
+  if (!classId) {
+    document.getElementById('analytics-charts').innerHTML = '<div class="alert alert-info mt-4">Please select a class to view analytics.</div>';
+    return;
+  }
+  
+  currentClassId = classId;
+  currentDays = days;
+  document.getElementById('loadingIndicator').style.display = 'block';
+  document.getElementById('analyticsContent').style.display = 'none';
+  
+  fetch(`/teacher/analytics/data?class_id=${classId}&days=${days}`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('loadingIndicator').style.display = 'none';
+      document.getElementById('analyticsContent').style.display = 'block';
+      
+      if (data.error) {
+        document.getElementById('analytics-charts').innerHTML = `<div class='alert alert-danger mt-4'>${data.error}</div>`;
+        return;
+      }
+      
+      // Render basic charts
+      renderBasicCharts(data);
+      
+      // Render enhanced analytics
+      if (data.performance) {
+        renderStudentPerformance(data.performance);
+      }
+      if (data.quests) {
+        renderQuestCompletion(data.quests);
+      }
+      if (data.engagement) {
+        renderEngagement(data.engagement);
+      }
+    })
+    .catch(err => {
+      document.getElementById('loadingIndicator').style.display = 'none';
+      console.error('Error loading analytics:', err);
+      alert('Error loading analytics data. Please try again.');
+    });
+}
+
+function renderBasicCharts(data) {
   const compCtx = document.getElementById('classCompositionChart').getContext('2d');
   const actCtx = document.getElementById('classActivityChart').getContext('2d');
-  if (classCompositionChart) classCompositionChart.destroy();
-  if (classActivityChart) classActivityChart.destroy();
-  classCompositionChart = new Chart(compCtx, {
+  
+  if (charts.classComposition) charts.classComposition.destroy();
+  if (charts.classActivity) charts.classActivity.destroy();
+  
+  charts.classComposition = new Chart(compCtx, {
     type: 'doughnut',
     data: {
-      labels: classLabels,
+      labels: data.class_labels,
       datasets: [{
         label: 'Students per Class',
-        data: classCounts,
-        backgroundColor: [
-          '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'
-        ],
+        data: data.class_counts,
+        backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'],
       }]
     },
     options: {
@@ -74,19 +195,20 @@ function renderCharts(classLabels, classCounts, activeCounts, inactiveCounts) {
       plugins: { legend: { position: 'bottom' } }
     }
   });
-  classActivityChart = new Chart(actCtx, {
+  
+  charts.classActivity = new Chart(actCtx, {
     type: 'bar',
     data: {
-      labels: classLabels,
+      labels: data.class_labels,
       datasets: [
         {
           label: 'Active Students',
-          data: activeCounts,
+          data: data.active_counts,
           backgroundColor: '#1cc88a'
         },
         {
           label: 'Inactive Students',
-          data: inactiveCounts,
+          data: data.inactive_counts,
           backgroundColor: '#f6c23e'
         }
       ]
@@ -99,48 +221,123 @@ function renderCharts(classLabels, classCounts, activeCounts, inactiveCounts) {
   });
 }
 
+function renderStudentPerformance(performanceData) {
+  const tbody = document.getElementById('studentPerformanceBody');
+  const avg = performanceData.class_average;
+  
+  if (!performanceData.students || performanceData.students.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center">No student data available</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = performanceData.students.map(student => {
+    const completionDiff = (student.quest_completion_rate - avg.avg_quest_completion_rate).toFixed(1);
+    const completionClass = completionDiff >= 0 ? 'text-success' : 'text-danger';
+    const completionIcon = completionDiff >= 0 ? '↑' : '↓';
+    
+    return `
+      <tr>
+        <td><strong>${student.name}</strong></td>
+        <td>${student.level}</td>
+        <td>${student.quests_completed}/${student.quests_total} (${student.quest_completion_rate.toFixed(1)}%)</td>
+        <td>${student.gold_earned}</td>
+        <td>${student.gold_spent}</td>
+        <td>${student.login_count}</td>
+        <td class="${completionClass}">${completionIcon} ${Math.abs(completionDiff)}%</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderQuestCompletion(questData) {
+  const ctx = document.getElementById('questCompletionChart');
+  if (!ctx) return;
+  
+  if (charts.questCompletion) charts.questCompletion.destroy();
+  
+  const dates = questData.completion_timeline.map(d => d.date);
+  const counts = questData.completion_timeline.map(d => d.count);
+  
+  charts.questCompletion = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: 'Quests Completed',
+        data: counts,
+        borderColor: '#4e73df',
+        backgroundColor: 'rgba(78, 115, 223, 0.1)',
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+function renderEngagement(engagementData) {
+  const ctx = document.getElementById('dailyActivityChart');
+  if (!ctx) return;
+  
+  if (charts.dailyActivity) charts.dailyActivity.destroy();
+  
+  const dates = engagementData.daily_activity.map(d => d.date);
+  const counts = engagementData.daily_activity.map(d => d.count);
+  
+  charts.dailyActivity = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: 'Daily Activity',
+        data: counts,
+        backgroundColor: '#36b9cc'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const classSelect = document.getElementById('class_id');
-  classSelect.addEventListener('change', function() {
-    const classId = this.value;
-    const chartsDiv = document.getElementById('analytics-charts');
-    if (!classId) {
-      chartsDiv.innerHTML = '<div class="alert alert-info mt-4">Please select a class to view analytics.</div>';
-      return;
+  const timePeriod = document.getElementById('timePeriod');
+  
+  function updateAnalytics() {
+    const classId = classSelect.value;
+    const days = parseInt(timePeriod.value);
+    loadAnalytics(classId, days);
+  }
+  
+  classSelect.addEventListener('change', updateAnalytics);
+  timePeriod.addEventListener('change', updateAnalytics);
+  
+  // Export handlers
+  document.getElementById('exportCSV').addEventListener('click', function(e) {
+    e.preventDefault();
+    if (currentClassId) {
+      window.location.href = `/teacher/analytics/export?class_id=${currentClassId}&format=csv&days=${currentDays}`;
     }
-    fetch(`/teacher/analytics/data?class_id=${classId}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          chartsDiv.innerHTML = `<div class='alert alert-danger mt-4'>${data.error}</div>`;
-          return;
-        }
-        chartsDiv.innerHTML = `
-        <div class="row mb-4">
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header">Class Composition</div>
-              <div class="card-body">
-                <canvas id="classCompositionChart"></canvas>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header">Class Activity</div>
-              <div class="card-body">
-                <canvas id="classActivityChart"></canvas>
-              </div>
-            </div>
-          </div>
-        </div>`;
-        renderCharts(data.class_labels, data.class_counts, data.active_counts, data.inactive_counts);
-      });
   });
-  // Initial render if a class is already selected
+  
+  document.getElementById('exportJSON').addEventListener('click', function(e) {
+    e.preventDefault();
+    if (currentClassId) {
+      window.location.href = `/teacher/analytics/export?class_id=${currentClassId}&format=json&days=${currentDays}`;
+    }
+  });
+  
+  // Initial load if class is selected
   {% if selected_class %}
-  renderCharts({{ class_labels|safe }}, {{ class_counts|safe }}, {{ active_counts|safe }}, {{ inactive_counts|safe }});
+  loadAnalytics({{ selected_class.id }}, 90);
   {% endif %}
 });
 </script>
-{% endblock %} 
+{% endblock %}

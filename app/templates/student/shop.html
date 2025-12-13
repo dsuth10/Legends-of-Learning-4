@@ -122,15 +122,24 @@
             console.error('shop-items-grid not found');
             return;
         }
+        
         shopGrid.addEventListener('click', function(e) {
             var btn = e.target.closest('.btn.btn-primary');
             if (!btn || btn.disabled || btn.dataset.processing === 'true') return;
             
             var card = btn.closest('.shop-item-card');
-            if (!card) return;
+            if (!card) {
+                console.warn('Could not find shop-item-card for button');
+                return;
+            }
             
             var itemId = card.getAttribute('data-item-id');
             var itemType = card.getAttribute('data-category');
+            
+            if (!itemId) {
+                console.error('Item ID not found on card');
+                return;
+            }
             
             // Prevent multiple clicks
             btn.dataset.processing = 'true';
@@ -138,31 +147,39 @@
             var originalText = btn.textContent;
             btn.textContent = 'Processing...';
             
+            // Make purchase request
             fetch('/student/shop/buy', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ item_id: itemId, item_type: itemType }),
-                credentials: 'same-origin' // Include cookies
+                credentials: 'same-origin' // Include cookies for session
             })
             .then(function(res) {
-                // Try to parse JSON even for error statuses
-                return res.json().catch(function() {
-                    // If JSON parsing fails, create error object
-                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                }).then(function(data) {
-                    if (!res.ok) {
+                // Check if response is ok before parsing JSON
+                if (!res.ok) {
+                    // Try to parse error response as JSON
+                    return res.json().then(function(data) {
                         throw new Error(data.message || `HTTP ${res.status}: ${res.statusText}`);
-                    }
-                    return data;
-                });
+                    }).catch(function(parseError) {
+                        // If JSON parsing fails, throw HTTP error
+                        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                    });
+                }
+                // Parse successful response
+                return res.json();
             })
             .then(function(data) {
+                // Validate response structure
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Invalid response from server');
+                }
+                
                 if (data.success) {
                     // Update gold display
                     var goldBadge = document.querySelector('.badge.bg-warning');
-                    if (goldBadge && data.character && data.character.gold !== undefined) {
+                    if (goldBadge && data.character && typeof data.character.gold === 'number') {
                         goldBadge.textContent = 'Gold: ' + data.character.gold;
                     }
                     
@@ -181,15 +198,24 @@
                     
                     showShopMessage('Purchase successful!', false);
                 } else {
+                    // Handle unsuccessful response
                     throw new Error(data.message || 'Purchase failed');
                 }
             })
             .catch(function(err) {
                 console.error('Shop purchase error:', err);
+                
+                // Reset button state
                 btn.disabled = false;
                 btn.textContent = originalText;
                 btn.dataset.processing = 'false';
-                showShopMessage('Error: ' + err.message, true);
+                
+                // Show user-friendly error message
+                var errorMessage = 'An error occurred while processing your purchase.';
+                if (err.message) {
+                    errorMessage = err.message;
+                }
+                showShopMessage('Error: ' + errorMessage, true);
             });
         });
     })();

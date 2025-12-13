@@ -1,10 +1,10 @@
 // static/js/clans.js
 // Teacher Clan Management UI Logic
 
-console.log('[DEBUG] clans.js loaded');
-window.onerror = function(message, source, lineno, colno, error) {
-  console.error('[DEBUG] JS Error:', message, 'at', source + ':' + lineno + ':' + colno, error);
-};
+// Debug logging only in development (remove in production)
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  console.log('[DEBUG] clans.js loaded');
+}
 
 document.addEventListener('DOMContentLoaded', function () {
   // DOM elements
@@ -53,15 +53,22 @@ document.addEventListener('DOMContentLoaded', function () {
     fetch('/teacher/api/teacher/classes')
       .then(res => res.json())
       .then(data => {
-        console.log('[DEBUG] /teacher/api/teacher/classes response:', data);
+        // Debug logging (development only)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          console.log('[DEBUG] /teacher/api/teacher/classes response:', data);
+        }
         if (!data.success) throw new Error('Failed to load classes.');
         classes = data.classes;
-        console.log('[DEBUG] classes array:', classes);
+        // Debug logging (development only)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          console.log('[DEBUG] classes array:', classes);
+        }
         populateClassSelect();
         showSpinner(false);
       })
       .catch((err) => {
-        console.error('[DEBUG] Error fetching classes:', err);
+        // Always log errors, but format appropriately
+        console.error('Error fetching classes:', err);
         showError('Failed to load classes.');
         showSpinner(false);
       });
@@ -69,14 +76,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Populate class selector
   function populateClassSelect() {
-    console.log('[DEBUG] populateClassSelect called with:', classes);
+    // Debug logging (development only)
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.log('[DEBUG] populateClassSelect called with:', classes);
+    }
     classSelect.innerHTML = '';
     if (classes.length === 0) {
       classSelect.innerHTML = '<option>No classes found</option>';
       return;
     }
     classes.forEach(c => {
-      console.log('[DEBUG] Adding class to dropdown:', c);
+      // Debug logging (development only)
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.log('[DEBUG] Adding class to dropdown:', c);
+      }
       const opt = document.createElement('option');
       opt.value = c.id;
       opt.textContent = c.name;
