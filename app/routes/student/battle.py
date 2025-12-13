@@ -170,7 +170,7 @@ def attack(battle_id):
     is_correct = submitted_answer == question.correct_answer
     
     # Calculate damage
-    base_damage = character.strength
+    base_damage = character.power
     if is_correct:
         # Player attacks monster
         damage = base_damage + (question.difficulty * 5)  # Bonus for difficulty

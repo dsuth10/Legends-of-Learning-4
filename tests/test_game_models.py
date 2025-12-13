@@ -128,7 +128,7 @@ def test_weapon(db_session):
 
 @pytest.fixture
 def student_character(db_session, student_user):
-    c = Character(name='StudentChar', student_id=1, health=80, max_health=100, strength=10, defense=10)
+    c = Character(name='StudentChar', student_id=1, health=80, max_health=100, power=10, defense=10)
     db.session.add(c)
     db.session.commit()
     return c
@@ -149,7 +149,7 @@ def student_char_ability(db_session, student_character, student_ability):
 
 @pytest.fixture
 def clanmate(db_session):
-    c = Character(name='Clanmate', student_id=2, health=60, max_health=100, strength=8, defense=8)
+    c = Character(name='Clanmate', student_id=2, health=60, max_health=100, power=8, defense=8)
     db.session.add(c)
     db.session.commit()
     return c
@@ -207,18 +207,18 @@ def test_character_creation(test_character):
     assert test_character.experience == 0
     assert test_character.health == 100
     assert test_character.max_health == 100
-    assert test_character.strength == 10
+    assert test_character.power == 10
     assert test_character.defense == 10
     assert test_character.is_active is True
 
 def test_character_experience_and_leveling(test_character):
     initial_health = test_character.max_health
-    initial_strength = test_character.strength
+    initial_power = test_character.power
     initial_defense = test_character.defense
     test_character.gain_experience(1000)
     assert test_character.level == 2
     assert test_character.max_health == initial_health + 10
-    assert test_character.strength == initial_strength + 2
+    assert test_character.power == initial_power + 2
     assert test_character.defense == initial_defense + 2
     assert test_character.health == test_character.max_health
 
@@ -402,7 +402,7 @@ def test_api_buff_ability(client, db_session, login_student, student_character, 
     assert data['success']
     assert 'Buffed' in data['message']
     # Stat should be increased
-    assert student_character.total_strength == student_character.strength + api_buff_ability.power
+    assert student_character.total_power == student_character.power + api_buff_ability.power
     # StatusEffect should exist
     effects = student_character.status_effects.all()
     assert any(e.effect_type == 'buff' for e in effects)
@@ -419,7 +419,7 @@ def test_api_debuff_ability(client, db_session, login_student, student_character
     assert data['success']
     assert 'Debuffed' in data['message']
     # Stat should be decreased
-    assert clanmate.total_strength == clanmate.strength - api_debuff_ability.power
+    assert clanmate.total_power == clanmate.power - api_debuff_ability.power
     # StatusEffect should exist
     effects = clanmate.status_effects.all()
     assert any(e.effect_type == 'debuff' for e in effects)
@@ -461,12 +461,12 @@ def test_api_buff_stack_and_expire(client, db_session, login_student, student_ch
     assert resp2.get_json()['success']
     # Stat should reflect both buffs
     total_buff = sum(e.amount for e in student_character.status_effects.filter_by(effect_type='buff'))
-    assert student_character.total_strength == student_character.strength + total_buff
+    assert student_character.total_power == student_character.power + total_buff
     # Expire all buffs
     for effect in student_character.status_effects:
         effect.expires_at = datetime.utcnow() - timedelta(seconds=1)
     db.session.commit()
-    assert student_character.total_strength == student_character.strength
+    assert student_character.total_power == student_character.power
 
 def test_api_invalid_buff_target(client, db_session, login_student, api_buff_ability, api_buff_char_ability):
     # Use buff ability on invalid target

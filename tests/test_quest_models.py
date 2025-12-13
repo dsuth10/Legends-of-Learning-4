@@ -47,7 +47,7 @@ def character(db_session, user):
     )
     character.health = 100
     character.max_health = 100
-    character.strength = 10
+    character.power = 10
     character.defense = 10
     db_session.add(character)
     db_session.commit()

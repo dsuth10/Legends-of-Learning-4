@@ -15,7 +15,7 @@ Legends of Learning is a gamified learning platform where students complete educ
 
 ### Student Dashboard
 - Quest Board: View and complete assigned quests to earn rewards
-- Character Progression: Earn XP to level up and improve stats (Health, Strength, Defense)
+- Character Progression: Earn XP to level up and improve stats (Health, Power, Defense)
 - Shop: Spend earned Gold on equipment (Weapons, Armor, Accessories) to boost stats
 - Clans: Join clans, contribute to clan goals, and compete with others
 - Inventory: Manage equipped items and inventory

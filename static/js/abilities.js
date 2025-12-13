@@ -103,9 +103,9 @@ function updateCharacterStats(characterData, targetData, effect) {
     }
   }
 
-  // Update strength/defense if buff/debuff
+  // Update power/defense if buff/debuff
   if (effect && (effect.type === 'buff' || effect.type === 'debuff' || effect.type === 'protect')) {
-    const statName = effect.type === 'protect' ? 'defense' : 'strength';
+    const statName = effect.type === 'protect' ? 'defense' : 'power';
     const statRow = document.querySelector(`tr:has(th:contains("${statName.charAt(0).toUpperCase() + statName.slice(1)}"))`);
     if (statRow) {
       const statCell = statRow.querySelector('td');

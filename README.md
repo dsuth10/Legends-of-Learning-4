@@ -43,7 +43,7 @@ Then open `http://127.0.0.1:5000` or `http://localhost:5000` in your browser.
 
 ### 👨‍🎓 Student Dashboard
 *   **Quest Board**: View and complete assigned quests to earn rewards.
-*   **Character Progression**: Earn XP to level up and improve stats (Health, Strength, Defense).
+*   **Character Progression**: Earn XP to level up and improve stats (Health, Power, Defense).
 *   **Shop**: Spend earned Gold on equipment (Weapons, Armor, etc.) to boost stats.
 *   **Clans**: Join clans, contribute to clan goals, and compete with others.
 *   **Inventory**: Manage equipped items and inventory.

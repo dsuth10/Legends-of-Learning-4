@@ -18,7 +18,7 @@ class Character(Base):
     experience = db.Column(db.Integer, default=0, nullable=False)
     health = db.Column(db.Integer, default=100, nullable=False)
     max_health = db.Column(db.Integer, default=100, nullable=False)
-    strength = db.Column(db.Integer, default=10, nullable=False)
+    power = db.Column(db.Integer, default=10, nullable=False)
     defense = db.Column(db.Integer, default=10, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     character_class = db.Column(db.String(32), nullable=False, default='Adventurer')
@@ -62,7 +62,7 @@ class Character(Base):
         # Increase stats with each level
         self.max_health += 10 * levels_gained
         self.health = self.max_health  # Heal to full on level up
-        self.strength += 2 * levels_gained
+        self.power += 2 * levels_gained
         self.defense += 2 * levels_gained
         self.save()
     
@@ -147,20 +147,20 @@ class Character(Base):
         return self.health + bonus + effect_bonus
 
     @property
-    def total_strength(self):
+    def total_power(self):
         bonus = 0
         # Sum bonuses from ALL equipped items (all slots: MAIN_HAND, OFF_HAND, HEAD, CHEST, LEGS, FEET, NECK, RING)
         for item in self.inventory_items.filter_by(is_equipped=True):
-            if item and item.equipment and hasattr(item.equipment, 'strength_bonus'):
-                bonus += item.equipment.strength_bonus
+            if item and item.equipment and hasattr(item.equipment, 'power_bonus'):
+                bonus += item.equipment.power_bonus
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         effect_bonus = sum(
             effect.amount for effect in self.status_effects.filter(
-                StatusEffect.stat_affected == 'strength',
+                StatusEffect.stat_affected == 'power',
                 StatusEffect.expires_at > now
             )
         )
-        return self.strength + bonus + effect_bonus
+        return self.power + bonus + effect_bonus
 
     @property
     def total_defense(self):
@@ -195,7 +195,7 @@ class CharacterBase(BaseModel):
     experience: int = Field(default=0, ge=0)
     health: int = Field(default=100, ge=0)
     max_health: int = Field(default=100, ge=0)
-    strength: int = Field(default=10, ge=0)
+    power: int = Field(default=10, ge=0)
     defense: int = Field(default=10, ge=0)
     is_active: bool = Field(default=True)
 
@@ -218,7 +218,7 @@ class StatusEffect(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=False)
     effect_type = db.Column(db.String(32), nullable=False)  # e.g., 'buff', 'debuff', 'protect'
-    stat_affected = db.Column(db.String(32), nullable=False)  # e.g., 'defense', 'strength', 'health'
+    stat_affected = db.Column(db.String(32), nullable=False)  # e.g., 'defense', 'power', 'health'
     amount = db.Column(db.Integer, nullable=False)
     expires_at = db.Column(DateTime, nullable=False)
     source = db.Column(db.String(64), nullable=True)  # Ability or character name

@@ -393,7 +393,7 @@ class Reward(Base):
                 # Increase stats with each level (same logic as level_up())
                 character.max_health += 10 * levels_gained
                 character.health = character.max_health  # Heal to full on level up
-                character.strength += 2 * levels_gained
+                character.power += 2 * levels_gained
                 character.defense += 2 * levels_gained
                 logger.debug(f"Character {character.id} leveled up to {character.level} (gained {levels_gained} levels)")
                 

@@ -61,7 +61,7 @@ def apply_ability_usage(user, character, ability, target, context):
     # BUFF: temporarily increase a stat
     elif effect_type == 'buff':
         duration = ability.duration or 1
-        stat = 'strength'  # Default, could be parameterized
+        stat = 'power'  # Default, could be parameterized
         expires_at = datetime.utcnow() + timedelta(minutes=duration)
         effect = StatusEffect(
             character_id=target.id,
@@ -77,7 +77,7 @@ def apply_ability_usage(user, character, ability, target, context):
     # DEBUFF: temporarily decrease a stat
     elif effect_type == 'debuff':
         duration = ability.duration or 1
-        stat = 'strength'  # Default, could be parameterized
+        stat = 'power'  # Default, could be parameterized
         expires_at = datetime.utcnow() + timedelta(minutes=duration)
         effect = StatusEffect(
             character_id=target.id,
@@ -156,7 +156,7 @@ def apply_ability_usage(user, character, ability, target, context):
             'name': character.name,
             'health': character.health,
             'max_health': character.max_health,
-            'strength': character.strength,
+            'power': character.power,
             'defense': character.defense,
             'level': character.level,
             'experience': character.experience,
@@ -167,7 +167,7 @@ def apply_ability_usage(user, character, ability, target, context):
             'name': target.name,
             'health': target.health,
             'max_health': target.max_health,
-            'strength': target.strength,
+            'power': target.power,
             'defense': target.defense,
             'status_effects': target_status_effects
         },

@@ -18,7 +18,7 @@
                     <tr><th>Level</th><td id="char-level">{{ main_character.level }}</td></tr>
                     <tr><th>XP</th><td id="char-xp">{{ main_character.experience }}</td></tr>
                     <tr><th>Health</th><td id="char-health">{{ main_character.total_health }} <span class="text-muted small">(Base: {{ main_character.health }})</span></td></tr>
-                    <tr><th>Strength</th><td id="char-strength">{{ main_character.total_strength }} <span class="text-muted small">(Base: {{ main_character.strength }})</span></td></tr>
+                    <tr><th>Power</th><td id="char-power">{{ main_character.total_power }} <span class="text-muted small">(Base: {{ main_character.power }})</span></td></tr>
                     <tr><th>Defense</th><td id="char-defense">{{ main_character.total_defense }} <span class="text-muted small">(Base: {{ main_character.defense }})</span></td></tr>
                     <tr><th>Gold</th><td id="char-gold">{{ main_character.gold }}</td></tr>
                 </table>
@@ -40,7 +40,7 @@
                     <h6>Weapon</h6>
                     <ul class="equipment-slot-list list-group" id="weapon-slot" data-slot="weapon">
                       {% if main_character.equipped_weapon %}
-                        <li class="equipment-item list-group-item" data-id="{{ main_character.equipped_weapon.id }}" data-slot="weapon" title="{{ main_character.equipped_weapon.equipment.description }} | +H:{{ main_character.equipped_weapon.equipment.health_bonus }} +S:{{ main_character.equipped_weapon.equipment.strength_bonus }} +D:{{ main_character.equipped_weapon.equipment.defense_bonus }}">
+                        <li class="equipment-item list-group-item" data-id="{{ main_character.equipped_weapon.id }}" data-slot="weapon" title="{{ main_character.equipped_weapon.equipment.description }} | +H:{{ main_character.equipped_weapon.equipment.health_bonus }} +S:{{ main_character.equipped_weapon.equipment.power_bonus }} +D:{{ main_character.equipped_weapon.equipment.defense_bonus }}">
                           <img src="{{ main_character.equipped_weapon.equipment.image_url or '/static/images/default_item.png' }}" alt="{{ main_character.equipped_weapon.equipment.name }}" style="width:32px;height:32px;margin-right:8px;vertical-align:middle;">
                           {{ main_character.equipped_weapon.equipment.name }}
                         </li>
@@ -51,7 +51,7 @@
                     <h6>Armor</h6>
                     <ul class="equipment-slot-list list-group" id="armor-slot" data-slot="armor">
                       {% if main_character.equipped_armor %}
-                        <li class="equipment-item list-group-item" data-id="{{ main_character.equipped_armor.id }}" data-slot="armor" title="{{ main_character.equipped_armor.equipment.description }} | +H:{{ main_character.equipped_armor.equipment.health_bonus }} +S:{{ main_character.equipped_armor.equipment.strength_bonus }} +D:{{ main_character.equipped_armor.equipment.defense_bonus }}">
+                        <li class="equipment-item list-group-item" data-id="{{ main_character.equipped_armor.id }}" data-slot="armor" title="{{ main_character.equipped_armor.equipment.description }} | +H:{{ main_character.equipped_armor.equipment.health_bonus }} +S:{{ main_character.equipped_armor.equipment.power_bonus }} +D:{{ main_character.equipped_armor.equipment.defense_bonus }}">
                           <img src="{{ main_character.equipped_armor.equipment.image_url or '/static/images/default_item.png' }}" alt="{{ main_character.equipped_armor.equipment.name }}" style="width:32px;height:32px;margin-right:8px;vertical-align:middle;">
                           {{ main_character.equipped_armor.equipment.name }}
                         </li>
@@ -62,7 +62,7 @@
                     <h6>Accessory</h6>
                     <ul class="equipment-slot-list list-group" id="accessory-slot" data-slot="accessory">
                       {% if main_character.equipped_accessory %}
-                        <li class="equipment-item list-group-item" data-id="{{ main_character.equipped_accessory.id }}" data-slot="accessory" title="{{ main_character.equipped_accessory.equipment.description }} | +H:{{ main_character.equipped_accessory.equipment.health_bonus }} +S:{{ main_character.equipped_accessory.equipment.strength_bonus }} +D:{{ main_character.equipped_accessory.equipment.defense_bonus }}">
+                        <li class="equipment-item list-group-item" data-id="{{ main_character.equipped_accessory.id }}" data-slot="accessory" title="{{ main_character.equipped_accessory.equipment.description }} | +H:{{ main_character.equipped_accessory.equipment.health_bonus }} +S:{{ main_character.equipped_accessory.equipment.power_bonus }} +D:{{ main_character.equipped_accessory.equipment.defense_bonus }}">
                           <img src="{{ main_character.equipped_accessory.equipment.image_url or '/static/images/default_item.png' }}" alt="{{ main_character.equipped_accessory.equipment.name }}" style="width:32px;height:32px;margin-right:8px;vertical-align:middle;">
                           {{ main_character.equipped_accessory.equipment.name }}
                         </li>
@@ -73,7 +73,7 @@
                 <h4>Inventory (Unequipped Items)</h4>
                 <ul class="list-group mb-3" id="inventory-list">
                   {% for item in main_character.inventory_items if not item.is_equipped %}
-                    <li class="equipment-item list-group-item" data-id="{{ item.id }}" data-slot="{{ item.equipment.slot }}" title="{{ item.equipment.description }} | +H:{{ item.equipment.health_bonus }} +S:{{ item.equipment.strength_bonus }} +D:{{ item.equipment.defense_bonus }}">
+                    <li class="equipment-item list-group-item" data-id="{{ item.id }}" data-slot="{{ item.equipment.slot }}" title="{{ item.equipment.description }} | +H:{{ item.equipment.health_bonus }} +S:{{ item.equipment.power_bonus }} +D:{{ item.equipment.defense_bonus }}">
                       <img src="{{ item.equipment.image_url or '/static/images/default_item.png' }}" alt="{{ item.equipment.name }}" style="width:32px;height:32px;margin-right:8px;vertical-align:middle;">
                       {{ item.equipment.name }}
                     </li>

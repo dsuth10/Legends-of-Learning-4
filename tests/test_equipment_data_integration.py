@@ -18,7 +18,7 @@ def test_equipment_data_populated(db_session):
         assert eq.cost == item['cost']
         assert eq.level_requirement == item['level_requirement']
         assert eq.health_bonus == item['health_bonus']
-        assert eq.strength_bonus == item['strength_bonus']
+        assert eq.power_bonus == item['power_bonus']
         assert eq.defense_bonus == item['defense_bonus']
         assert eq.rarity == item['rarity']
         assert eq.image_url == item['image_url']

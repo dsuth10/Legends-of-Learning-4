@@ -26,7 +26,7 @@ def seed_db_command():
                         cost=item['cost'],
                         level_requirement=item['level_requirement'],
                         health_bonus=item['health_bonus'],
-                        strength_bonus=item['strength_bonus'],
+                        power_bonus=item['power_bonus'],
                         defense_bonus=item['defense_bonus'],
                         rarity=item['rarity'],
                         image_url=item['image_url'],

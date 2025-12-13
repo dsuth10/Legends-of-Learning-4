@@ -22,7 +22,7 @@ if not weapon:
         slot=EquipmentSlot.MAIN_HAND,
         level_requirement=1,
         health_bonus=0,
-        strength_bonus=5,
+        power_bonus=5,
         defense_bonus=0,
         cost=0
     )
@@ -37,7 +37,7 @@ if not armor:
         slot=EquipmentSlot.CHEST,
         level_requirement=1,
         health_bonus=20,
-        strength_bonus=0,
+        power_bonus=0,
         defense_bonus=5,
         cost=0
     )
@@ -52,7 +52,7 @@ if not accessory:
         slot=EquipmentSlot.RING,
         level_requirement=1,
         health_bonus=5,
-        strength_bonus=2,
+        power_bonus=2,
         defense_bonus=2,
         cost=0
     )

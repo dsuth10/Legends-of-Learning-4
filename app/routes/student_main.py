@@ -618,9 +618,9 @@ def character_create():
     from app.models.character import Character
     # Class base stats mapping
     CLASS_BASE_STATS = {
-        "Warrior":   {"health": 120, "max_health": 120, "strength": 15, "defense": 15, "gold": 0},
-        "Sorcerer":  {"health": 80,  "max_health": 80,  "strength": 20, "defense": 8,  "gold": 0},
-        "Druid":     {"health": 100, "max_health": 100, "strength": 12, "defense": 12, "gold": 0},
+        "Warrior":   {"health": 120, "max_health": 120, "power": 15, "defense": 15, "gold": 0},
+        "Sorcerer":  {"health": 80,  "max_health": 80,  "power": 20, "defense": 8,  "gold": 0},
+        "Druid":     {"health": 100, "max_health": 100, "power": 12, "defense": 12, "gold": 0},
     }
     # Get the correct student_id from the Student table
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
@@ -651,7 +651,7 @@ def character_create():
             student_id=student_profile.id,
             health=base_stats["health"],
             max_health=base_stats["max_health"],
-            strength=base_stats["strength"],
+            power=base_stats["power"],
             defense=base_stats["defense"],
             gold=base_stats["gold"]
         )

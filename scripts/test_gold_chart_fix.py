@@ -86,7 +86,7 @@ def test_gold_chart_fix():
             gold=0,  # Start with 0 gold
             health=100,
             max_health=100,
-            strength=10,
+            power=10,
             defense=10,
             is_active=True
         )

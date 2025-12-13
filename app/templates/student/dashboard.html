@@ -24,7 +24,7 @@
                         <strong>XP:</strong> {{ main_character.experience }}<br>
                         <strong>Gold:</strong> {{ main_character.gold if main_character.gold is defined else 'N/A' }}<br>
                         <strong>Health:</strong> {{ main_character.health }}/{{ main_character.max_health }}<br>
-                        <strong>Power:</strong> {{ main_character.power if main_character.power is defined else 'N/A' }}<br>
+                        <strong>Power:</strong> {{ main_character.total_power if main_character else 'N/A' }}<br>
                     {% else %}
                         <em>No character created yet.</em>
                     {% endif %}

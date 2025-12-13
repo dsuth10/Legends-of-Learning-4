@@ -32,7 +32,7 @@ class Equipment(Base):
     
     # Stats
     health_bonus = db.Column(db.Integer, default=0, nullable=False)
-    strength_bonus = db.Column(db.Integer, default=0, nullable=False)
+    power_bonus = db.Column(db.Integer, default=0, nullable=False)
     defense_bonus = db.Column(db.Integer, default=0, nullable=False)
     
     # Metadata

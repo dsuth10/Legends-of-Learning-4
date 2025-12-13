@@ -19,7 +19,7 @@ Equipment items are defined in a Python module (e.g., `equipment_data.py`) as a 
 | `level_requirement`| int      | No       | Minimum character level required to use the item                            |
 | `cost`             | int      | Yes      | Gold cost of the item                                                      |
 | `health_bonus`     | int      | No       | Bonus to health stat                                                       |
-| `strength_bonus`   | int      | No       | Bonus to strength stat                                                     |
+| `power_bonus`   | int      | No       | Bonus to power stat                                                     |
 | `defense_bonus`    | int      | No       | Bonus to defense stat                                                      |
 | `rarity`           | str      | No       | Rarity label (e.g., `common`, `rare`, `epic`)                              |
 | `image_url`        | str      | Yes      | Path to the item's image (relative to `static/` assets)                    |
@@ -55,7 +55,7 @@ Equipment items are defined in a Python module (e.g., `equipment_data.py`) as a 
     "level_requirement": 3,
     "cost": 250,
     "health_bonus": 0,
-    "strength_bonus": 0,
+    "power_bonus": 0,
     "defense_bonus": 2,
     "rarity": "rare",
     "image_url": "static/equipment/sorcerer_staff.png"

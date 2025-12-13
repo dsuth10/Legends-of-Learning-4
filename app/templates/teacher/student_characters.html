@@ -115,7 +115,7 @@
                     <tr><th>Level</th><td>{{ student.character.level }}</td></tr>
                     <tr><th>XP</th><td>{{ student.character.experience }}</td></tr>
                     <tr><th>Health</th><td>{{ student.character.health }}/{{ student.character.max_health }}</td></tr>
-                    <tr><th>Strength</th><td>{{ student.character.strength }}</td></tr>
+                    <tr><th>Power</th><td>{{ student.character.power }}</td></tr>
                     <tr><th>Defense</th><td>{{ student.character.defense }}</td></tr>
                   </table>
                 </div>
@@ -126,8 +126,8 @@
                       <li class="list-group-item d-flex align-items-center">
                         <i class="fas fa-shield-alt me-2" title="{{ item.equipment.type.value.title() }}"></i>
                         <span class="me-2">{{ item.equipment.name }}</span>
-                        <span class="badge bg-light text-dark ms-auto" title="Health: {{ item.equipment.health_bonus }}, Strength: {{ item.equipment.strength_bonus }}, Defense: {{ item.equipment.defense_bonus }}">
-                          +H:{{ item.equipment.health_bonus }} +S:{{ item.equipment.strength_bonus }} +D:{{ item.equipment.defense_bonus }}
+                        <span class="badge bg-light text-dark ms-auto" title="Health: {{ item.equipment.health_bonus }}, Power: {{ item.equipment.power_bonus }}, Defense: {{ item.equipment.defense_bonus }}">
+                          +H:{{ item.equipment.health_bonus }} +S:{{ item.equipment.power_bonus }} +D:{{ item.equipment.defense_bonus }}
                         </span>
                       </li>
                     {% else %}

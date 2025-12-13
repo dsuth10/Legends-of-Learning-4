@@ -53,7 +53,7 @@
 | experience | Integer | Current XP (default: 0) |
 | health | Integer | Current health (default: 100) |
 | max_health | Integer | Maximum health (default: 100) |
-| strength | Integer | Strength stat (default: 10) |
+| power | Integer | Power stat (default: 10) |
 | defense | Integer | Defense stat (default: 10) |
 | gold | Integer | Gold currency (default: 0) |
 | character_class | String(32) | Character class |
@@ -138,7 +138,7 @@
 | cost | Integer | Gold cost |
 | level_requirement | Integer | Minimum level to equip |
 | health_bonus | Integer | Health stat bonus |
-| strength_bonus | Integer | Strength stat bonus |
+| power_bonus | Integer | Power stat bonus |
 | defense_bonus | Integer | Defense stat bonus |
 | rarity | String(32) | Item rarity |
 | image_url | String(256) | Item image URL |
