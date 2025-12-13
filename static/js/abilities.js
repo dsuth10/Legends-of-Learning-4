@@ -200,3 +200,4 @@ function showStatusEffectIndicator(effectType, statAffected, amount, duration) {
 
 
 
+

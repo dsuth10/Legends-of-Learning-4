@@ -49,6 +49,10 @@ input, select, textarea {
   color: var(--alert-text) !important;
 }
 
+div.row {
+  background-color: var(--btn-primary-bg) !important;
+}
+
 /* Dark mode overrides */
 body.dark-mode {
   --bg-main: #181a1b;
@@ -272,4 +276,17 @@ a:hover, .nav-link:hover {
 .target-selection-card.invalid {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Custom button style overrides */
+a.btn.btn-info {
+  background-color: rgba(94, 76, 23, 1) !important;
+}
+
+a.btn.btn-warning {
+  color: rgba(67, 157, 199, 1) !important;
+}
+
+a.btn.btn-warning i.fas {
+  color: rgba(60, 145, 185, 1) !important;
 } 
