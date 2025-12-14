@@ -7,7 +7,7 @@ from app.models.equipment import Inventory, Equipment, EquipmentType, EquipmentS
 from app.models.student import Student
 from app.models.ability import Ability, CharacterAbility
 from app.models.shop import ShopPurchase, PurchaseType
-from app.models.quest import Quest, QuestLog, QuestStatus
+from app.models.quest import Quest, QuestLog, QuestStatus, RewardType
 from app.models.audit import AuditLog, EventType
 from app.models.achievement_badge import AchievementBadge
 from app.models.shop_config import ShopItemOverride
@@ -65,16 +65,26 @@ def profile():
 @student_required
 def quests():
     try:
+        logger.info(f"Quest page accessed by user {current_user.id}")
         student_profile = Student.query.filter_by(user_id=current_user.id).first()
-        main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
+        if not student_profile:
+            logger.warning(f"No student profile found for user {current_user.id}")
+            flash('No student profile found. Please contact your administrator.', 'warning')
+            return redirect(url_for('student.dashboard'))
+        logger.debug(f"Student profile found: {student_profile.id}")
+        main_char = student_profile.characters.filter_by(is_active=True).first()
         assigned_quests = []
         equipped_abilities = []
         ability_targets = []
         
         if main_char:
-            for log in main_char.quest_logs:
+            # quest_logs is lazy='dynamic', so we need to call .all()
+            for log in main_char.quest_logs.all():
                 logger.debug(f"Quest log: quest_id={log.quest_id}, status={log.status}, log_id={log.id}")
                 quest = log.quest
+                if not quest:
+                    logger.warning(f"Quest log {log.id} references non-existent quest {log.quest_id}, skipping")
+                    continue
                 
                 # Parse objectives from completion_criteria
                 objectives = []
@@ -113,13 +123,42 @@ def quests():
                 rewards_xp = 0
                 rewards_gold = 0
                 rewards_items = []
-                for reward in quest.rewards:
-                    if reward.type == 'experience' or reward.type == 'xp':
+                # quest.rewards is lazy='dynamic', so we need to call .all()
+                for reward in quest.rewards.all():
+                    # Handle enum comparison - reward.type is a RewardType enum
+                    reward_type_value = reward.type.value if hasattr(reward.type, 'value') else str(reward.type)
+                    
+                    if reward_type_value == 'experience' or reward_type_value == 'xp':
                         rewards_xp += reward.amount
-                    elif reward.type == 'gold':
+                    elif reward_type_value == 'gold':
                         rewards_gold += reward.amount
-                    elif reward.type == 'equipment' or reward.type == 'item':
-                        rewards_items.append(reward)
+                    elif reward_type_value == 'equipment' or reward_type_value == 'item':
+                        # Add item_name for template display
+                        reward_data = {
+                            'reward': reward,
+                            'item_name': 'Quest Item'  # Default fallback
+                        }
+                        # Try to get equipment name if it's an equipment reward
+                        if reward_type_value == 'equipment' and reward.item_id:
+                            equipment = reward.equipment
+                            if equipment:
+                                reward_data['item_name'] = equipment.name
+                            else:
+                                # Fallback: query directly if relationship not loaded
+                                equipment = Equipment.query.get(reward.item_id)
+                                if equipment:
+                                    reward_data['item_name'] = equipment.name
+                        # Try to get ability name if it's an ability reward
+                        elif reward_type_value == 'ability' and reward.ability_id:
+                            ability = reward.ability
+                            if ability:
+                                reward_data['item_name'] = ability.name
+                            else:
+                                # Fallback: query directly if relationship not loaded
+                                ability = Ability.query.get(reward.ability_id)
+                                if ability:
+                                    reward_data['item_name'] = ability.name
+                        rewards_items.append(reward_data)
                 
                 # Calculate time remaining if deadline exists
                 time_remaining = None
@@ -158,19 +197,34 @@ def quests():
                 })
             
             # Get equipped abilities for quest context
-            equipped_abilities = [
-                {
-                    'id': ca.ability.id,
-                    'name': ca.ability.name,
-                    'type': ca.ability.type,
-                    'description': ca.ability.description,
-                    'power': ca.ability.power,
-                    'cooldown': ca.ability.cooldown,
-                    'duration': ca.ability.duration,
-                    'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
-                }
-                for ca in main_char.abilities.filter_by(is_equipped=True).all()
-            ]
+            equipped_abilities = []
+            for ca in main_char.abilities.filter_by(is_equipped=True).all():
+                # Ensure ability relationship is loaded
+                if ca.ability:
+                    equipped_abilities.append({
+                        'id': ca.ability.id,
+                        'name': ca.ability.name,
+                        'type': ca.ability.type,
+                        'description': ca.ability.description,
+                        'power': ca.ability.power,
+                        'cooldown': ca.ability.cooldown,
+                        'duration': ca.ability.duration,
+                        'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
+                    })
+                else:
+                    # Fallback: query ability directly if relationship not loaded
+                    ability = Ability.query.get(ca.ability_id)
+                    if ability:
+                        equipped_abilities.append({
+                            'id': ability.id,
+                            'name': ability.name,
+                            'type': ability.type,
+                            'description': ability.description,
+                            'power': ability.power,
+                            'cooldown': ability.cooldown,
+                            'duration': ability.duration,
+                            'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
+                        })
             # Get ability targets (clanmates)
             if main_char.clan:
                 ability_targets = [
@@ -183,10 +237,14 @@ def quests():
             _ = student_profile.classroom.teacher
         
         now = int(time.time())
+        logger.info(f"Rendering quests_new.html template for user {current_user.id} with {len(assigned_quests)} quests")
+        logger.debug(f"Quest data: assigned_quests={len(assigned_quests)}, equipped_abilities={len(equipped_abilities)}, ability_targets={len(ability_targets)}")
         return render_template('student/quests_new.html', student=current_user, student_profile=student_profile, assigned_quests=assigned_quests, equipped_abilities=equipped_abilities, ability_targets=ability_targets, main_character=main_char, now=now)
     except Exception as e:
-        logger.error(f"Error loading quests page: {str(e)}", exc_info=True)
-        flash('An error occurred while loading quests. Please try again.', 'danger')
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Error loading quests page: {str(e)}\n{error_details}", exc_info=True)
+        flash(f'An error occurred while loading quests: {str(e)}. Please try again.', 'danger')
         return redirect(url_for('student.dashboard'))
 
 @student_bp.route('/quests/start/<int:quest_id>', methods=['POST'])

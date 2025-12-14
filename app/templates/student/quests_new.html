@@ -1,4 +1,5 @@
 {% extends "student/base_student.html" %}
+{# NEW QUEST PAGE TEMPLATE - quests_new.html - Updated UI with sidebar layout #}
 
 {% block title %}Quests{% endblock %}
 
@@ -54,9 +55,9 @@
                     
                     <div class="quest-card group relative bg-white dark:bg-gray-800 rounded-xl p-4 cursor-pointer hover:shadow-lg transition-all border-l-4 {{ status_class }} shadow-sm" 
                          data-quest-id="{{ quest.id }}"
-                         onclick="selectQuest({{ quest.id }})">
+                         onclick="selectQuest({{ quest.id }}, event)">
                         <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-gray-800 dark:text-gray-100 text-sm">{{ quest.name }}</h3>
+                            <h3 class="font-bold text-gray-800 dark:text-gray-100 text-sm">{{ quest.title }}</h3>
                             <span class="text-[10px] px-2 py-0.5 rounded-full {{ status_badge_class }} font-semibold">{{ status_text }}</span>
                         </div>
                         <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{{ quest.description or 'No description available.' }}</p>
@@ -96,22 +97,20 @@
                 {% set selected_time_remaining = selected_quest_data.time_remaining %}
                 {% set selected_quest_type = selected_quest_data.quest_type_display %}
                 
-                <div class="max-w-4xl mx-auto w-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row h-full md:h-auto min-h-[600px]">
+                <div id="quest-details-container" class="max-w-4xl mx-auto w-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row h-full md:h-auto min-h-[600px]">
                     {# Main quest content #}
                     <div class="p-8 flex-1 flex flex-col">
                         {# Quest header #}
                         <div class="flex justify-between items-start">
                             <div>
                                 <div class="flex items-center space-x-3 mb-2">
-                                    <span class="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 text-xs font-bold uppercase tracking-wider border border-indigo-200 dark:border-indigo-700">{{ selected_quest_type or 'Story Quest' }}</span>
-                                    {% if selected_time_remaining %}
-                                        <span class="text-gray-400 text-sm flex items-center">
-                                            <span class="material-icons text-sm mr-1">schedule</span> {{ selected_time_remaining }}
-                                        </span>
-                                    {% endif %}
+                                    <span id="quest-type-badge" class="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 text-xs font-bold uppercase tracking-wider border border-indigo-200 dark:border-indigo-700">{{ selected_quest_type or 'Story Quest' }}</span>
+                                    <span id="quest-time-remaining" class="text-gray-400 text-sm flex items-center" style="display: {% if selected_time_remaining %}flex{% else %}none{% endif %};">
+                                        <span class="material-icons text-sm mr-1">schedule</span> <span>{{ selected_time_remaining or '' }}</span>
+                                    </span>
                                 </div>
-                                <h1 class="font-display text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2">{{ selected_quest.name }}</h1>
-                                <p class="text-gray-600 dark:text-gray-300 text-lg italic border-l-4 border-primary pl-4 py-1 mb-6 bg-gray-50 dark:bg-gray-800/50">
+                                <h1 id="quest-title" class="font-display text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2">{{ selected_quest.title }}</h1>
+                                <p id="quest-description" class="text-gray-600 dark:text-gray-300 text-lg italic border-l-4 border-primary pl-4 py-1 mb-6 bg-gray-50 dark:bg-gray-800/50">
                                     "{{ selected_quest.description or 'No description available.' }}"
                                 </p>
                             </div>
@@ -130,7 +129,7 @@
                                     <span class="material-icons mr-2 text-primary">check_circle</span>
                                     Objectives
                                 </h3>
-                                <ul class="space-y-4">
+                                <ul id="quest-objectives" class="space-y-4">
                                     {% for obj in selected_objectives %}
                                         {% set obj_id = obj.get('id', loop.index) %}
                                         {% set obj_text = obj.get('text', 'Objective ' + obj_id|string) %}
@@ -164,7 +163,7 @@
                                     <span class="material-icons mr-2 text-xp-yellow">emoji_events</span>
                                     Rewards
                                 </h3>
-                                <div class="grid grid-cols-2 gap-3">
+                                <div id="quest-rewards" class="grid grid-cols-2 gap-3">
                                     {% if selected_rewards_xp > 0 %}
                                         <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center space-x-3">
                                             <div class="w-10 h-10 rounded-full bg-xp-yellow/20 flex items-center justify-center text-xp-yellow">
@@ -195,7 +194,7 @@
                                                 </div>
                                                 <div>
                                                     <p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">Item</p>
-                                                    <p class="font-bold text-gray-800 dark:text-white">{{ item_reward.item_name or 'Quest Item' }}</p>
+                                                    <p class="font-bold text-gray-800 dark:text-white">{{ item_reward.get('item_name', 'Quest Item') }}</p>
                                                 </div>
                                             </div>
                                         {% endfor %}
@@ -210,7 +209,7 @@
                         </div>
                         
                         {# Action Buttons #}
-                        <div class="mt-auto flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <div id="quest-action-buttons" class="mt-auto flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                             {% if selected_status.value == 'in_progress' %}
                                 <button class="flex-1 bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 flex items-center justify-center">
                                     <span class="material-icons mr-2">play_arrow</span>
@@ -252,7 +251,7 @@
                         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
                             <div class="flex items-start space-x-3">
                                 <span class="material-icons text-amber-500 mt-1">lightbulb</span>
-                                <p class="text-sm text-gray-600 dark:text-gray-300 italic">
+                                <p id="quest-lore" class="text-sm text-gray-600 dark:text-gray-300 italic">
                                     "{{ selected_quest.description or 'Complete this quest to unlock new adventures.' }}"
                                 </p>
                             </div>
@@ -282,16 +281,222 @@
 {% block scripts %}
 {{ super() }}
 <script>
-function selectQuest(questId) {
+// Store quest data for JavaScript access
+const questsData = {
+    {% for quest_data in assigned_quests %}
+        {% set quest = quest_data.quest %}
+        {% set status = quest_data.status %}
+        {{ quest.id }}: {
+            id: {{ quest.id }},
+            name: {{ quest.title|tojson }},
+            description: {{ (quest.description or 'No description available.')|tojson }},
+            status: {{ status.value|tojson }},
+            questType: {{ quest_data.quest_type_display|tojson }},
+            timeRemaining: {{ (quest_data.time_remaining or '')|tojson }},
+            objectives: {{ quest_data.objectives|tojson }},
+            rewardsXp: {{ quest_data.rewards_xp }},
+            rewardsGold: {{ quest_data.rewards_gold }},
+            rewardsItems: [
+                {% if quest_data.rewards_items %}
+                    {% for item_reward in quest_data.rewards_items %}
+                        {
+                            item_name: {{ (item_reward.item_name if item_reward.item_name else 'Quest Item')|tojson }},
+                            item_id: {{ (item_reward.reward.item_id if item_reward.reward and item_reward.reward.item_id else 0) }}
+                        }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                {% endif %}
+            ],
+            startUrl: {{ url_for('student.start_quest', quest_id=quest.id)|tojson }},
+            completeUrl: {{ url_for('student.complete_quest', quest_id=quest.id)|tojson }}
+        }{% if not loop.last %},{% endif %}
+    {% endfor %}
+};
+
+function selectQuest(questId, event) {
+    const quest = questsData[questId];
+    if (!quest) {
+        console.error('Quest not found:', questId);
+        return;
+    }
+    
     // Update active quest card
     document.querySelectorAll('.quest-card').forEach(card => {
         card.classList.remove('ring-2', 'ring-primary');
     });
-    event.currentTarget.classList.add('ring-2', 'ring-primary');
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('ring-2', 'ring-primary');
+    } else {
+        // Fallback: find card by data attribute
+        const card = document.querySelector(`[data-quest-id="${questId}"]`);
+        if (card) {
+            card.classList.add('ring-2', 'ring-primary');
+        }
+    }
     
-    // In a full implementation, you would fetch and update the quest details
-    // For now, we'll just highlight the selected card
-    // The page will show the first quest by default
+    // Update quest title
+    const titleEl = document.getElementById('quest-title');
+    if (titleEl) titleEl.textContent = quest.name;
+    
+    // Update quest description
+    const descEl = document.getElementById('quest-description');
+    if (descEl) descEl.innerHTML = `"${quest.description}"`;
+    
+    // Update quest type badge
+    const typeBadgeEl = document.getElementById('quest-type-badge');
+    if (typeBadgeEl) typeBadgeEl.textContent = quest.questType || 'Story Quest';
+    
+    // Update time remaining
+    const timeEl = document.getElementById('quest-time-remaining');
+    if (timeEl) {
+        if (quest.timeRemaining) {
+            timeEl.style.display = 'flex';
+            const timeSpan = timeEl.querySelector('span:last-child');
+            if (timeSpan) timeSpan.textContent = quest.timeRemaining;
+        } else {
+            timeEl.style.display = 'none';
+        }
+    }
+    
+    // Update lore text
+    const loreEl = document.getElementById('quest-lore');
+    if (loreEl) loreEl.innerHTML = `"${quest.description}"`;
+    
+    // Update objectives
+    const objectivesEl = document.getElementById('quest-objectives');
+    if (objectivesEl && quest.objectives) {
+        objectivesEl.innerHTML = quest.objectives.map((obj, index) => {
+            const objId = obj.id || (index + 1);
+            const objText = obj.text || `Objective ${objId}`;
+            const completed = obj.completed || false;
+            const isInProgress = quest.status === 'in_progress';
+            
+            if (completed) {
+                return `
+                    <li class="flex items-start">
+                        <div class="flex-shrink-0 w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs mr-3 mt-0.5 shadow-md">
+                            <span class="material-icons text-sm">check</span>
+                        </div>
+                        <span class="text-gray-600 dark:text-gray-300 line-through">${objText}</span>
+                    </li>
+                `;
+            } else if (isInProgress) {
+                return `
+                    <li class="flex items-start">
+                        <div class="flex-shrink-0 w-6 h-6 rounded-full bg-white dark:bg-gray-800 border-2 border-primary flex items-center justify-center text-primary text-xs mr-3 mt-0.5 shadow-md">
+                            <span class="font-bold">${objId}</span>
+                        </div>
+                        <span class="text-gray-800 dark:text-gray-200 font-medium">${objText}</span>
+                    </li>
+                `;
+            } else {
+                return `
+                    <li class="flex items-start">
+                        <div class="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 text-xs mr-3 mt-0.5">
+                            <span class="font-bold">${objId}</span>
+                        </div>
+                        <span class="text-gray-500 dark:text-gray-400">${objText}</span>
+                    </li>
+                `;
+            }
+        }).join('');
+    }
+    
+    // Update rewards
+    const rewardsEl = document.getElementById('quest-rewards');
+    if (rewardsEl) {
+        let rewardsHTML = '';
+        
+        if (quest.rewardsXp > 0) {
+            rewardsHTML += `
+                <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-xp-yellow/20 flex items-center justify-center text-xp-yellow">
+                        <span class="material-icons">star</span>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">Experience</p>
+                        <p class="font-bold text-gray-800 dark:text-white">+ ${quest.rewardsXp.toLocaleString()} XP</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (quest.rewardsGold > 0) {
+            rewardsHTML += `
+                <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-gp-gold/20 flex items-center justify-center text-gp-gold">
+                        <span class="material-icons">monetization_on</span>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">Gold</p>
+                        <p class="font-bold text-gray-800 dark:text-white">+ ${quest.rewardsGold.toLocaleString()} GP</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (quest.rewardsItems && quest.rewardsItems.length > 0) {
+            quest.rewardsItems.forEach(item => {
+                rewardsHTML += `
+                    <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center space-x-3 col-span-2">
+                        <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                            <span class="material-icons">school</span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">Item</p>
+                            <p class="font-bold text-gray-800 dark:text-white">${item.item_name || 'Quest Item'}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        if (quest.rewardsXp === 0 && quest.rewardsGold === 0 && (!quest.rewardsItems || quest.rewardsItems.length === 0)) {
+            rewardsHTML = '<div class="col-span-2 text-center py-4 text-gray-500 dark:text-gray-400 text-sm">No rewards specified</div>';
+        }
+        
+        rewardsEl.innerHTML = rewardsHTML;
+    }
+    
+    // Update action buttons
+    const actionButtonsEl = document.getElementById('quest-action-buttons');
+    if (actionButtonsEl) {
+        let buttonsHTML = '';
+        
+        if (quest.status === 'in_progress') {
+            buttonsHTML = `
+                <button class="flex-1 bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 flex items-center justify-center">
+                    <span class="material-icons mr-2">play_arrow</span>
+                    Continue Quest
+                </button>
+            `;
+        } else if (quest.status === 'not_started') {
+            buttonsHTML = `
+                <form method="POST" action="${quest.startUrl}" class="flex-1">
+                    <button type="submit" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 flex items-center justify-center">
+                        <span class="material-icons mr-2">play_arrow</span>
+                        Start Quest
+                    </button>
+                </form>
+            `;
+        } else if (quest.status === 'completed') {
+            buttonsHTML = `
+                <form method="POST" action="${quest.completeUrl}" class="flex-1">
+                    <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 flex items-center justify-center">
+                        <span class="material-icons mr-2">check_circle</span>
+                        Turn In
+                    </button>
+                </form>
+            `;
+        }
+        
+        buttonsHTML += `
+            <button class="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" disabled>
+                Abandon
+            </button>
+        `;
+        
+        actionButtonsEl.innerHTML = buttonsHTML;
+    }
 }
 </script>
 {% endblock %}
