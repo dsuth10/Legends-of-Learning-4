@@ -214,3 +214,4 @@ Legends-of-Learning-4/
 - **Service Layer:** Business logic separated from routes
 - **Model Relationships:** Foreign keys with cascade options
 
+

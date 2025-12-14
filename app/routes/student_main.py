@@ -70,17 +70,93 @@ def quests():
         assigned_quests = []
         equipped_abilities = []
         ability_targets = []
+        
         if main_char:
             for log in main_char.quest_logs:
                 logger.debug(f"Quest log: quest_id={log.quest_id}, status={log.status}, log_id={log.id}")
                 quest = log.quest
+                
+                # Parse objectives from completion_criteria
+                objectives = []
+                completion_criteria = quest.completion_criteria or {}
+                progress_data = log.progress_data or {}
+                
+                # Try to extract objectives from completion_criteria
+                if isinstance(completion_criteria, dict):
+                    # Check for objectives list
+                    if 'objectives' in completion_criteria:
+                        objectives = completion_criteria['objectives']
+                    # Or create objectives from criteria keys
+                    elif completion_criteria:
+                        obj_num = 1
+                        for key, value in completion_criteria.items():
+                            if key not in ['progress', 'min_score_percent']:
+                                objectives.append({
+                                    'id': obj_num,
+                                    'text': f"{key.replace('_', ' ').title()}: {value}",
+                                    'completed': progress_data.get(key, False) or progress_data.get('progress', 0) >= (value if isinstance(value, (int, float)) else 0)
+                                })
+                                obj_num += 1
+                
+                # If no objectives found, create default ones
+                if not objectives:
+                    objectives = [
+                        {'id': 1, 'text': 'Complete quest requirements', 'completed': log.status == QuestStatus.COMPLETED}
+                    ]
+                
+                # Calculate progress percentage
+                completed_count = sum(1 for obj in objectives if obj.get('completed', False))
+                total_count = len(objectives) if objectives else 1
+                progress_percent = int((completed_count / total_count * 100)) if total_count > 0 else 0
+                
+                # Get rewards breakdown
+                rewards_xp = 0
+                rewards_gold = 0
+                rewards_items = []
+                for reward in quest.rewards:
+                    if reward.type == 'experience' or reward.type == 'xp':
+                        rewards_xp += reward.amount
+                    elif reward.type == 'gold':
+                        rewards_gold += reward.amount
+                    elif reward.type == 'equipment' or reward.type == 'item':
+                        rewards_items.append(reward)
+                
+                # Calculate time remaining if deadline exists
+                time_remaining = None
+                if quest.end_date:
+                    from datetime import datetime
+                    now = datetime.utcnow()
+                    if quest.end_date > now:
+                        delta = quest.end_date - now
+                        days = delta.days
+                        hours = delta.seconds // 3600
+                        if days > 0:
+                            time_remaining = f"{days} day{'s' if days != 1 else ''} remaining"
+                        elif hours > 0:
+                            time_remaining = f"{hours} hour{'s' if hours != 1 else ''} remaining"
+                        else:
+                            time_remaining = "Less than 1 hour remaining"
+                
+                # Get quest type display name
+                quest_type_display = quest.type.value.title() if hasattr(quest.type, 'value') else str(quest.type).title()
+                if quest_type_display == 'Story':
+                    quest_type_display = 'Story Quest'
+                
                 assigned_quests.append({
                     'quest': quest,
                     'status': log.status,
                     'x': log.x_coordinate,
                     'y': log.y_coordinate,
-                    'log': log
+                    'log': log,
+                    'objectives': objectives,
+                    'progress_percent': progress_percent,
+                    'rewards_xp': rewards_xp,
+                    'rewards_gold': rewards_gold,
+                    'rewards_items': rewards_items,
+                    'time_remaining': time_remaining,
+                    'quest_type_display': quest_type_display
                 })
+            
             # Get equipped abilities for quest context
             equipped_abilities = [
                 {
@@ -101,8 +177,13 @@ def quests():
                     {'id': member.id, 'name': member.name, 'character_class': member.character_class}
                     for member in main_char.clan.members if member.id != main_char.id
                 ]
+        # Eager load classroom and teacher for template
+        if student_profile and student_profile.classroom:
+            # Access teacher relationship to ensure it's loaded
+            _ = student_profile.classroom.teacher
+        
         now = int(time.time())
-        return render_template('student/quests.html', student=current_user, assigned_quests=assigned_quests, equipped_abilities=equipped_abilities, ability_targets=ability_targets, main_character=main_char, now=now)
+        return render_template('student/quests_new.html', student=current_user, student_profile=student_profile, assigned_quests=assigned_quests, equipped_abilities=equipped_abilities, ability_targets=ability_targets, main_character=main_char, now=now)
     except Exception as e:
         logger.error(f"Error loading quests page: {str(e)}", exc_info=True)
         flash('An error occurred while loading quests. Please try again.', 'danger')
@@ -236,7 +317,24 @@ def character():
                 {'id': member.id, 'name': member.name, 'character_class': member.character_class}
                 for member in main_character.clan.members if member.id != main_character.id
             ]
-        return render_template('student/character.html', student=current_user, main_character=main_character, equipped_abilities=equipped_abilities, now=now, ability_targets=ability_targets, active_status_effects=active_status_effects)
+        
+        # Ensure student_profile is available for template
+        if not student_profile:
+            student_profile = Student.query.filter_by(user_id=current_user.id).first()
+        
+        # Eager load classroom and teacher for template
+        if student_profile and student_profile.classroom:
+            # Access teacher relationship to ensure it's loaded
+            _ = student_profile.classroom.teacher
+        
+        return render_template('student/character_new.html', 
+                             student=current_user, 
+                             main_character=main_character, 
+                             equipped_abilities=equipped_abilities, 
+                             now=now, 
+                             ability_targets=ability_targets, 
+                             active_status_effects=active_status_effects, 
+                             student_profile=student_profile)
     except Exception as e:
         logger.error(f"Error loading character page: {str(e)}", exc_info=True)
         flash('An error occurred while loading your character. Please try again.', 'danger')
@@ -284,6 +382,21 @@ def shop():
                     logger.warning(f"Could not query shop item overrides: {e}")
                     overrides_map = {}
 
+        # Calculate total spent gold
+        total_spent = 0
+        if main_character:
+            purchases = ShopPurchase.query.filter_by(character_id=main_character.id).all()
+            total_spent = sum(p.gold_spent for p in purchases)
+        
+        # Rarity mapping
+        RARITY_MAP = {
+            1: {'name': 'Common', 'class': 'rarity-common'},
+            2: {'name': 'Rare', 'class': 'rarity-rare'},
+            3: {'name': 'Epic', 'class': 'rarity-epic'},
+            4: {'name': 'Legendary', 'class': 'rarity-legendary'},
+            5: {'name': 'Legendary', 'class': 'rarity-legendary'}  # Handle 5 as legendary too
+        }
+        
         items_list = []
         logger.debug(f"Shop route: Processing {len(items)} equipment items")
         for eq in items:
@@ -301,6 +414,30 @@ def shop():
             unlocked = (char_level >= effective_level) and (not eq.class_restriction or eq.class_restriction.lower() == char_class.lower())
             can_buy = (not owned) and can_afford and unlocked
             
+            # Determine item type for filtering
+            item_type = 'weapon'
+            if eq.slot in ['CHEST', 'HEAD', 'LEGS', 'FEET']:
+                item_type = 'armor'
+            elif eq.slot in ['NECK', 'RING']:
+                item_type = 'accessory'
+            elif eq.type and eq.type.lower() in ['armor', 'accessory']:
+                item_type = eq.type.lower()
+            
+            # Build stats dict
+            stats = {}
+            if eq.health_bonus:
+                stats['health_bonus'] = eq.health_bonus
+            if eq.power_bonus:
+                stats['power_bonus'] = eq.power_bonus
+            if eq.defense_bonus:
+                stats['defense_bonus'] = eq.defense_bonus
+            # Also add direct fields for template fallback
+            health_bonus = eq.health_bonus
+            power_bonus = eq.power_bonus
+            defense_bonus = eq.defense_bonus
+            
+            rarity_info = RARITY_MAP.get(eq.rarity, RARITY_MAP[1])
+            
             items_list.append({
                 'id': eq.id,
                 'name': eq.name,
@@ -308,11 +445,20 @@ def shop():
                 'original_price': eq.cost if effective_cost != eq.cost else None,
                 'image': eq.image_url or '/static/images/default_item.png',
                 'category': 'equipment',
-                'tier': getattr(eq, 'rarity', 1),
+                'item_type': item_type,  # For filtering: weapon/armor/accessory
+                'slot': eq.slot,
+                'type': eq.type,  # Original equipment type
+                'tier': eq.rarity,
+                'rarity_name': rarity_info['name'],
+                'rarity_class': rarity_info['class'],
                 'description': eq.description or '',
                 'level_requirement': effective_level,
                 'original_level_requirement': getattr(eq, 'level_requirement', 1) if effective_level != getattr(eq, 'level_requirement', 1) else None,
                 'class_restriction': getattr(eq, 'class_restriction', None),
+                'stats': stats,
+                'health_bonus': health_bonus,  # Direct field for template fallback
+                'power_bonus': power_bonus,
+                'defense_bonus': defense_bonus,
                 'owned': owned,
                 'can_afford': can_afford,
                 'unlocked': unlocked,
@@ -334,6 +480,16 @@ def shop():
             unlocked = (char_level >= effective_level)
             can_buy = (not owned) and can_afford and unlocked
             
+            # Abilities are typically considered as "accessory" type for filtering
+            item_type = 'accessory'
+            
+            # Build stats dict for abilities
+            stats = {}
+            if hasattr(ab, 'power'):
+                stats['power_bonus'] = ab.power
+            
+            rarity_info = RARITY_MAP.get(getattr(ab, 'tier', 1), RARITY_MAP[1])
+            
             items_list.append({
                 'id': ab.id,
                 'name': ab.name,
@@ -341,18 +497,24 @@ def shop():
                 'original_price': ab.cost if effective_cost != ab.cost else None,
                 'image': '/static/images/default_item.png',
                 'category': 'ability',
+                'item_type': item_type,  # For filtering
+                'slot': None,  # Abilities don't have slots
+                'type': 'ability',
                 'tier': getattr(ab, 'tier', 1),
+                'rarity_name': rarity_info['name'],
+                'rarity_class': rarity_info['class'],
                 'description': ab.description or '',
                 'level_requirement': effective_level,
                 'original_level_requirement': getattr(ab, 'level_requirement', 1) if effective_level != getattr(ab, 'level_requirement', 1) else None,
                 'class_restriction': None,
+                'stats': stats,
                 'owned': owned,
                 'can_afford': can_afford,
                 'unlocked': unlocked,
                 'can_buy': can_buy,
             })
         
-        return render_template('student/shop.html', student=current_user, main_character=main_character, items=items_list)
+        return render_template('student/shop_new.html', student=current_user, student_profile=student_profile, main_character=main_character, items=items_list, total_spent=total_spent)
     except Exception as e:
         logger.error(f"Error loading shop page: {str(e)}", exc_info=True)
         flash('An error occurred while loading the shop. Please try again.', 'danger')
@@ -762,6 +924,56 @@ def unequip_accessory():
     db.session.commit()
     flash('Accessory unequipped and moved to inventory.', 'success')
     return redirect(url_for('student.character'))
+
+@student_bp.route('/equipment')
+@login_required
+@student_required
+def equipment():
+    """Equipment management page."""
+    try:
+        student_profile = Student.query.filter_by(user_id=current_user.id).first()
+        main_character = None
+        inventory_items = []
+        equipped_items = {}
+        stat_changes = {'attack': 0, 'defense': 0}
+        
+        if student_profile:
+            main_character = student_profile.characters.filter_by(is_active=True).first()
+            if main_character:
+                # Get all inventory items (unequipped)
+                inventory_items = main_character.inventory_items.filter_by(is_equipped=False).all()
+                
+                # Get equipped items grouped by slot
+                equipped = main_character.inventory_items.filter_by(is_equipped=True).all()
+                for inv_item in equipped:
+                    slot = inv_item.equipment.slot if inv_item.equipment else None
+                    if slot:
+                        equipped_items[slot] = inv_item
+                
+                # Calculate stat changes from equipped items
+                for inv_item in equipped:
+                    if inv_item.equipment:
+                        stat_changes['attack'] += inv_item.equipment.power_bonus or 0
+                        stat_changes['defense'] += inv_item.equipment.defense_bonus or 0
+        
+        # Eager load classroom and teacher for template
+        if student_profile and student_profile.classroom:
+            # Access teacher relationship to ensure it's loaded
+            _ = student_profile.classroom.teacher
+        
+        return render_template(
+            'student/equipment_new.html',
+            student=current_user,
+            student_profile=student_profile,
+            main_character=main_character,
+            inventory_items=inventory_items,
+            equipped_items=equipped_items,
+            stat_changes=stat_changes
+        )
+    except Exception as e:
+        logger.error(f"Error loading equipment page: {str(e)}", exc_info=True)
+        flash('An error occurred while loading the equipment page. Please try again.', 'danger')
+        return redirect(url_for('student.dashboard'))
 
 @student_bp.route('/equipment/equip', methods=['PATCH'])
 @login_required

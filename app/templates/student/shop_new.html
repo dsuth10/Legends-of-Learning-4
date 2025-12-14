@@ -1,0 +1,413 @@
+{% extends "student/base_student.html" %}
+
+{% block title %}Shop{% endblock %}
+
+{% block content %}
+<div class="h-screen flex flex-col overflow-hidden">
+    {# Include shared header and clan bar #}
+    {% include "student/_student_header.html" %}
+    
+    {# Main content area #}
+    <div class="flex-1 flex overflow-hidden relative">
+        {# Background image #}
+        <div class="absolute inset-0 z-0">
+            <img alt="Fantasy Landscape Background" class="w-full h-full object-cover" 
+                 src="{{ url_for('static', filename='images/quest_maps/quest_map.png') or 'https://via.placeholder.com/1920x1080?text=Background' }}">
+            <div class="absolute inset-0 bg-white/30 dark:bg-black/50"></div>
+        </div>
+        
+        {# Sidebar with character stats #}
+        <aside class="w-80 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-y-auto custom-scrollbar shadow-2xl">
+            {% if main_character %}
+                {# Character header #}
+                <div class="p-6 text-center">
+                    <h1 class="font-display text-3xl font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                        {% set name_parts = main_character.name.split(' ') %}
+                        {{ name_parts[0] }}{% if name_parts|length > 1 %}<br/>{{ name_parts[1] }}{% endif %}
+                    </h1>
+                    <p class="mt-1 text-gray-500 dark:text-gray-400 font-light text-base">Level {{ main_character.level }} {{ main_character.character_class }}</p>
+                </div>
+                
+                {# Stats bars #}
+                <div class="px-4 space-y-2 mb-6 text-sm">
+                    {# HP #}
+                    <div class="flex items-center">
+                        <span class="w-6 font-bold text-gray-600 dark:text-gray-300">HP</span>
+                        {% set max_hp = main_character.total_health %}
+                        {% set hp_percent = (main_character.health / max_hp * 100) if max_hp > 0 else 0 %}
+                        <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
+                            <div class="absolute left-0 top-0 bottom-0 bg-hp-red" style="width: {{ hp_percent }}%"></div>
+                            <span class="ml-auto mr-2 text-[10px] text-gray-500 dark:text-gray-400 z-10">{{ main_character.health }}/{{ max_hp }}</span>
+                        </div>
+                    </div>
+                    
+                    {# PP #}
+                    <div class="flex items-center">
+                        <span class="w-6 font-bold text-gray-600 dark:text-gray-300 uppercase">pp</span>
+                        {% set max_pp = main_character.total_power %}
+                        {% set pp_percent = (main_character.power / max_pp * 100) if max_pp > 0 else 0 %}
+                        <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
+                            <div class="absolute left-0 top-0 bottom-0 bg-ap-blue" style="width: {{ pp_percent }}%"></div>
+                            <span class="ml-auto mr-2 text-[10px] text-gray-500 dark:text-gray-400 z-10">{{ main_character.power }}/{{ max_pp }}</span>
+                        </div>
+                    </div>
+                    
+                    {# GP #}
+                    <div class="flex items-center">
+                        <span class="w-6 font-bold text-gray-600 dark:text-gray-300">GP</span>
+                        <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-2">
+                            <div class="absolute left-0 top-0 bottom-0 bg-gp-gold" style="width: 85%"></div>
+                            <span class="relative z-10 text-[10px] font-bold text-white drop-shadow-md">{{ "{:,}".format(main_character.gold) }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {# Navigation buttons #}
+                <div class="px-4 grid grid-cols-2 gap-2 mb-6">
+                    {% set current_route = request.endpoint %}
+                    <a href="{{ url_for('student.quests') }}" 
+                       class="w-full py-1.5 rounded-lg {{ 'bg-gray-200 dark:bg-gray-700' if current_route != 'student.quests' else 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' }} text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-xs">
+                        Quests
+                    </a>
+                    <a href="{{ url_for('student.shop') }}" 
+                       class="w-full py-1.5 rounded-lg {{ 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' if current_route == 'student.shop' else 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600' }} transition-colors font-bold text-xs">
+                        Shop
+                    </a>
+                    <a href="{{ url_for('student.progress') }}" 
+                       class="w-full py-1.5 rounded-lg {{ 'bg-gray-200 dark:bg-gray-700' if current_route != 'student.progress' else 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' }} text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-xs">
+                        Progress
+                    </a>
+                    <a href="{{ url_for('student.character') }}" 
+                       class="w-full py-1.5 rounded-lg {{ 'bg-gray-200 dark:bg-gray-700' if current_route != 'student.character' else 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' }} text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-xs">
+                        Equipment
+                    </a>
+                </div>
+                
+                {# Special Offer Banner #}
+                <div class="px-4 flex-1 flex flex-col">
+                    <div class="p-4 bg-yellow-50 dark:bg-amber-900/20 border border-yellow-200 dark:border-amber-700/50 rounded-lg text-sm mb-4">
+                        <h4 class="font-bold text-yellow-800 dark:text-yellow-200 mb-2 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-base">local_offer</span> Special Offer
+                        </h4>
+                        <p class="text-gray-600 dark:text-gray-300 text-xs leading-relaxed">
+                            The wandering merchant has arrived! All potions are 15% off for the next 24 hours.
+                        </p>
+                    </div>
+                    
+                    {# Wallet Info #}
+                    <div class="mt-auto p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-xs">
+                        <p class="font-bold text-gray-500 uppercase tracking-wide mb-2">Wallet</p>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-gray-600 dark:text-gray-400">Current Gold</span>
+                            <span class="text-gp-gold font-mono font-bold" id="current-gold">{{ "{:,}".format(main_character.gold) }} GP</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 dark:text-gray-400">Total Spent</span>
+                            <span class="text-gray-800 dark:text-white font-mono font-bold">{{ "{:,}".format(total_spent) }} GP</span>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                {# No character message #}
+                <div class="p-6 text-center">
+                    <p class="text-gray-500 dark:text-gray-400">No character created yet.</p>
+                    <a href="{{ url_for('student.character_create') }}" class="mt-4 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full">Create Character</a>
+                </div>
+            {% endif %}
+        </aside>
+        
+        {# Main content area #}
+        <main class="flex-1 relative z-10 flex flex-col h-full overflow-hidden bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
+            {# Header with category filters #}
+            <div class="h-16 px-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-30">
+                <h2 class="text-2xl font-display font-bold text-gray-800 dark:text-white drop-shadow-sm flex items-center gap-2">
+                    <span class="material-symbols-outlined text-3xl text-primary">storefront</span> Marketplace
+                </h2>
+                <div class="flex space-x-1 bg-gray-200 dark:bg-gray-800 p-1 rounded-lg">
+                    <button class="category-filter px-4 py-1.5 rounded-md text-sm font-bold bg-white dark:bg-gray-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10 flex items-center gap-2" data-category="weapon">
+                        <span class="material-symbols-outlined text-base">swords</span> Weapon
+                    </button>
+                    <button class="category-filter px-4 py-1.5 rounded-md text-sm font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-700/50 transition-colors flex items-center gap-2" data-category="armor">
+                        <span class="material-symbols-outlined text-base">shield</span> Armor
+                    </button>
+                    <button class="category-filter px-4 py-1.5 rounded-md text-sm font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-700/50 transition-colors flex items-center gap-2" data-category="accessory">
+                        <span class="material-symbols-outlined text-base">diamond</span> Accessory
+                    </button>
+                    <button class="category-filter px-4 py-1.5 rounded-md text-sm font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-700/50 transition-colors flex items-center gap-2" data-category="all">
+                        <span class="material-symbols-outlined text-base">apps</span> All
+                    </button>
+                </div>
+            </div>
+            
+            {# Item grid #}
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+                <div class="max-w-7xl mx-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="shop-items-grid">
+                        {% for item in items %}
+                            {% set rarity_map = {1: ('common', '#9ca3af'), 2: ('rare', '#3b82f6'), 3: ('epic', '#a855f7'), 4: ('legendary', '#eab308'), 5: ('legendary', '#eab308')} %}
+                            {% set rarity_info = rarity_map.get(item.tier, ('common', '#9ca3af')) %}
+                            {% set rarity_name = rarity_info[0] %}
+                            {% set rarity_color = rarity_info[1] %}
+                            {% set item_category = item.type|lower if item.type else (item.slot|lower if item.slot else 'all') %}
+                            {% set is_weapon = item.slot == 'main_hand' or item.type == 'weapon' %}
+                            {% set is_armor = item.slot in ['chest', 'head', 'legs', 'feet'] or item.type == 'armor' %}
+                            {% set is_accessory = item.slot in ['neck', 'ring'] or item.type == 'accessory' %}
+                            {% set display_category = 'weapon' if is_weapon else ('armor' if is_armor else ('accessory' if is_accessory else 'all')) %}
+                            
+                            <div class="shop-item-card bg-white dark:bg-gray-800 rounded-xl border-2 shadow-lg overflow-hidden item-card transition-all duration-300 flex flex-col group relative" 
+                                 style="border-color: {{ rarity_color }};"
+                                 data-category="{{ display_category }}"
+                                 data-item-id="{{ item.id }}"
+                                 data-item-type="{{ item.category }}"
+                                 {% if item.owned %}data-owned="true"{% endif %}>
+                                
+                                {# Rarity badge #}
+                                <div class="absolute top-2 right-2 z-20 {% if rarity_name == 'legendary' %}text-gray-900 flex items-center gap-1{% else %}text-white{% endif %} text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm" style="background-color: {{ rarity_color }};">
+                                    {% if rarity_name == 'legendary' %}
+                                        <span class="material-icons text-[10px]">star</span>
+                                    {% endif %}
+                                    {{ rarity_name|title }}
+                                </div>
+                                
+                                {# Item image #}
+                                <div class="h-40 bg-gray-100 dark:bg-gray-900/50 flex items-center justify-center relative overflow-hidden p-4 group-hover:bg-gray-200 dark:group-hover:bg-gray-900 transition-colors">
+                                    <div class="absolute inset-0 bg-gradient-to-t from-gray-900/20 to-transparent"></div>
+                                    {% if item.image %}
+                                        <img alt="{{ item.name }}" class="w-24 h-24 object-contain drop-shadow-xl group-hover:scale-110 transition-transform duration-300" src="{{ item.image }}">
+                                    {% else %}
+                                        <span class="material-symbols-outlined text-6xl text-gray-400 group-hover:scale-110 transition-transform duration-300">category</span>
+                                    {% endif %}
+                                </div>
+                                
+                                {# Item details #}
+                                <div class="p-4 flex-1 flex flex-col">
+                                    <div class="mb-2">
+                                        <h3 class="font-display font-bold text-lg leading-tight {% if rarity_name == 'legendary' %}text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-amber-300{% else %}text-gray-900 dark:text-white{% endif %}">{{ item.name }}</h3>
+                                        <p class="text-xs font-bold uppercase mt-0.5" style="color: {{ rarity_color }};">
+                                            {{ item.type|title if item.type else 'Item' }} - Lvl {{ item.level_requirement }}
+                                        </p>
+                                    </div>
+                                    
+                                    {# Stats display #}
+                                    <div class="space-y-1.5 mb-4 text-xs">
+                                        {% if item.stats %}
+                                            {% if item.stats.get('damage') %}
+                                                <div class="flex justify-between text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 px-2 py-1 rounded">
+                                                    <span>Damage</span>
+                                                    <span class="font-bold text-gray-800 dark:text-gray-200">{{ item.stats.damage }}</span>
+                                                </div>
+                                            {% endif %}
+                                            {% if item.stats.get('health_bonus') %}
+                                                <div class="flex justify-between text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 px-2 py-1 rounded">
+                                                    <span>Health</span>
+                                                    <span class="font-bold text-gray-800 dark:text-gray-200">+{{ item.stats.health_bonus }}</span>
+                                                </div>
+                                            {% endif %}
+                                            {% if item.stats.get('power_bonus') %}
+                                                <div class="flex justify-between text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 px-2 py-1 rounded">
+                                                    <span>Power</span>
+                                                    <span class="font-bold text-gray-800 dark:text-gray-200">+{{ item.stats.power_bonus }}</span>
+                                                </div>
+                                            {% endif %}
+                                            {% if item.stats.get('defense_bonus') %}
+                                                <div class="flex justify-between text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 px-2 py-1 rounded">
+                                                    <span>Defense</span>
+                                                    <span class="font-bold text-gray-800 dark:text-gray-200">+{{ item.stats.defense_bonus }}</span>
+                                                </div>
+                                            {% endif %}
+                                        {% else %}
+                                            {# Fallback to basic stats #}
+                                            {% if item.health_bonus %}
+                                                <div class="flex justify-between text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 px-2 py-1 rounded">
+                                                    <span>Health</span>
+                                                    <span class="font-bold text-gray-800 dark:text-gray-200">+{{ item.health_bonus }}</span>
+                                                </div>
+                                            {% endif %}
+                                            {% if item.power_bonus %}
+                                                <div class="flex justify-between text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 px-2 py-1 rounded">
+                                                    <span>Power</span>
+                                                    <span class="font-bold text-gray-800 dark:text-gray-200">+{{ item.power_bonus }}</span>
+                                                </div>
+                                            {% endif %}
+                                            {% if item.defense_bonus %}
+                                                <div class="flex justify-between text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 px-2 py-1 rounded">
+                                                    <span>Defense</span>
+                                                    <span class="font-bold text-gray-800 dark:text-gray-200">+{{ item.defense_bonus }}</span>
+                                                </div>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {# Price and purchase button #}
+                                    <div class="mt-auto flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+                                        <div class="flex flex-col">
+                                            <span class="text-[10px] text-gray-500 uppercase font-bold">Price</span>
+                                            <div class="flex items-center text-gp-gold font-bold">
+                                                <span class="material-symbols-outlined text-sm mr-1">monetization_on</span>
+                                                {{ "{:,}".format(item.price) }}
+                                            </div>
+                                        </div>
+                                        {% if item.owned %}
+                                            <button class="bg-gray-400 cursor-not-allowed text-white px-4 py-2 rounded-lg text-xs font-bold shadow-none flex items-center gap-1 opacity-70" disabled>
+                                                Owned
+                                            </button>
+                                        {% elif not item.can_buy %}
+                                            <button class="bg-gray-400 cursor-not-allowed text-white px-4 py-2 rounded-lg text-xs font-bold shadow-none flex items-center gap-1 opacity-70" disabled>
+                                                {% if not item.can_afford %}Not Enough GP
+                                                {% elif not item.unlocked %}Level {{ item.level_requirement }} Required
+                                                {% else %}Unavailable{% endif %}
+                                            </button>
+                                        {% else %}
+                                            <button class="purchase-btn bg-primary hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md shadow-indigo-500/20 transition-all active:scale-95 flex items-center gap-1" 
+                                                    data-item-id="{{ item.id }}" 
+                                                    data-item-type="{{ item.category }}">
+                                                Purchase
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {# Empty state #}
+                    <div id="no-items-message" class="text-center py-12 text-gray-500 dark:text-gray-400 hidden">
+                        <p class="text-lg">No items available for the selected category.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Category filtering
+    const categoryFilters = document.querySelectorAll('.category-filter');
+    const shopItems = document.querySelectorAll('.shop-item-card');
+    const noItemsMessage = document.getElementById('no-items-message');
+    
+    let activeCategory = 'all';
+    
+    function filterItems(category) {
+        activeCategory = category;
+        let visibleCount = 0;
+        
+        shopItems.forEach(item => {
+            const itemCategory = item.getAttribute('data-category');
+            if (category === 'all' || itemCategory === category) {
+                item.style.display = 'flex';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        // Update filter button states
+        categoryFilters.forEach(btn => {
+            const btnCategory = btn.getAttribute('data-category');
+            if (btnCategory === category) {
+                btn.classList.add('bg-white', 'dark:bg-gray-700', 'text-primary', 'shadow-sm', 'ring-1', 'ring-black/5', 'dark:ring-white/10');
+                btn.classList.remove('text-gray-600', 'dark:text-gray-400');
+            } else {
+                btn.classList.remove('bg-white', 'dark:bg-gray-700', 'text-primary', 'shadow-sm', 'ring-1', 'ring-black/5', 'dark:ring-white/10');
+                btn.classList.add('text-gray-600', 'dark:text-gray-400');
+            }
+        });
+        
+        // Show/hide empty message
+        if (visibleCount === 0) {
+            noItemsMessage.classList.remove('hidden');
+        } else {
+            noItemsMessage.classList.add('hidden');
+        }
+    }
+    
+    categoryFilters.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const category = this.getAttribute('data-category');
+            filterItems(category);
+        });
+    });
+    
+    // Purchase functionality
+    const purchaseButtons = document.querySelectorAll('.purchase-btn');
+    purchaseButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (this.disabled || this.dataset.processing === 'true') return;
+            
+            const itemId = this.getAttribute('data-item-id');
+            const itemType = this.getAttribute('data-item-type');
+            const card = this.closest('.shop-item-card');
+            
+            if (!itemId || !itemType) {
+                console.error('Missing item ID or type');
+                return;
+            }
+            
+            // Prevent multiple clicks
+            this.dataset.processing = 'true';
+            this.disabled = true;
+            const originalText = this.textContent;
+            this.textContent = 'Purchasing...';
+            
+            // Make purchase request
+            fetch('/student/shop/buy', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ item_id: parseInt(itemId), item_type: itemType }),
+                credentials: 'same-origin'
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(data => {
+                        throw new Error(data.message || `HTTP ${res.status}: ${res.statusText}`);
+                    }).catch(parseError => {
+                        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                    });
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Update gold display
+                    const goldElement = document.getElementById('current-gold');
+                    if (goldElement && data.character && typeof data.character.gold === 'number') {
+                        goldElement.textContent = data.character.gold.toLocaleString() + ' GP';
+                    }
+                    
+                    // Update item card
+                    card.setAttribute('data-owned', 'true');
+                    this.textContent = 'Owned';
+                    this.classList.remove('bg-primary', 'hover:bg-indigo-600');
+                    this.classList.add('bg-gray-400', 'cursor-not-allowed', 'opacity-70');
+                    this.disabled = true;
+                    
+                    // Show success message (you can customize this)
+                    console.log('Purchase successful!');
+                } else {
+                    throw new Error(data.message || 'Purchase failed');
+                }
+            })
+            .catch(err => {
+                console.error('Shop purchase error:', err);
+                
+                // Reset button state
+                this.disabled = false;
+                this.textContent = originalText;
+                this.dataset.processing = 'false';
+                
+                // Show error (you can add a toast notification here)
+                alert('Error: ' + (err.message || 'An error occurred while processing your purchase.'));
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -238,3 +238,4 @@ Response (JSON or HTML template)
 - **Message Queue:** For async tasks (quest processing, notifications)
 - **Microservices:** Potential split of teacher/student services
 
+

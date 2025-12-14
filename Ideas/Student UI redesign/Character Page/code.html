@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Student Character Page - Legends of Learning</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&amp;family=Lato:wght@300;400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#4f46e5", // Indigo for general primary actions
+                        "background-light": "#f3f4f6",
+                        "background-dark": "#111827",
+                        "hp-red": "#ef4444",
+                        "ap-blue": "#3b82f6",
+                        "xp-yellow": "#f59e0b",
+                        "gp-gold": "#d97706",
+                    },
+                    fontFamily: {
+                        display: ["Cinzel", "serif"],
+                        body: ["Lato", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                    },
+                },
+            },
+        };
+    </script>
+<style>.custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-body text-gray-800 dark:text-gray-100 h-screen flex flex-col overflow-hidden">
+<div class="h-8 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 text-xs text-gray-500 dark:text-gray-400">
+<div>A - Test Class</div>
+<div class="flex items-center space-x-3">
+<span class="material-icons text-base cursor-pointer hover:text-gray-800 dark:hover:text-white">article</span>
+<img alt="Teacher Avatar" class="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-600" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiQ30dJZBRJ_q639LU1gucAZQqnBxinAejjdvboO3sKEqjg7BvBBGaOgf6kPTiIOnCTzt7dOZQZtZ9ml2o_MACwkULYyZk0oHDKXSn33lzxna-LGLMn8NBT4sqHbUCEFQsbxtZ44y2ibquNAk-Jz8XxLHrG0WisZtKt7Zrata1cXNIOJvWwKaWfGvjJYpqbRV7RDSncryoLcOQZO35_yGw9Ah_wUfrzIqhdxvAHRYfEYxsBkZlI0pclf2V0Z1JOJ8h1M6wWbp4OwNJ"/>
+</div>
+</div>
+<div class="h-16 bg-gray-100 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700 flex items-stretch shadow-md z-20 relative">
+<div class="w-64 flex-shrink-0 flex items-center px-4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+<div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white mr-3 shadow-lg bg-gradient-to-br from-purple-500 to-indigo-700">
+<span class="material-icons">pets</span>
+</div>
+<span class="font-display font-bold text-lg text-gray-800 dark:text-white italic">Pussycat Dolls</span>
+</div>
+<div class="flex-1 flex overflow-x-auto no-scrollbar">
+<div class="flex-1 min-w-[180px] max-w-[250px] border-r border-gray-300 dark:border-gray-700 p-2 flex flex-col justify-center items-center bg-gray-200 dark:bg-gray-800 opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
+<span class="text-sm font-semibold mb-1 truncate">Anyta Costales</span>
+<div class="w-full flex space-x-1">
+<div class="flex-1 h-5 bg-gray-300 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-1">
+<div class="absolute left-0 top-0 bottom-0 bg-hp-red w-[40%]"></div>
+<span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">40</span>
+</div>
+<div class="flex-1 h-5 bg-gray-300 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-1">
+<div class="absolute left-0 top-0 bottom-0 bg-ap-blue w-[30%]"></div>
+<span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">30</span>
+</div>
+</div>
+</div>
+<div class="flex-1 min-w-[180px] max-w-[250px] border-r border-gray-300 dark:border-gray-700 p-2 flex flex-col justify-center items-center bg-gray-200 dark:bg-gray-800 opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
+<span class="text-sm font-semibold mb-1 truncate">Harriet Austin</span>
+<div class="w-full flex space-x-1">
+<div class="flex-1 h-5 bg-gray-300 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-1">
+<div class="absolute left-0 top-0 bottom-0 bg-hp-red w-[1%]"></div>
+<span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">1</span>
+</div>
+<div class="flex-1 h-5 bg-gray-300 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-1">
+<div class="absolute left-0 top-0 bottom-0 bg-ap-blue w-[50%]"></div>
+<span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">50</span>
+</div>
+</div>
+</div>
+<div class="flex-1 min-w-[180px] max-w-[250px] border-r border-gray-300 dark:border-gray-700 p-2 flex flex-col justify-center items-center bg-white dark:bg-gray-700 shadow-inner cursor-default relative">
+<div class="absolute top-0 left-0 w-full h-1 bg-primary"></div>
+<span class="text-sm font-bold mb-1 truncate text-gray-900 dark:text-white">Kareem Hagazi</span>
+<div class="w-full flex space-x-1">
+<div class="flex-1 h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative overflow-hidden flex items-center px-1">
+<div class="absolute left-0 top-0 bottom-0 bg-hp-red w-[16%]"></div>
+<span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">13</span>
+</div>
+<div class="flex-1 h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative overflow-hidden flex items-center px-1">
+<div class="absolute left-0 top-0 bottom-0 bg-ap-blue w-[24%]"></div>
+<span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">24</span>
+</div>
+</div>
+</div>
+<div class="flex-1 min-w-[180px] max-w-[250px] border-r border-gray-300 dark:border-gray-700 p-2 flex flex-col justify-center items-center bg-gray-200 dark:bg-gray-800 opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
+<span class="text-sm font-semibold mb-1 truncate">Ann Coppolo</span>
+<div class="w-full flex space-x-1">
+<div class="flex-1 h-5 bg-gray-300 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-1">
+<div class="absolute left-0 top-0 bottom-0 bg-hp-red w-[10%]"></div>
+<span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">10</span>
+</div>
+<div class="flex-1 h-5 bg-gray-300 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-1">
+<div class="absolute left-0 top-0 bottom-0 bg-ap-blue w-[35%]"></div>
+<span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">35</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex-1 flex overflow-hidden relative">
+<div class="absolute inset-0 z-0">
+<img alt="Fantasy Landscape Background" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwjFyl9S-aY_cobIePIepLviF6H6_TzjHHW1_VMa4kcedfcrlCJAPyiep6DVlG8Bv0ITmrb_BVqgLCLcf8Vvv8W4wAQMXh63Immj9QDIMF9kSObxBD5lRTDyDzX0FS54IJJlRIqSpvXhPdbvuxNggTc6M17ABu_U9eD61KmKGS2XvwBZ0t-MORUai5Sgy5_Fz7JWKsT3AaOp3wPznIHCFgkC9Ltr1XGij7ylw5-_WDZrBjvIuC-Wu-rfSCXb_z6MWZQrUO2S-RSQ8w"/>
+<div class="absolute inset-0 bg-white/30 dark:bg-black/40"></div>
+</div>
+<aside class="w-80 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-y-auto custom-scrollbar shadow-2xl">
+<div class="p-6 text-center">
+<h1 class="font-display text-4xl font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                    Kareem<br/>Hagazi
+                </h1>
+<p class="mt-2 text-gray-500 dark:text-gray-400 font-light text-lg">Level 75 Warrior</p>
+</div>
+<div class="px-4 space-y-3 mb-6">
+<div class="flex items-center">
+<span class="w-8 text-lg font-bold text-gray-600 dark:text-gray-300">HP</span>
+<div class="flex-1 h-8 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
+<div class="absolute left-0 top-0 bottom-0 bg-hp-red w-[16%]"></div>
+<div class="absolute left-1 z-10 w-8 h-6 bg-hp-red rounded-full flex items-center justify-center text-white text-xs font-bold shadow">13</div>
+<span class="ml-auto mr-2 text-xs text-gray-500 dark:text-gray-400 z-10">80</span>
+</div>
+</div>
+<div class="flex items-center">
+<span class="w-8 text-lg font-bold text-gray-600 dark:text-gray-300 uppercase">pp</span>
+<div class="flex-1 h-8 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
+<div class="absolute left-0 top-0 bottom-0 bg-ap-blue w-[24%]"></div>
+<div class="absolute left-1 z-10 w-8 h-6 bg-ap-blue rounded-full flex items-center justify-center text-white text-xs font-bold shadow">24</div>
+<span class="ml-auto mr-2 text-xs text-gray-500 dark:text-gray-400 z-10">30</span>
+</div>
+</div>
+<div class="flex items-center">
+<span class="w-8 text-lg font-bold text-gray-600 dark:text-gray-300">XP</span>
+<div class="flex-1 h-8 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center justify-between px-3">
+<div class="absolute left-0 top-0 bottom-0 bg-xp-yellow w-[98%]"></div>
+<span class="relative z-10 text-xs font-bold text-white drop-shadow-md">29 970</span>
+<span class="relative z-10 text-xs text-white/80 drop-shadow-md">30 000</span>
+</div>
+</div>
+<div class="flex items-center">
+<span class="w-8 text-lg font-bold text-gray-600 dark:text-gray-300">GP</span>
+<div class="flex-1 h-8 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-3">
+<div class="absolute left-0 top-0 bottom-0 bg-gp-gold w-[85%]"></div>
+<span class="relative z-10 text-xs font-bold text-white drop-shadow-md">25 597</span>
+</div>
+</div>
+</div>
+<div class="px-4 grid grid-cols-2 gap-3 mb-8">
+<button class="w-full py-2 rounded-full bg-hp-red text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors font-bold text-sm tracking-wide">
+                    Quests
+                </button>
+<button class="w-full py-2 rounded-full bg-xp-yellow text-white flex items-center justify-center shadow-lg hover:bg-yellow-600 transition-colors font-bold text-sm tracking-wide">
+                    Shop
+                </button>
+<button class="w-full py-2 rounded-full bg-gp-gold text-white flex items-center justify-center shadow-lg hover:bg-yellow-700 transition-colors font-bold text-sm tracking-wide">
+                    Progress
+                </button>
+<button class="w-full py-2 rounded-full bg-gray-800 dark:bg-gray-600 text-white flex items-center justify-center shadow-lg hover:bg-black transition-colors font-bold text-sm tracking-wide">
+                    Character
+                </button>
+</div>
+<div class="px-4 grid grid-cols-3 gap-y-6 gap-x-2 mb-8">
+<div class="flex flex-col items-center group cursor-pointer">
+<div class="w-14 h-14 rounded-full border-2 border-gray-400 dark:border-gray-600 overflow-hidden shadow-md group-hover:border-primary transition-colors bg-gray-800">
+<img alt="Shield icon" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtGjgEKfXk200f78h2N_5xXjg6Nj0HUbBjhFGMA7do3w7Mlx_DNzO2EaTxh2q0_CHUYZ9x6kRnK_NfZnatdTMGOwzUN1QNB7Ys5Yrhi94nG5jylK7tJkmI3HJiy141TQ0w4xmEWhwg0dAmjMIgqxV-b3ncS94NXW7zi6L9U4nxB2EIBMTnInWIYCtVmbw_8A9zLDIxyxocl6-z-wkw80i0WUkBvcq4gyQlmkQRP7kH51Pv3_bzy7Vvn6GkHViNplMLG8ed_peltjU7"/>
+</div>
+<span class="text-xs mt-2 text-center text-gray-600 dark:text-gray-400 group-hover:text-primary">Protect 1</span>
+</div>
+<div class="flex flex-col items-center group cursor-pointer">
+<div class="w-14 h-14 rounded-full border-2 border-gray-400 dark:border-gray-600 overflow-hidden shadow-md group-hover:border-primary transition-colors bg-gray-800">
+<img alt="First aid icon" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmu1wdzwqBXl-ugD1RuVSKh3hUD3GKMJ54OOICdjQYizzpDpbqBS9c02-qVDRp59TN1Y6gSbKP7ETAbQLuIfQ4-f4p4r6i664lZQZhTsq2ZCc1ogM_hRpgBx3CDrg0c2ybe9t2Wxs2g2jfZRVBSeqINxQmkeMhGzHzkrtdR36C9UNTIHhwsPGing14oAMXzYGsFb9bJE1YCd-Ql7YKvogHxChHBpQ7sSN6WOC4f7zsMXB9YYE2XJiLOV7gBbqPVZC_VSFjnSsUPw_E"/>
+</div>
+<span class="text-xs mt-2 text-center text-gray-600 dark:text-gray-400 group-hover:text-primary">First Aid</span>
+</div>
+<div class="flex flex-col items-center group cursor-pointer">
+<div class="w-14 h-14 rounded-full border-2 border-gray-400 dark:border-gray-600 overflow-hidden shadow-md group-hover:border-primary transition-colors bg-gray-800">
+<img alt="Hunting icon" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAT0iPHv8eTxzoN3CVloTo-gZ4K9MnY0zEPyyN4uNWj204sJ6omc28FN1U2tr4i1egDNH8hKuWyZm9qt5fXesiNiMBruGFpTpLsd11n_0VVRscqfh9W41Gv6rKpR2h7-Z79Q2ySeYwmIOEkDOcgDVtrx-t-KEulW4O7MFRHtKT3MDEV0u51paguNUasM5mQbTMTHX8HVk3NRqFIjW9_4E3hR5U0x2wVH80JOY2iszcwn6Q9xh-LAL8nqXlaUhaYA4iMA6bQFu-jyNFY"/>
+</div>
+<span class="text-xs mt-2 text-center text-gray-600 dark:text-gray-400 group-hover:text-primary">Hunting</span>
+</div>
+<div class="flex flex-col items-center group cursor-pointer">
+<div class="w-14 h-14 rounded-full border-2 border-gray-400 dark:border-gray-600 overflow-hidden shadow-md group-hover:border-primary transition-colors bg-gray-800">
+<img alt="Shield icon" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjFVwnHLP-5lX1O1Fx6_oVcL9fBty_Yjj9YP9HobdKeTKysnXHcSah6LQeukCyceLjgwCfrD1N4gCGGgXnd3k-JGxONnHJlnZJQ6qFanmsbQmdzzIkSjQnWljp_pmqVzcCiJSEi9IC17WEQkFJxXrCRra4YKWLQXocKYTCk2bHsl7vo1Tn-hV_o4JQQC100yRLLqFAl28ikGONsBFR7gz1SObTH7E7bUiN82AgsvJncfEoDXe_GOFqUjigagyYyXbc1WauHvZHY04B"/>
+</div>
+<span class="text-xs mt-2 text-center text-gray-600 dark:text-gray-400 group-hover:text-primary">Protect 2</span>
+</div>
+<div class="flex flex-col items-center group cursor-pointer">
+<div class="w-14 h-14 rounded-full border-2 border-gray-400 dark:border-gray-600 overflow-hidden shadow-md group-hover:border-primary transition-colors bg-gray-800">
+<img alt="Ambush icon" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRqdb7xqpH_P89CA-kMtNpkO4mrPTgZnQgxELYoiGmPHsT1eIBBoEZkTWlu1lVgbed-Dhp2EaIPHC-nW4nJx1XJaL_wPPkoHJxXca6bAAt56RDKvxS0ASMOz_taKmodj7tXQ9deAyW7yvlwIl84-tMid-d9idsrnaixX645-ATFtTBd8uM142NVEHlW40iYCQrrOs5sjxYpbWC_eMcWG4tKbzZfoh11Yr_0Ex3HZpqTfjfm1BtvIIVEmuTPRgNE-BckUI4OKAFHaDp"/>
+</div>
+<span class="text-xs mt-2 text-center text-gray-600 dark:text-gray-400 group-hover:text-primary">Ambush</span>
+</div>
+</div>
+<div class="mt-auto p-4">
+<button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-full shadow-lg uppercase tracking-wider text-sm transition-transform hover:scale-105">
+                    Learn Powers
+                </button>
+</div>
+</aside>
+<main class="flex-1 relative z-10 flex items-center justify-center pointer-events-none">
+<div class="relative w-full h-full max-w-4xl mx-auto flex items-end justify-center pb-12 pointer-events-auto">
+<div class="absolute bottom-20 w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] animate-pulse"></div>
+<img alt="Warrior Character" class="h-[85%] object-contain drop-shadow-2xl relative z-10 mask-image-gradient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwLsiIVpcqRn_Bgt06Wj5QZxTjbeUOzOzPBOZYJFNvkm_PZ6LYjxZKTcQ1BK2EeNTRtvAdB8CkCOWVduRJWDGZaWuN-KoF7tJzVv1zcYVKYykRZxBnO_yM8OxInYap2KMaM72cqdeiHGCuNTRM2TCCa0WMkCthM-zIRa5A3ufqTW1hjKiosRF1rvv7xKAMOqfB29x0sf4VzO-j9D7BkCOVikyL0_pE5IV_-IDbf-RDMXCC8BxgnSglhx5ZrpI_0QGAqlW-m62VEiWM"/>
+<div class="absolute bottom-4 right-8 flex space-x-[-20px] scale-75 origin-bottom-right opacity-90 hover:opacity-100 transition-opacity cursor-pointer">
+<img alt="Party Member 1" class="w-24 h-32 object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg transform rotate-[-5deg]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSA6mYIXT6shJURAX5vZvhXVH6R4dUMfv29QLvUDDbIsW9u3BfpRKaQTVZFfa2FHeDoVvyXJWiP-vJ2X1FwMMlF6xwew321ebVHlGvucAIKPplXnPBrpzLx0iATjx-f8weTZVBEGEzFJiIsIeCubZgLL_GcNiuH3pieOTwWhqPz-kbGttlYc8zFv3f5WGFo3epT3j1WhRck6GyPM87ThNsQT-vqvN3sc1STHATcHv1vshuj_BbL_7dyu5OKJfO1W85LjGzDp2Vjza3"/>
+<img alt="Party Member 2" class="w-24 h-32 object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg transform rotate-[5deg] z-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAorZY3RPU3tU5bZGfrcxtyM06yKuAOe0olG_JNPy-p8i7z9x4UZZDacnznqUsSpR3tPq0hY8T61FSqWXNdYxgxjGb_2QTBBWwRAsLbV8tkcYn9IV3e5S37_elPdIkJSIeFhs_CcJUB1Z9kzfa4jaHjBDdHPvczNJMjVvjDRr876vx96K70iUYRihg5xikGGUQGR0atVwD7-dMoPFPdQYeGDPdzSU3qohPi227RS5nEjHXba9qDY3s0xGKExrA4BKLH2amJSED8doay"/>
+<img alt="Party Member 3" class="w-24 h-32 object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg transform rotate-[-2deg]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfkVxgmptHFjaRsiyyvc3DOG3xe46_L5q7IHT2eh-5RhnDnPhcbiQ26H1Bw0pddqEEgY79DECQrKXuTbDzrAYIf_oHQhM9c09CfmJCdkdTtLdvZlFtxGZKmANzuorhEjT1q0rfETwElWLsE2JzCalt_6kP-Jn74iYMnLTIWZ-irEs8W9GEWM254U44yeAu9XmHXgfvfUQnMRKwhmB4u7RFjoU1-XAVjjrUnVQYe1zoyEynCWM7DSMqSO212dpeyavpsBpP7emf46r7"/>
+</div>
+</div>
+</main>
+</div>
+</body></html>

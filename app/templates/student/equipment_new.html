@@ -1,0 +1,424 @@
+{% extends "student/base_student.html" %}
+
+{% block title %}Equipment{% endblock %}
+
+{% block content %}
+<div class="h-screen flex flex-col overflow-hidden">
+    {# Include shared header and clan bar #}
+    {% include "student/_student_header.html" %}
+    
+    {# Main content area #}
+    <div class="flex-1 flex overflow-hidden relative">
+        {# Background image #}
+        <div class="absolute inset-0 z-0">
+            <img alt="Fantasy Landscape Background" class="w-full h-full object-cover" 
+                 src="{{ url_for('static', filename='images/quest_maps/quest_map.png') or 'https://via.placeholder.com/1920x1080?text=Background' }}">
+            <div class="absolute inset-0 bg-white/30 dark:bg-black/50"></div>
+        </div>
+        
+        {# Sidebar with character stats and inventory #}
+        <aside class="w-80 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-y-auto custom-scrollbar shadow-2xl">
+            {% if main_character %}
+                {# Character header #}
+                <div class="p-6 text-center">
+                    <h1 class="font-display text-3xl font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                        {% set name_parts = main_character.name.split(' ') %}
+                        {{ name_parts[0] }}{% if name_parts|length > 1 %}<br/>{{ name_parts[1] }}{% endif %}
+                    </h1>
+                    <p class="mt-1 text-gray-500 dark:text-gray-400 font-light text-base">Level {{ main_character.level }} {{ main_character.character_class }}</p>
+                </div>
+                
+                {# Stats bars #}
+                <div class="px-4 space-y-2 mb-6 text-sm">
+                    {# HP #}
+                    <div class="flex items-center">
+                        <span class="w-6 font-bold text-gray-600 dark:text-gray-300">HP</span>
+                        {% set max_hp = main_character.total_health %}
+                        {% set hp_percent = (main_character.health / max_hp * 100) if max_hp > 0 else 0 %}
+                        <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
+                            <div class="absolute left-0 top-0 bottom-0 bg-hp-red" style="width: {{ hp_percent }}%"></div>
+                            <span class="ml-auto mr-2 text-[10px] text-gray-500 dark:text-gray-400 z-10">{{ main_character.health }}/{{ max_hp }}</span>
+                        </div>
+                    </div>
+                    
+                    {# PP #}
+                    <div class="flex items-center">
+                        <span class="w-6 font-bold text-gray-600 dark:text-gray-300 uppercase">pp</span>
+                        {% set max_pp = main_character.total_power %}
+                        {% set pp_percent = (main_character.power / max_pp * 100) if max_pp > 0 else 0 %}
+                        <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
+                            <div class="absolute left-0 top-0 bottom-0 bg-ap-blue" style="width: {{ pp_percent }}%"></div>
+                            <span class="ml-auto mr-2 text-[10px] text-gray-500 dark:text-gray-400 z-10">{{ main_character.power }}/{{ max_pp }}</span>
+                        </div>
+                    </div>
+                    
+                    {# GP #}
+                    <div class="flex items-center">
+                        <span class="w-6 font-bold text-gray-600 dark:text-gray-300">GP</span>
+                        <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-2">
+                            <div class="absolute left-0 top-0 bottom-0 bg-gp-gold" style="width: 85%"></div>
+                            <span class="relative z-10 text-[10px] font-bold text-white drop-shadow-md">{{ "{:,}".format(main_character.gold) }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {# Navigation buttons #}
+                <div class="px-4 grid grid-cols-2 gap-2 mb-6">
+                    {% set current_route = request.endpoint %}
+                    <a href="{{ url_for('student.quests') }}" 
+                       class="w-full py-1.5 rounded-lg {{ 'bg-gray-200 dark:bg-gray-700' if current_route != 'student.quests' else 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' }} text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-xs">
+                        Quests
+                    </a>
+                    <a href="{{ url_for('student.shop') }}" 
+                       class="w-full py-1.5 rounded-lg {{ 'bg-gray-200 dark:bg-gray-700' if current_route != 'student.shop' else 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' }} text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-xs">
+                        Shop
+                    </a>
+                    <a href="{{ url_for('student.progress') }}" 
+                       class="w-full py-1.5 rounded-lg {{ 'bg-gray-200 dark:bg-gray-700' if current_route != 'student.progress' else 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' }} text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-xs">
+                        Progress
+                    </a>
+                    <a href="{{ url_for('student.equipment') }}" 
+                       class="w-full py-1.5 rounded-lg {{ 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' if current_route == 'student.equipment' else 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600' }} transition-colors font-bold text-xs">
+                        Equipment
+                    </a>
+                </div>
+                
+                {# Inventory section #}
+                <div class="px-4 flex-1 flex flex-col">
+                    <div class="flex items-center justify-between mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                        <h3 class="font-display font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">backpack</span>
+                            Inventory
+                        </h3>
+                        <span class="text-xs text-gray-400" id="inventory-count">{{ inventory_items|length }}/20</span>
+                    </div>
+                    
+                    {# Inventory grid #}
+                    <div class="grid grid-cols-4 gap-2 mb-4">
+                        {% for inv_item in inventory_items %}
+                            {% set eq = inv_item.equipment %}
+                            {% set rarity_map = {1: ('common', '#9ca3af'), 2: ('rare', '#3b82f6'), 3: ('epic', '#a855f7'), 4: ('legendary', '#eab308'), 5: ('legendary', '#eab308')} %}
+                            {% set rarity_info = rarity_map.get(eq.rarity if eq else 1, ('common', '#9ca3af')) %}
+                            {% set rarity_name = rarity_info[0] %}
+                            {% set rarity_color = rarity_info[1] %}
+                            <div class="inventory-item aspect-square bg-gray-100 dark:bg-gray-800 border rounded-md flex items-center justify-center cursor-move hover:border-primary group relative" 
+                                 style="border-color: {{ rarity_color }};"
+                                 data-inventory-id="{{ inv_item.id }}"
+                                 data-slot="{{ eq.slot if eq else '' }}"
+                                 title="{{ eq.name if eq else 'Item' }}">
+                                {% if eq and eq.image_url %}
+                                    <img class="w-10 h-10 object-contain drop-shadow-md group-hover:scale-110 transition-transform" src="{{ eq.image_url }}" alt="{{ eq.name }}">
+                                {% else %}
+                                    <span class="material-symbols-outlined text-3xl text-gray-400">category</span>
+                                {% endif %}
+                                {% if inv_item.quantity and inv_item.quantity > 1 %}
+                                    <span class="absolute bottom-0 right-0.5 text-[9px] font-bold text-white bg-gray-900/80 px-1 rounded-sm">x{{ inv_item.quantity }}</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        {# Empty slots #}
+                        {% set empty_slots = 20 - (inventory_items|length) %}
+                        {% for i in range(empty_slots) %}
+                            <div class="aspect-square bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 border-dashed rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"></div>
+                        {% endfor %}
+                    </div>
+                    
+                    {# Stat Changes Panel #}
+                    <div class="mt-auto p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-xs">
+                        <p class="font-bold text-gray-500 uppercase tracking-wide mb-2">Stat Changes</p>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-gray-600 dark:text-gray-400">Attack</span>
+                            <span class="text-gray-800 dark:text-white font-mono font-bold" id="stat-attack">+{{ stat_changes.attack }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 dark:text-gray-400">Defense</span>
+                            <span class="text-gray-800 dark:text-white font-mono font-bold" id="stat-defense">+{{ stat_changes.defense }}</span>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                {# No character message #}
+                <div class="p-6 text-center">
+                    <p class="text-gray-500 dark:text-gray-400">No character created yet.</p>
+                    <a href="{{ url_for('student.character_create') }}" class="mt-4 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full">Create Character</a>
+                </div>
+            {% endif %}
+        </aside>
+        
+        {# Main content area with character model and equipment slots #}
+        <main class="flex-1 relative z-10 flex flex-col items-center justify-center p-8 overflow-hidden">
+            <div class="relative w-full h-full max-w-5xl mx-auto flex items-center justify-center">
+                {# Background glow effect #}
+                <div class="absolute bottom-0 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px] animate-pulse pointer-events-none"></div>
+                
+                {# Character model #}
+                <div class="relative h-[85%] z-10 flex items-center justify-center group">
+                    <img alt="{{ main_character.name if main_character else 'Character' }}" 
+                         class="h-full w-auto object-contain drop-shadow-2xl mask-image-gradient" 
+                         src="{{ main_character.avatar_url if main_character else '/static/avatars/default.png' }}">
+                    <div class="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-xs py-1 px-3 rounded-full backdrop-blur-md border border-white/10 pointer-events-none">
+                        Click to Rotate
+                    </div>
+                </div>
+                
+                {# Weapon slot (left side) #}
+                <div class="absolute left-10 lg:left-32 top-1/2 transform -translate-y-1/2 flex flex-col items-end space-y-2 z-20">
+                    <div class="group relative">
+                        {% set weapon_item = equipped_items.get('main_hand') %}
+                        {% if weapon_item and weapon_item.equipment %}
+                            {% set weapon_eq = weapon_item.equipment %}
+                            {% set weapon_rarity_map = {1: ('common', '#9ca3af'), 2: ('rare', '#3b82f6'), 3: ('epic', '#a855f7'), 4: ('legendary', '#eab308'), 5: ('legendary', '#eab308')} %}
+                            {% set weapon_rarity_info = weapon_rarity_map.get(weapon_eq.rarity, ('common', '#9ca3af')) %}
+                            {% set weapon_rarity_color = weapon_rarity_info[1] %}
+                            <div class="equipment-slot w-24 h-24 lg:w-28 lg:h-28 bg-gray-900/60 backdrop-blur-md border-2 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20 cursor-pointer slot-glow transition-all"
+                                 style="border-color: {{ weapon_rarity_color }};"
+                                 data-inventory-id="{{ weapon_item.id }}"
+                                 data-slot="main_hand">
+                                {% if weapon_eq.image_url %}
+                                    <img class="w-16 h-16 object-contain" src="{{ weapon_eq.image_url }}" alt="{{ weapon_eq.name }}">
+                                {% else %}
+                                    <span class="material-symbols-outlined text-4xl text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]">swords</span>
+                                {% endif %}
+                                <span class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gray-800 text-gray-200 text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-gray-600 tracking-wider">Weapon</span>
+                                <div class="absolute bottom-1 right-1 w-5 h-5 bg-black/80 rounded flex items-center justify-center text-[10px] font-bold text-white border border-gray-700">{{ weapon_eq.level_requirement or 1 }}</div>
+                            </div>
+                            {# Tooltip #}
+                            <div class="absolute left-full ml-4 top-0 w-48 bg-gray-900/95 border p-3 rounded-lg hidden group-hover:block z-50 shadow-xl backdrop-blur-sm" style="border-color: {{ weapon_rarity_color }};">
+                                <h4 class="font-bold text-sm" style="color: {{ weapon_rarity_color }};">{{ weapon_eq.name }}</h4>
+                                <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-2">{{ weapon_eq.type|title }} - Lvl {{ weapon_eq.level_requirement or 1 }}</p>
+                                <div class="space-y-1 text-xs text-gray-300">
+                                    {% if weapon_eq.power_bonus %}
+                                        <div class="flex justify-between"><span>Power</span> <span>+{{ weapon_eq.power_bonus }}</span></div>
+                                    {% endif %}
+                                    {% if weapon_eq.health_bonus %}
+                                        <div class="flex justify-between"><span>Health</span> <span>+{{ weapon_eq.health_bonus }}</span></div>
+                                    {% endif %}
+                                    {% if weapon_eq.defense_bonus %}
+                                        <div class="flex justify-between"><span>Defense</span> <span>+{{ weapon_eq.defense_bonus }}</span></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="equipment-slot w-24 h-24 lg:w-28 lg:h-28 bg-gray-900/60 backdrop-blur-md border-2 border-gray-500 border-dashed rounded-xl flex flex-col items-center justify-center shadow-lg cursor-pointer hover:bg-gray-800/60 hover:border-solid hover:border-gray-400 transition-all"
+                                 data-slot="main_hand">
+                                <span class="material-symbols-outlined text-4xl text-gray-500/50 mb-1">swords</span>
+                                <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Empty</span>
+                                <span class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gray-800 text-gray-500 text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-gray-600">Weapon</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {# Armor and Accessory slots (right side) #}
+                <div class="absolute right-10 lg:right-32 top-1/2 transform -translate-y-1/2 flex flex-col items-start space-y-8 z-20">
+                    {# Armor slot #}
+                    <div class="group relative">
+                        {% set armor_item = equipped_items.get('chest') %}
+                        {% if armor_item and armor_item.equipment %}
+                            {% set armor_eq = armor_item.equipment %}
+                            {% set armor_rarity_map = {1: ('common', '#9ca3af'), 2: ('rare', '#3b82f6'), 3: ('epic', '#a855f7'), 4: ('legendary', '#eab308'), 5: ('legendary', '#eab308')} %}
+                            {% set armor_rarity_info = armor_rarity_map.get(armor_eq.rarity, ('common', '#9ca3af')) %}
+                            {% set armor_rarity_color = armor_rarity_info[1] %}
+                            <div class="equipment-slot w-24 h-24 lg:w-28 lg:h-28 bg-gray-900/60 backdrop-blur-md border-2 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/10 cursor-pointer slot-glow transition-all"
+                                 style="border-color: {{ armor_rarity_color }};"
+                                 data-inventory-id="{{ armor_item.id }}"
+                                 data-slot="chest">
+                                {% if armor_eq.image_url %}
+                                    <img class="w-16 h-16 object-contain" src="{{ armor_eq.image_url }}" alt="{{ armor_eq.name }}">
+                                {% else %}
+                                    <span class="material-symbols-outlined text-4xl text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]">shield</span>
+                                {% endif %}
+                                <span class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gray-800 text-gray-200 text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-gray-600">Armor</span>
+                            </div>
+                            {# Tooltip #}
+                            <div class="absolute right-full mr-4 top-0 w-48 bg-gray-900/95 border p-3 rounded-lg hidden group-hover:block z-50 shadow-xl backdrop-blur-sm" style="border-color: {{ armor_rarity_color }};">
+                                <h4 class="font-bold text-sm" style="color: {{ armor_rarity_color }};">{{ armor_eq.name }}</h4>
+                                <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-2">{{ armor_eq.type|title }} - Lvl {{ armor_eq.level_requirement or 1 }}</p>
+                                <div class="space-y-1 text-xs text-gray-300">
+                                    {% if armor_eq.defense_bonus %}
+                                        <div class="flex justify-between"><span>Defense</span> <span>+{{ armor_eq.defense_bonus }}</span></div>
+                                    {% endif %}
+                                    {% if armor_eq.health_bonus %}
+                                        <div class="flex justify-between"><span>Health</span> <span>+{{ armor_eq.health_bonus }}</span></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="equipment-slot w-24 h-24 lg:w-28 lg:h-28 bg-gray-900/60 backdrop-blur-md border-2 border-gray-500 border-dashed rounded-xl flex flex-col items-center justify-center shadow-lg cursor-pointer hover:bg-gray-800/60 hover:border-solid hover:border-gray-400 transition-all"
+                                 data-slot="chest">
+                                <span class="material-symbols-outlined text-4xl text-gray-500/50 mb-1">shield</span>
+                                <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Empty</span>
+                                <span class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gray-800 text-gray-500 text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-gray-600">Armor</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    {# Accessory slot #}
+                    <div class="group relative">
+                        {% set accessory_item = equipped_items.get('ring') or equipped_items.get('neck') %}
+                        {% if accessory_item and accessory_item.equipment %}
+                            {% set acc_eq = accessory_item.equipment %}
+                            {% set acc_rarity_map = {1: ('common', '#9ca3af'), 2: ('rare', '#3b82f6'), 3: ('epic', '#a855f7'), 4: ('legendary', '#eab308'), 5: ('legendary', '#eab308')} %}
+                            {% set acc_rarity_info = acc_rarity_map.get(acc_eq.rarity, ('common', '#9ca3af')) %}
+                            {% set acc_rarity_color = acc_rarity_info[1] %}
+                            <div class="equipment-slot w-24 h-24 lg:w-28 lg:h-28 bg-gray-900/60 backdrop-blur-md border-2 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/10 cursor-pointer slot-glow transition-all"
+                                 style="border-color: {{ acc_rarity_color }};"
+                                 data-inventory-id="{{ accessory_item.id }}"
+                                 data-slot="{{ accessory_item.equipment.slot }}">
+                                {% if acc_eq.image_url %}
+                                    <img class="w-16 h-16 object-contain" src="{{ acc_eq.image_url }}" alt="{{ acc_eq.name }}">
+                                {% else %}
+                                    <span class="material-symbols-outlined text-4xl text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]">diamond</span>
+                                {% endif %}
+                                <span class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gray-800 text-gray-200 text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-gray-600 tracking-wider">Accessory</span>
+                            </div>
+                            {# Tooltip #}
+                            <div class="absolute right-full mr-4 top-0 w-48 bg-gray-900/95 border p-3 rounded-lg hidden group-hover:block z-50 shadow-xl backdrop-blur-sm" style="border-color: {{ acc_rarity_color }};">
+                                <h4 class="font-bold text-sm" style="color: {{ acc_rarity_color }};">{{ acc_eq.name }}</h4>
+                                <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-2">{{ acc_eq.type|title }} - Lvl {{ acc_eq.level_requirement or 1 }}</p>
+                                <div class="space-y-1 text-xs text-gray-300">
+                                    {% if acc_eq.power_bonus %}
+                                        <div class="flex justify-between"><span>Power</span> <span>+{{ acc_eq.power_bonus }}</span></div>
+                                    {% endif %}
+                                    {% if acc_eq.health_bonus %}
+                                        <div class="flex justify-between"><span>Health</span> <span>+{{ acc_eq.health_bonus }}</span></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="equipment-slot w-24 h-24 lg:w-28 lg:h-28 bg-gray-900/60 backdrop-blur-md border-2 border-gray-500 border-dashed rounded-xl flex flex-col items-center justify-center shadow-lg cursor-pointer hover:bg-gray-800/60 hover:border-solid hover:border-gray-400 transition-all"
+                                 data-slot="ring">
+                                <span class="material-symbols-outlined text-4xl text-gray-500/50 mb-1">diamond</span>
+                                <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Empty</span>
+                                <span class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gray-800 text-gray-500 text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-gray-600 tracking-wider">Accessory</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {# Action buttons #}
+                <div class="absolute bottom-8 flex space-x-4">
+                    <button class="bg-gray-900/80 hover:bg-black text-white px-6 py-2 rounded-full backdrop-blur-md border border-gray-600 shadow-lg text-sm font-bold flex items-center gap-2 transition-transform hover:scale-105" disabled>
+                        <span class="material-symbols-outlined text-sm">autorenew</span> Auto Equip
+                    </button>
+                    <button class="bg-primary hover:bg-indigo-600 text-white px-6 py-2 rounded-full shadow-lg shadow-indigo-500/50 text-sm font-bold flex items-center gap-2 transition-transform hover:scale-105" disabled>
+                        <span class="material-symbols-outlined text-sm">save</span> Save Loadout
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Equip functionality
+    const inventoryItems = document.querySelectorAll('.inventory-item');
+    const equipmentSlots = document.querySelectorAll('.equipment-slot');
+    
+    inventoryItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const inventoryId = this.getAttribute('data-inventory-id');
+            const slot = this.getAttribute('data-slot');
+            
+            if (!inventoryId || !slot) {
+                console.error('Missing inventory ID or slot');
+                return;
+            }
+            
+            // Disable during request
+            this.style.opacity = '0.5';
+            this.style.pointerEvents = 'none';
+            
+            fetch('/student/equipment/equip', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    inventory_id: parseInt(inventoryId),
+                    slot: slot
+                }),
+                credentials: 'same-origin'
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(data => {
+                        throw new Error(data.message || 'Failed to equip item');
+                    });
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Reload page to update UI
+                    window.location.reload();
+                } else {
+                    throw new Error(data.message || 'Failed to equip item');
+                }
+            })
+            .catch(err => {
+                console.error('Equip error:', err);
+                alert('Error: ' + err.message);
+                // Re-enable item
+                this.style.opacity = '1';
+                this.style.pointerEvents = 'auto';
+            });
+        });
+    });
+    
+    // Unequip functionality
+    equipmentSlots.forEach(slot => {
+        const inventoryId = slot.getAttribute('data-inventory-id');
+        if (inventoryId) {
+            slot.addEventListener('click', function() {
+                const invId = this.getAttribute('data-inventory-id');
+                if (!invId) return;
+                
+                // Disable during request
+                this.style.opacity = '0.5';
+                this.style.pointerEvents = 'none';
+                
+                fetch('/student/equipment/unequip', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inventory_id: parseInt(invId)
+                    }),
+                    credentials: 'same-origin'
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        return res.json().then(data => {
+                            throw new Error(data.message || 'Failed to unequip item');
+                        });
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Reload page to update UI
+                        window.location.reload();
+                    } else {
+                        throw new Error(data.message || 'Failed to unequip item');
+                    }
+                })
+                .catch(err => {
+                    console.error('Unequip error:', err);
+                    alert('Error: ' + err.message);
+                    // Re-enable slot
+                    this.style.opacity = '1';
+                    this.style.pointerEvents = 'auto';
+                });
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -32,6 +32,7 @@ class Classroom(Base):
         lazy='dynamic'
     )
     clans = db.relationship('Clan', backref='classroom', lazy='dynamic', overlaps="classroom")
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref='taught_classes')
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
