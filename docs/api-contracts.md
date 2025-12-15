@@ -22,11 +22,6 @@
 
 ## Student Endpoints
 
-### GET `/student/dashboard`
-- **Description:** Student dashboard main view
-- **Auth:** `@login_required`, `@student_required`
-- **Returns:** HTML template
-
 ### GET `/student/profile`
 - **Description:** Student profile page
 - **Auth:** `@login_required`, `@student_required`

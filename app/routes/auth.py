@@ -55,7 +55,7 @@ def login():
         if current_user.role == UserRole.TEACHER:
             return redirect(url_for('teacher.dashboard'))
         elif current_user.role == UserRole.STUDENT:
-            return redirect(url_for('student.dashboard'))
+            return redirect(url_for('student.character'))
         else:
             return redirect(url_for('main.index'))
     
@@ -77,7 +77,7 @@ def login():
                 if user.role == UserRole.TEACHER:
                     return redirect(safe_next or url_for('teacher.dashboard'))
                 elif user.role == UserRole.STUDENT:
-                    return redirect(safe_next or url_for('student.dashboard'))
+                    return redirect(safe_next or url_for('student.character'))
                 else:
                     return redirect(safe_next or url_for('main.index'))
         else:

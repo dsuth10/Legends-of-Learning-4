@@ -20,35 +20,6 @@ logger = logging.getLogger(__name__)
 
 student_bp = Blueprint('student', __name__, url_prefix='/student')
 
-@student_bp.route('/dashboard')
-@login_required
-@student_required
-def dashboard():
-    """Student dashboard main view."""
-    student_profile = Student.query.filter_by(user_id=current_user.id).first()
-    classes = list(getattr(current_user, 'classes', []))
-    main_character = None
-    if student_profile:
-        main_character = student_profile.characters.filter_by(is_active=True).first()
-    clan = main_character.clan if main_character and main_character.clan else None
-    active_quests = main_character.quest_logs.filter_by(status='in_progress').all() if main_character else []
-    try:
-        recent_activities = list(current_user.audit_logs.order_by(db.desc('event_timestamp')).limit(10))
-    except Exception as e:
-        # Handle case where audit_log table doesn't exist yet
-        logger.warning(f"Could not query audit logs: {e}")
-        recent_activities = []
-    return render_template(
-        'student/dashboard.html',
-        student=current_user,
-        student_profile=student_profile,
-        classes=classes,
-        main_character=main_character,
-        clan=clan,
-        active_quests=active_quests,
-        recent_activities=recent_activities
-    )
-
 @student_bp.route('/profile')
 @login_required
 @student_required
@@ -58,7 +29,7 @@ def profile():
     except Exception as e:
         logger.error(f"Error loading profile page: {str(e)}", exc_info=True)
         flash('An error occurred while loading your profile. Please try again.', 'danger')
-        return redirect(url_for('student.dashboard'))
+        return redirect(url_for('student.character'))
 
 @student_bp.route('/quests')
 @login_required
@@ -70,7 +41,7 @@ def quests():
         if not student_profile:
             logger.warning(f"No student profile found for user {current_user.id}")
             flash('No student profile found. Please contact your administrator.', 'warning')
-            return redirect(url_for('student.dashboard'))
+            return redirect(url_for('student.character'))
         logger.debug(f"Student profile found: {student_profile.id}")
         main_char = student_profile.characters.filter_by(is_active=True).first()
         assigned_quests = []
@@ -245,7 +216,7 @@ def quests():
         error_details = traceback.format_exc()
         logger.error(f"Error loading quests page: {str(e)}\n{error_details}", exc_info=True)
         flash(f'An error occurred while loading quests: {str(e)}. Please try again.', 'danger')
-        return redirect(url_for('student.dashboard'))
+        return redirect(url_for('student.character'))
 
 @student_bp.route('/quests/start/<int:quest_id>', methods=['POST'])
 @login_required
@@ -396,7 +367,7 @@ def character():
     except Exception as e:
         logger.error(f"Error loading character page: {str(e)}", exc_info=True)
         flash('An error occurred while loading your character. Please try again.', 'danger')
-        return redirect(url_for('student.dashboard'))
+        return redirect(url_for('student.character'))
 
 @student_bp.route('/shop')
 @login_required
@@ -576,7 +547,7 @@ def shop():
     except Exception as e:
         logger.error(f"Error loading shop page: {str(e)}", exc_info=True)
         flash('An error occurred while loading the shop. Please try again.', 'danger')
-        return redirect(url_for('student.dashboard'))
+        return redirect(url_for('student.character'))
 
 @student_bp.route('/progress')
 @login_required
@@ -861,7 +832,7 @@ def character_create():
         base_stats = CLASS_BASE_STATS.get(character_class, CLASS_BASE_STATS["Warrior"])
         if not student_profile:
             flash('Student profile not found. Please contact your teacher or admin.', 'danger')
-            return redirect(url_for('student.dashboard'))
+            return redirect(url_for('student.character'))
         # Create character
         new_character = Character(
             name=name,
@@ -901,7 +872,7 @@ def gain_xp():
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
     if not student_profile:
         flash('No student profile found.', 'danger')
-        return redirect(url_for('student.dashboard'))
+        return redirect(url_for('student.character'))
     main_character = student_profile.characters.filter_by(is_active=True).first()
     if not main_character:
         flash('No character found.', 'danger')
@@ -1031,7 +1002,7 @@ def equipment():
     except Exception as e:
         logger.error(f"Error loading equipment page: {str(e)}", exc_info=True)
         flash('An error occurred while loading the equipment page. Please try again.', 'danger')
-        return redirect(url_for('student.dashboard'))
+        return redirect(url_for('student.character'))
 
 @student_bp.route('/equipment/equip', methods=['PATCH'])
 @login_required

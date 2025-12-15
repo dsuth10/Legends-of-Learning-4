@@ -20,7 +20,7 @@ def arena():
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
     if not student_profile:
         flash('Student profile not found.', 'danger')
-        return redirect(url_for('student.dashboard'))
+        return redirect(url_for('student.character'))
     
     character = student_profile.characters.filter_by(is_active=True).first()
     if not character:
@@ -54,7 +54,7 @@ def start_battle():
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
     if not student_profile:
         flash('Student profile not found.', 'danger')
-        return redirect(url_for('student.dashboard'))
+        return redirect(url_for('student.character'))
     
     character = student_profile.characters.filter_by(is_active=True).first()
     if not character:
@@ -102,7 +102,7 @@ def fight(battle_id):
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
     if not student_profile:
         flash('Student profile not found.', 'danger')
-        return redirect(url_for('student.dashboard'))
+        return redirect(url_for('student.character'))
     
     battle = Battle.query.filter_by(id=battle_id, student_id=student_profile.id).first_or_404()
     
