@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Welcome - Legends of Learning</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#4f46e5", // Indigo for general primary actions
+                        "background-light": "#f3f4f6",
+                        "background-dark": "#111827",
+                        "hp-red": "#ef4444",
+                        "ap-blue": "#3b82f6",
+                        "xp-yellow": "#f59e0b",
+                        "gp-gold": "#d97706",
+                        "quest-bg": "#2e2e2e",
+                    },
+                    fontFamily: {
+                        display: ["Cinzel", "serif"],
+                        body: ["Lato", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-body text-gray-800 dark:text-gray-100 h-full flex flex-col overflow-hidden">
+    <nav class="h-16 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 z-50 shadow-md relative shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-700 flex items-center justify-center text-white shadow-lg">
+                <span class="material-icons">auto_stories</span>
+            </div>
+            <a href="{{ url_for('main.home') }}" class="font-display font-bold text-xl text-gray-800 dark:text-white tracking-wide hover:text-primary transition-colors">Legends of Learning</a>
+        </div>
+        <div class="flex items-center space-x-6 font-display font-bold text-sm">
+            <a class="text-primary hover:text-indigo-700 transition-colors" href="{{ url_for('main.home') }}">Home</a>
+            <a class="text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-white transition-colors" href="{{ url_for('auth.login') }}">Login</a>
+            <a class="bg-primary hover:bg-indigo-700 text-white px-5 py-2 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5" href="{{ url_for('auth.signup') }}">Sign Up</a>
+            <button id="darkModeToggle" class="text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-white transition-colors flex items-center space-x-1" aria-label="Toggle dark mode">
+                <span class="material-icons" id="darkModeIcon">dark_mode</span>
+            </button>
+        </div>
+    </nav>
+    <main class="flex-1 relative overflow-y-auto custom-scrollbar">
+        <div class="absolute inset-0 z-0">
+            <img alt="Fantasy Landscape Background" class="w-full h-full object-cover filter brightness-[0.6]" src="{{ url_for('static', filename='images/welcome_background.jpg') }}"/>
+            <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-gray-900/20 to-gray-900"></div>
+        </div>
+        <div class="relative z-10 container mx-auto px-4 py-16 flex flex-col items-center justify-center min-h-full">
+            <div class="text-center mb-20 max-w-4xl">
+                <h1 class="font-display text-5xl md:text-7xl font-black text-white mb-6 drop-shadow-2xl leading-tight tracking-tight">
+                    Welcome to <br/>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-xp-yellow via-gp-gold to-yellow-500 filter drop-shadow-lg">Legends of Learning</span>
+                </h1>
+                <div class="max-w-3xl mx-auto backdrop-blur-sm bg-black/30 rounded-xl p-6 border border-white/10 shadow-2xl">
+                    <p class="text-xl md:text-2xl text-gray-100 font-light drop-shadow-md italic">
+                        "Empowering teachers and students with engaging, interactive learning experiences."
+                    </p>
+                </div>
+                <div class="mt-10">
+                    <a href="{{ url_for('auth.login') }}" class="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-200 bg-primary font-display rounded-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.5)] border border-indigo-400">
+                        <span>Begin Your Quest</span>
+                        <span class="material-icons ml-2 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl mb-12">
+                <div class="bg-white/95 dark:bg-gray-900/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl border-t-4 border-primary hover:transform hover:-translate-y-2 transition-all duration-300 group">
+                    <div class="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center mb-6 shadow-inner border border-indigo-200 dark:border-indigo-700 group-hover:scale-110 transition-transform duration-300">
+                        <span class="material-icons text-4xl text-primary">school</span>
+                    </div>
+                    <h3 class="font-display text-xl font-bold text-gray-800 dark:text-white mb-3 group-hover:text-primary transition-colors">Easy Class Management</h3>
+                    <p class="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
+                        Streamline your classroom administration. Create classes, manage student accounts, and assign curriculum aligned quests with just a few clicks.
+                    </p>
+                </div>
+                <div class="bg-white/95 dark:bg-gray-900/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl border-t-4 border-xp-yellow hover:transform hover:-translate-y-2 transition-all duration-300 group">
+                    <div class="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/50 rounded-full flex items-center justify-center mb-6 shadow-inner border border-yellow-200 dark:border-yellow-700 group-hover:scale-110 transition-transform duration-300">
+                        <span class="material-icons text-4xl text-xp-yellow">emoji_events</span>
+                    </div>
+                    <h3 class="font-display text-xl font-bold text-gray-800 dark:text-white mb-3 group-hover:text-xp-yellow transition-colors">Gamified Learning</h3>
+                    <p class="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
+                        Turn education into an adventure. Students earn XP, level up their avatars, and unlock rewards by mastering educational concepts.
+                    </p>
+                </div>
+                <div class="bg-white/95 dark:bg-gray-900/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl border-t-4 border-hp-red hover:transform hover:-translate-y-2 transition-all duration-300 group">
+                    <div class="w-16 h-16 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mb-6 shadow-inner border border-red-200 dark:border-red-700 group-hover:scale-110 transition-transform duration-300">
+                        <span class="material-icons text-4xl text-hp-red">analytics</span>
+                    </div>
+                    <h3 class="font-display text-xl font-bold text-gray-800 dark:text-white mb-3 group-hover:text-hp-red transition-colors">Real-Time Analytics</h3>
+                    <p class="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
+                        Gain immediate insights into student performance. identifying learning gaps instantly with our comprehensive data dashboard.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <footer class="relative z-10 bg-gray-900/95 text-gray-400 py-8 border-t border-gray-700 w-full backdrop-blur-sm mt-auto">
+            <div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <div class="font-display font-bold text-gray-300 tracking-wider text-sm">
+                    © {{ year }} Legends of Learning
+                </div>
+                <div class="flex flex-col items-center md:items-end">
+                    <div class="flex space-x-6 text-sm font-medium mb-2">
+                        <a class="hover:text-white transition-colors" href="#">About</a>
+                        <span class="text-gray-600">|</span>
+                        <a class="hover:text-white transition-colors" href="#">Contact</a>
+                        <span class="text-gray-600">|</span>
+                        <a class="hover:text-white transition-colors" href="#">Terms</a>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        © Legends of Learning {{ year }}
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </main>
+    <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
+</body>
+</html>
+
