@@ -4,7 +4,38 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">Your Progress</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Your Progress</h2>
+        <a href="{{ url_for('auth.logout') }}" 
+           class="btn btn-outline-secondary btn-sm"
+           title="Logout"
+           aria-label="Logout">
+            <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+    </div>
+    
+    {# Navigation buttons #}
+    <div class="mb-4">
+        <div class="btn-group d-flex flex-wrap" role="group" aria-label="Navigation">
+            {% set current_route = request.endpoint %}
+            <a href="{{ url_for('student.quests') }}" 
+               class="btn {{ 'btn-primary' if current_route == 'student.quests' else 'btn-outline-primary' }} flex-fill m-1">
+                Quests
+            </a>
+            <a href="{{ url_for('student.shop') }}" 
+               class="btn {{ 'btn-primary' if current_route == 'student.shop' else 'btn-outline-primary' }} flex-fill m-1">
+                Shop
+            </a>
+            <a href="{{ url_for('student.progress') }}" 
+               class="btn {{ 'btn-primary' if current_route == 'student.progress' else 'btn-outline-primary' }} flex-fill m-1">
+                Progress
+            </a>
+            <a href="{{ url_for('student.equipment') }}" 
+               class="btn {{ 'btn-primary' if current_route == 'student.equipment' else 'btn-outline-primary' }} flex-fill m-1">
+                Equipment
+            </a>
+        </div>
+    </div>
     
     {% if not main_character %}
     <div class="alert alert-info">

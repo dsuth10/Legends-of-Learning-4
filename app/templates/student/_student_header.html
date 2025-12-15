@@ -30,6 +30,12 @@
             <img alt="Teacher Avatar" class="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-600" 
                  src="{{ teacher.avatar_url or '/static/avatars/default.png' }}">
         {% endif %}
+        <a href="{{ url_for('auth.logout') }}" 
+           class="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors"
+           title="Logout"
+           aria-label="Logout">
+            <span class="material-icons text-base">logout</span>
+        </a>
     </div>
 </div>
 

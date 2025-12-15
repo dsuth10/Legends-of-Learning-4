@@ -5,7 +5,15 @@
 {% block content %}
 <div class="container mt-5">
     {% if main_character %}
-        <h2 class="mb-4">Your Character</h2>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Your Character</h2>
+            <a href="{{ url_for('auth.logout') }}" 
+               class="btn btn-outline-secondary btn-sm"
+               title="Logout"
+               aria-label="Logout">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+        </div>
         <div class="row">
             <div class="col-md-3">
                 <img src="{{ main_character.avatar_url }}" alt="Avatar" class="img-thumbnail mb-3" style="width:128px;height:128px;">

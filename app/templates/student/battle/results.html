@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-4">
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ url_for('auth.logout') }}" 
+           class="btn btn-outline-secondary btn-sm"
+           title="Logout"
+           aria-label="Logout">
+            <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+    </div>
     <div class="text-center">
         {% if battle.status.value == 'WON' %}
         <div class="alert alert-success">
