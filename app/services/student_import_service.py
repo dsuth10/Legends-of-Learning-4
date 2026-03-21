@@ -87,19 +87,14 @@ class StudentImportService:
                         user.first_name = row['first_name']
                     if row.get('last_name'):
                         user.last_name = row['last_name']
+                    if row.get('password'):
+                        user.set_password(row['password'])
                     db.session.commit()
                     reassigned += 1
                 else:
                     failed += 1
                     errors.append(f'Row {i}: Could not reassign student.')
                 continue
-
-            # Normal creation
-            username = row['username']
-            email = row['email']
-            password = row['password']
-            first_name = row.get('first_name', '')
-            last_name = row.get('last_name', '')
 
             # Normal creation
             username = row['username']

@@ -49,6 +49,6 @@ class StudentService:
         except IntegrityError:
             db.session.rollback()
             raise ValueError("Username or email already exists.")
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            raise e
+            raise

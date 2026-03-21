@@ -23,8 +23,10 @@ teacher_quests_bp = Blueprint('teacher_quests', __name__, url_prefix='/teacher/q
 
 @teacher_quests_bp.route('/', methods=['GET'])
 @login_required
+@teacher_required
 def list_quests():
     db.session.expire_all()  # Force session to reload from DB
+    # Global quest bank (no per-teacher column); access is restricted to teachers via @teacher_required
     quests = Quest.query.order_by(Quest.id.desc()).all()
     # Get classes for the teacher to populate dropdown (fallback if JS fails)
     classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
@@ -32,6 +34,7 @@ def list_quests():
 
 @teacher_quests_bp.route('/create', methods=['GET', 'POST'])
 @login_required
+@teacher_required
 def create_quest():
     if request.method == 'POST':
         try:
@@ -138,6 +141,7 @@ def create_quest():
 
 @teacher_quests_bp.route('/edit/<int:quest_id>', methods=['GET', 'POST'])
 @login_required
+@teacher_required
 def edit_quest(quest_id):
     quest = Quest.query.get_or_404(quest_id)
     if request.method == 'POST':
@@ -262,6 +266,7 @@ def edit_quest(quest_id):
 
 @teacher_quests_bp.route('/delete/<int:quest_id>', methods=['POST'])
 @login_required
+@teacher_required
 def delete_quest(quest_id):
     quest = Quest.query.get_or_404(quest_id)
     db.session.delete(quest)
@@ -271,9 +276,14 @@ def delete_quest(quest_id):
 
 @teacher_quests_bp.route('/assign', methods=['POST'])
 @login_required
+@teacher_required
 def assign_quest():
     quest_id = int(request.form['quest_id'])
     class_id = int(request.form['class_id'])
+    classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
+    if not classroom:
+        flash('Invalid class or you do not have permission to assign quests for this class.', 'danger')
+        return redirect(url_for('teacher_quests.list_quests'))
     target_type = request.form['target_type']
     target_ids = request.form.getlist('target_ids')  # List of selected clan or student IDs
     auto_assign = request.form.get('auto_assign') == '1'  # Checkbox value
@@ -291,14 +301,27 @@ def assign_quest():
     elif target_type == 'clan':
         # Assign to all students with active characters in the selected clans
         if target_ids:
+            clan_ids_int = [int(x) for x in target_ids]
+            valid_clan_ids = [
+                c.id for c in Clan.query.filter(
+                    Clan.id.in_(clan_ids_int),
+                    Clan.class_id == class_id,
+                ).all()
+            ]
             characters = Character.query.filter(
                 Character.is_active == True,
-                Character.clan_id.in_(target_ids)
+                Character.clan_id.in_(valid_clan_ids)
             ).all()
             character_ids = [c.id for c in characters]
     elif target_type == 'student':
-        # Assign to the selected character IDs directly
-        character_ids = [int(cid) for cid in target_ids]
+        # Assign to the selected character IDs directly (must belong to students in this class)
+        raw_ids = [int(cid) for cid in target_ids]
+        characters = Character.query.join(Student).filter(
+            Character.id.in_(raw_ids),
+            Character.is_active == True,
+            Student.class_id == class_id,
+        ).all()
+        character_ids = [c.id for c in characters]
 
     # Remove duplicates
     character_ids = list(set(character_ids))
@@ -345,6 +368,7 @@ def assign_quest():
 
 @teacher_quests_bp.route('/assignment_data', methods=['GET'])
 @login_required
+@teacher_required
 def assignment_data():
     class_id = request.args.get('class_id', type=int)
     # Get all active classes for this teacher
@@ -352,6 +376,8 @@ def assignment_data():
     classes_data = [{'id': c.id, 'name': c.name} for c in classes]
     result = {'classes': classes_data}
     if class_id:
+        if not Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first():
+            return jsonify({'error': 'Class not found or unauthorized.'}), 403
         # Get clans in this class
         clans = Clan.query.filter_by(class_id=class_id, is_active=True).all()
         clans_data = [{'id': clan.id, 'name': clan.name} for clan in clans]
@@ -374,6 +400,7 @@ def assignment_data():
 
 @teacher_quests_bp.route('/chain/<int:quest_id>', methods=['GET'])
 @login_required
+@teacher_required
 def view_quest_chain(quest_id):
     """View quest chain visualization showing parent/child relationships."""
     quest = Quest.query.get_or_404(quest_id)

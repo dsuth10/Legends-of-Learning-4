@@ -1,13 +1,13 @@
 from app.models.base import Base
 from app.models import db
-from datetime import datetime
+from app.utils.date_utils import get_utc_now
 
 class ClanProgressHistory(Base):
     __tablename__ = 'clan_progress_history'
 
     id = db.Column(db.Integer, primary_key=True)
     clan_id = db.Column(db.Integer, db.ForeignKey('clans.id', ondelete='CASCADE'), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = db.Column(db.DateTime, default=get_utc_now, nullable=False)
 
     # Core metrics
     avg_completion_rate = db.Column(db.Float, nullable=False, default=0.0)

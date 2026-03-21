@@ -1,5 +1,5 @@
-from datetime import datetime
 from app.models.base import Base
+from app.utils.date_utils import get_utc_now
 from app.models import db
 from sqlalchemy import JSON
 from enum import Enum
@@ -51,8 +51,8 @@ class Battle(Base):
     # Log of turns: [{turn: 1, action: "attack", damage: 10, question_id: 5, correct: true}, ...]
     turn_log = db.Column(JSON, default=list)
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
 
     # Relationships
     student = db.relationship('Student', backref='battles')

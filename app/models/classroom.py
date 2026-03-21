@@ -1,15 +1,15 @@
 from app.models.base import Base
 from app.models import db
-from datetime import datetime
+from app.utils.date_utils import get_utc_now
 
 # Association table for student-class relationship
 class_students = db.Table(
     'class_students',
     db.Column('class_id', db.Integer, db.ForeignKey('classrooms.id', ondelete='CASCADE'), primary_key=True, nullable=False),
     db.Column('user_id', db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True, nullable=False),
-    db.Column('joined_at', db.DateTime, nullable=False, default=datetime.utcnow),
-    db.Column('created_at', db.DateTime, nullable=False, default=datetime.utcnow),
-    db.Column('updated_at', db.DateTime, nullable=False, default=datetime.utcnow)
+    db.Column('joined_at', db.DateTime, nullable=False, default=get_utc_now),
+    db.Column('created_at', db.DateTime, nullable=False, default=get_utc_now),
+    db.Column('updated_at', db.DateTime, nullable=False, default=get_utc_now, onupdate=get_utc_now)
 )
 
 class Classroom(Base):
@@ -33,8 +33,8 @@ class Classroom(Base):
     )
     clans = db.relationship('Clan', backref='classroom', lazy='dynamic', overlaps="classroom")
     teacher = db.relationship('User', foreign_keys=[teacher_id], backref='taught_classes')
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, nullable=False, default=get_utc_now, onupdate=get_utc_now)
 
     def add_student(self, student):
         """Add a student to the classroom."""
@@ -50,6 +50,7 @@ class Classroom(Base):
         """Remove a student from the classroom."""
         if self.students.filter_by(id=student.id).first():
             self.students.remove(student)
+            self.save()
 
     @classmethod
     def get_by_join_code(cls, join_code):

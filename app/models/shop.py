@@ -1,9 +1,7 @@
-from datetime import datetime
 from sqlalchemy.orm import validates
 from app.models import db
 from app.models.base import Base
-from app.models.character import Character
-from app.models.student import Student
+from app.utils.date_utils import get_utc_now
 from enum import Enum
 
 class PurchaseType(Enum):
@@ -22,7 +20,7 @@ class ShopPurchase(Base):
     gold_spent = db.Column(db.Integer, nullable=False)
     purchase_type = db.Column(db.String(20), nullable=False)  # 'equipment' or 'ability'
     item_id = db.Column(db.Integer, nullable=False)  # ID of the purchased equipment or ability
-    purchase_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    purchase_date = db.Column(db.DateTime, nullable=False, default=get_utc_now)
     
     # Relationships
     character = db.relationship('Character', back_populates='purchases')
@@ -53,12 +51,17 @@ class ShopPurchase(Base):
     
     def get_purchased_item(self):
         """Get the purchased item (equipment or ability) based on purchase_type."""
-        if self.purchase_type == 'equipment':
+        if self.purchase_type == 'equipment' or self.purchase_type == 'shop':
             from app.models.equipment import Equipment
-            return Equipment.get_by_id(self.item_id)
-        else:  # ability
+            eq = Equipment.get_by_id(self.item_id)
+            if eq:
+                return eq
+        if self.purchase_type == 'ability' or self.purchase_type == 'shop':
             from app.models.ability import Ability
-            return Ability.get_by_id(self.item_id)
+            ab = Ability.get_by_id(self.item_id)
+            if ab:
+                return ab
+        return None
     
     @classmethod
     def get_character_purchases(cls, character_id, purchase_type=None):
@@ -72,11 +75,3 @@ class ShopPurchase(Base):
     def get_recent_purchases(cls, limit=10):
         """Get the most recent purchases across all characters."""
         return cls.query.order_by(cls.purchase_date.desc()).limit(limit).all()
-
-# At the end of the file, after both classes are defined:
-from app.models.character import Character
-from app.models.student import Student
-ShopPurchase.character = db.relationship('Character', back_populates='purchases')
-ShopPurchase.student = db.relationship('Student', back_populates='purchases')
-Character.purchases = db.relationship('ShopPurchase', back_populates='character', cascade='all, delete-orphan')
-Student.purchases = db.relationship('ShopPurchase', back_populates='student', cascade='all, delete-orphan') 

@@ -53,15 +53,21 @@ function showAbilityFeedback(data, abilityName, targetName) {
     }
   }
 
-  // Create feedback message
+  // Create feedback message (text from API — avoid innerHTML with untrusted strings)
   const message = data.message || 'Ability used';
-  const xpText = data.xp_awarded > 0 ? ` <small>(+${data.xp_awarded} XP)</small>` : '';
-  
-  feedback.innerHTML = `
-    <div class="alert ${alertClass} ability-feedback-message ${animationClass}" role="alert">
-      <strong>${icon} ${message}</strong>${xpText}
-    </div>
-  `;
+  feedback.textContent = '';
+  const wrap = document.createElement('div');
+  wrap.className = `alert ${alertClass} ability-feedback-message ${animationClass}`;
+  wrap.setAttribute('role', 'alert');
+  const strong = document.createElement('strong');
+  strong.textContent = `${icon} ${message}`;
+  wrap.appendChild(strong);
+  if (data.xp_awarded > 0) {
+    const small = document.createElement('small');
+    small.textContent = ` (+${data.xp_awarded} XP)`;
+    wrap.appendChild(small);
+  }
+  feedback.appendChild(wrap);
 
   // Auto-hide after 3 seconds
   setTimeout(() => {
@@ -80,33 +86,49 @@ function showAbilityFeedback(data, abilityName, targetName) {
 /**
  * Update character stats display without page reload
  */
+function findTableRowByHeaderLabel(label) {
+  const want = String(label).trim().toLowerCase();
+  const rows = document.querySelectorAll('tr');
+  for (const tr of rows) {
+    const th = tr.querySelector('th');
+    if (th && th.textContent.trim().toLowerCase() === want) {
+      return tr;
+    }
+  }
+  return null;
+}
+
 function updateCharacterStats(characterData, targetData, effect) {
   if (!characterData || !targetData) return;
 
   // Update health display if target is the main character
-  const healthRow = document.querySelector('tr:has(th:contains("Health"))');
+  const healthRow = findTableRowByHeaderLabel('Health');
   if (healthRow && effect) {
     const healthCell = healthRow.querySelector('td');
     if (healthCell) {
       const currentHealth = targetData.health || characterData.health;
-      const maxHealth = targetData.max_health || characterData.max_health;
-      
+
       // Animate health change
       if (effect.type === 'heal' || effect.type === 'attack') {
         animateStatChange(healthCell, effect.amount, effect.type === 'heal' ? 'positive' : 'negative');
       }
-      
-      // Update health text
+
+      // Update health text (numeric — safe DOM APIs)
       setTimeout(() => {
-        healthCell.innerHTML = `${currentHealth} <span class="text-muted small">(Base: ${targetData.health || characterData.health})</span>`;
+        healthCell.textContent = '';
+        healthCell.appendChild(document.createTextNode(String(currentHealth)));
+        const span = document.createElement('span');
+        span.className = 'text-muted small';
+        span.textContent = ` (Base: ${targetData.health || characterData.health})`;
+        healthCell.appendChild(span);
       }, 500);
     }
   }
 
   // Update power/defense if buff/debuff
   if (effect && (effect.type === 'buff' || effect.type === 'debuff' || effect.type === 'protect')) {
-    const statName = effect.type === 'protect' ? 'defense' : 'power';
-    const statRow = document.querySelector(`tr:has(th:contains("${statName.charAt(0).toUpperCase() + statName.slice(1)}"))`);
+    const statLabel = effect.type === 'protect' ? 'Defense' : 'Power';
+    const statRow = findTableRowByHeaderLabel(statLabel);
     if (statRow) {
       const statCell = statRow.querySelector('td');
       if (statCell) {

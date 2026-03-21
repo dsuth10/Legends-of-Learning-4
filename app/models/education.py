@@ -1,5 +1,5 @@
-from datetime import datetime
 from app.models.base import Base
+from app.utils.date_utils import get_utc_now
 from app.models import db
 from sqlalchemy import JSON
 
@@ -11,7 +11,7 @@ class QuestionSet(Base):
     title = db.Column(db.String(128), nullable=False)
     description = db.Column(db.Text, nullable=True)
     teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id', ondelete='CASCADE'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
     is_active = db.Column(db.Boolean, default=True)
 
     # Relationships

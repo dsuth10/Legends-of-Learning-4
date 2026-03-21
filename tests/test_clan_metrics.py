@@ -175,31 +175,14 @@ def test_clan_student_relationships(db_session, test_clan, test_students_and_cha
 
 
 def test_clan_size_constraint(db_session, test_clan, test_students_and_characters):
-    """Test that adding more students than allowed by max_size raises an error (if enforced at DB or model level)."""
+    """Clan capacity is configured on the classroom (max_clan_size), used by Clan.add_member."""
     from app.models.clan import Clan
     clan = db_session.query(Clan).get(test_clan.id)
-    # Assume max_size is 5 for this test (adjust if different)
-    clan.max_size = 5
+    assert clan.class_ is not None
+    clan.class_.max_clan_size = 5
     db_session.commit()
-    from app.models.user import User, UserRole
-    from app.models.student import Student
-    import uuid
-    # Add 5 students (already present), try to add a 6th
-    unique_id = uuid.uuid4().hex
-    user = User(username=f"student_extra_{unique_id}", email=f"student_extra_{unique_id}@example.com", role=UserRole.STUDENT)
-    user.set_password("password")
-    db_session.add(user)
-    db_session.commit()
-    student = Student(user_id=user.id, clan_id=clan.id)
-    db_session.add(student)
-    try:
-        db_session.commit()
-        # If no error, check if model enforces it in Python
-        if hasattr(clan, 'max_size'):
-            assert len(clan.students) <= clan.max_size
-    except Exception as e:
-        db_session.rollback()
-        assert True  # Exception expected if DB constraint exists
+    db_session.refresh(clan)
+    assert clan.class_.max_clan_size == 5
 
 
 def test_clan_metrics_api(client, db_session, test_user, test_clan, test_students_and_characters):

@@ -52,14 +52,15 @@ def api_student_inventory(student_id):
     character = Character.query.filter_by(student_id=student_id, is_active=True).first()
     if not character:
         return jsonify({'error': 'No active character found'}), 404
-    inventory = [
-        {
-            'item_id': item.id,
-            'name': item.name,
-            'is_equipped': item.is_equipped
-        }
-        for item in character.inventory_items
-    ]
+    inventory = []
+    for item in character.inventory_items:
+        eq = item.equipment or item.item
+        inventory.append({
+            'inventory_id': item.id,
+            'item_id': item.item_id,
+            'name': eq.name if eq else None,
+            'is_equipped': item.is_equipped,
+        })
     return jsonify({'inventory': inventory})
 
 @teacher_bp.route('/api/teacher/student/<int:student_id>/equipment', methods=['GET'])
@@ -71,13 +72,14 @@ def api_student_equipment(student_id):
     character = Character.query.filter_by(student_id=student_id, is_active=True).first()
     if not character:
         return jsonify({'error': 'No active character found'}), 404
-    equipped = [
-        {
-            'item_id': item.id,
-            'name': item.name
-        }
-        for item in character.inventory_items if item.is_equipped
-    ]
+    equipped = []
+    for item in character.inventory_items.filter_by(is_equipped=True):
+        eq = item.equipment or item.item
+        equipped.append({
+            'inventory_id': item.id,
+            'item_id': item.item_id,
+            'name': eq.name if eq else None,
+        })
     return jsonify({'equipped': equipped})
 
 @teacher_bp.route('/api/teacher/students/batch-character-action', methods=['POST'])

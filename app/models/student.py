@@ -1,5 +1,5 @@
 from app.models import db, Base
-from datetime import datetime
+from app.utils.date_utils import get_utc_now
 
 class Student(Base):
     __tablename__ = 'students'
@@ -13,14 +13,17 @@ class Student(Base):
     power = db.Column(db.Integer, default=100, nullable=False)
     gold = db.Column(db.Integer, default=0, nullable=False)
     last_activity = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, nullable=False, default=get_utc_now, onupdate=get_utc_now)
     status = db.Column(db.String(32), nullable=False, default='active')
 
     # Relationships
     user = db.relationship('User', backref=db.backref('student_profile', uselist=False))
     classroom = db.relationship('Classroom', backref=db.backref('student_members', lazy='dynamic'))
     clan = db.relationship('Clan', backref=db.backref('clan_members', lazy='dynamic'))
+    purchases = db.relationship(
+        'ShopPurchase', back_populates='student', cascade='all, delete-orphan'
+    )
 
     def __repr__(self):
         return f'<Student user_id={self.user_id} class_id={self.class_id} level={self.level}>' 

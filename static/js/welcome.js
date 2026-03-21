@@ -3,11 +3,10 @@ function updateDarkModeIcon() {
     const icon = document.getElementById('darkModeIcon');
     if (!icon) return;
     
-    if (document.documentElement.classList.contains('dark')) {
-        // Use light_mode icon when in dark mode (to indicate switch to light)
+    const isDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark-mode');
+    if (isDark) {
         icon.textContent = 'light_mode';
     } else {
-        // Use dark_mode icon when in light mode (to indicate switch to dark)
         icon.textContent = 'dark_mode';
     }
 }
@@ -15,18 +14,20 @@ function updateDarkModeIcon() {
 function setDarkMode(enabled) {
     if (enabled) {
         document.documentElement.classList.add('dark');
+        document.body.classList.add('dark-mode');
         localStorage.setItem('darkMode', 'true');
     } else {
         document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark-mode');
         localStorage.setItem('darkMode', 'false');
     }
     updateDarkModeIcon();
-    // Accessibility: trigger event
     document.documentElement.dispatchEvent(new Event('darkmodechange'));
+    document.body.dispatchEvent(new Event('darkmodechange'));
 }
 
 function toggleDarkMode() {
-    const isDark = document.documentElement.classList.contains('dark');
+    const isDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark-mode');
     setDarkMode(!isDark);
 }
 
@@ -36,6 +37,9 @@ window.addEventListener('DOMContentLoaded', function() {
     if (darkPref === 'true') {
         setDarkMode(true);
     } else {
+        if (document.body.classList.contains('dark-mode')) {
+            document.documentElement.classList.add('dark');
+        }
         updateDarkModeIcon();
     }
     
@@ -45,4 +49,5 @@ window.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', toggleDarkMode);
     }
 });
+
 

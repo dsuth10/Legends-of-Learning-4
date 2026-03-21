@@ -1,14 +1,11 @@
 from datetime import datetime, timedelta
-from sqlalchemy import func
+from sqlalchemy import func, case
 from app.models.clan import Clan
 from app.models.student import Student
 from app.models.character import Character
 from app.models.clan_progress import ClanProgressHistory
-# If QuestAssignment is not available, replace with QuestLog or similar
-try:
-    from app.models.quest_assignment import QuestAssignment
-except ImportError:
-    from app.models.quest import QuestLog as QuestAssignment
+# Quest assignment tracking uses QuestLog (no separate QuestAssignment model in repo)
+from app.models.quest import QuestLog as QuestAssignment, QuestStatus
 from app.models import db
 from app.models.audit import AuditLog
 from sqlalchemy import and_
@@ -23,21 +20,42 @@ def register_custom_metric(name, calculation_func, description=None):
         'description': description or f"Custom metric: {name}"
     }
 
+def _is_quest_completed(status):
+    if status == QuestStatus.COMPLETED:
+        return True
+    val = getattr(status, 'value', status)
+    return val == 'completed'
+
+
 def calculate_avg_completion_rate(clan):
     """Calculate the average quest completion rate for clan members"""
     members = Student.query.filter_by(clan_id=clan.id).all()
     if not members:
         return 0.0
+    student_ids = [m.id for m in members]
+    characters = Character.query.filter(Character.student_id.in_(student_ids)).all()
+    if not characters:
+        return 0.0
+    char_ids = [c.id for c in characters]
+    rows = (
+        db.session.query(
+            QuestAssignment.character_id,
+            func.count(QuestAssignment.id).label('total'),
+            func.sum(
+                case((QuestAssignment.status == QuestStatus.COMPLETED, 1), else_=0)
+            ).label('done'),
+        )
+        .filter(QuestAssignment.character_id.in_(char_ids))
+        .group_by(QuestAssignment.character_id)
+        .all()
+    )
+    agg = {r.character_id: (r.done or 0, r.total or 0) for r in rows}
     completion_rates = []
-    for member in members:
-        characters = Character.query.filter_by(student_id=member.id).all()
-        if not characters:
+    for char in characters:
+        done, total = agg.get(char.id, (0, 0))
+        if total == 0:
             continue
-        assigned = sum(QuestAssignment.query.filter_by(character_id=char.id).count() for char in characters)
-        if assigned == 0:
-            continue
-        completed = sum(QuestAssignment.query.filter_by(character_id=char.id, status='completed').count() for char in characters)
-        completion_rates.append(completed / assigned if assigned > 0 else 0)
+        completion_rates.append(done / total)
     return sum(completion_rates) / len(completion_rates) if completion_rates else 0.0
 
 def calculate_total_points(clan):
@@ -85,14 +103,19 @@ def calculate_avg_daily_points(clan, days=7):
 def calculate_quest_completion_rate(clan):
     """Calculate the ratio of completed quests to assigned quests"""
     members = Student.query.filter_by(clan_id=clan.id).all()
-    assignments = []
-    for member in members:
-        characters = Character.query.filter_by(student_id=member.id).all()
-        for char in characters:
-            assignments.extend(QuestAssignment.query.filter_by(character_id=char.id).all())
+    if not members:
+        return 0.0
+    student_ids = [m.id for m in members]
+    char_ids = [
+        c.id
+        for c in Character.query.filter(Character.student_id.in_(student_ids)).all()
+    ]
+    if not char_ids:
+        return 0.0
+    assignments = QuestAssignment.query.filter(QuestAssignment.character_id.in_(char_ids)).all()
     if not assignments:
         return 0.0
-    completed = sum(1 for a in assignments if a.status == 'completed')
+    completed = sum(1 for a in assignments if _is_quest_completed(a.status))
     return completed / len(assignments)
 
 def calculate_avg_member_level(clan):
@@ -124,14 +147,21 @@ def calculate_clan_metrics(clan_id, include_custom=True):
 
 def calculate_percentile_rankings(class_id=None, school_id=None):
     """Calculate percentile rankings for clans within a class or school"""
-    query = db.session.query(
-        Clan.id,
-        func.sum(Character.experience).label('total_points')
-    ).join(Student, Student.id == Character.student_id).group_by(Clan.id)
-    if class_id:
-        query = query.filter(Student.class_id == class_id)
-    elif school_id:
-        query = query.filter(Student.school_id == school_id)
+    if school_id:
+        # Student model has no school_id; extend when multi-school support exists
+        return {}
+    query = (
+        db.session.query(
+            Clan.id,
+            func.sum(Character.experience).label('total_points'),
+        )
+        .select_from(Clan)
+        .join(Student, Student.clan_id == Clan.id)
+        .join(Character, Character.student_id == Student.id)
+        .group_by(Clan.id)
+    )
+    if class_id is not None:
+        query = query.filter(Clan.class_id == class_id)
     results = query.all()
     sorted_clans = sorted(results, key=lambda x: x.total_points or 0, reverse=True)
     total_clans = len(sorted_clans)

@@ -105,6 +105,7 @@ def fight(battle_id):
         return redirect(url_for('student.character'))
     
     battle = Battle.query.filter_by(id=battle_id, student_id=student_profile.id).first_or_404()
+    character = student_profile.characters.filter_by(is_active=True).first()
     
     # If battle is over, redirect to results
     if battle.status != BattleStatus.ACTIVE:

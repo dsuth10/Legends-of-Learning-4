@@ -59,7 +59,12 @@ def edit_student(user_id):
     # Fetch character and inventory
     equipped_items = []
     unequipped_items = []
-    character = Character.query.filter_by(student_id=user.id, is_active=True).first()
+    student_profile = Student.query.filter_by(user_id=user.id).first()
+    character = (
+        Character.query.filter_by(student_id=student_profile.id, is_active=True).first()
+        if student_profile
+        else None
+    )
     if character:
         equipped_items = [item for item in character.inventory_items if item.is_equipped]
         unequipped_items = [item for item in character.inventory_items if not item.is_equipped]

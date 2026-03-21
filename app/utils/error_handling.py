@@ -1,6 +1,6 @@
 """Error handling utilities for consistent error responses."""
 
-from flask import jsonify, render_template
+from flask import jsonify
 from app.models import db
 import logging
 
@@ -91,6 +91,9 @@ def json_error_response(message, status_code=500, error_type=None, error_code=No
 
 def json_success_response(data=None, message=None, status_code=200):
     """Create a consistent JSON success response.
+
+    Prefer this (and matching error helpers in this module) for new JSON APIs
+    so clients always receive ``{success, data?, message?}`` shaped payloads.
     
     Args:
         data: Optional data to include in response
@@ -101,12 +104,13 @@ def json_success_response(data=None, message=None, status_code=200):
         Flask JSON response
     """
     response = {'success': True}
-    if data:
+    if data is not None:
         response['data'] = data
     if message:
         response['message'] = message
     
     return jsonify(response), status_code
+
 
 
 

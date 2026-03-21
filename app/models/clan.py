@@ -1,6 +1,6 @@
 from app.models.base import Base
 from app.models import db
-from datetime import datetime
+from app.utils.date_utils import get_utc_now
 
 class Clan(Base):
     """Clan model for organizing students into teams."""
@@ -16,8 +16,8 @@ class Clan(Base):
     level = db.Column(db.Integer, default=1, nullable=False)
     experience = db.Column(db.Integer, default=0, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, nullable=False, default=get_utc_now, onupdate=get_utc_now)
     
     # Foreign Keys
     class_id = db.Column(db.Integer, db.ForeignKey('classrooms.id', ondelete='CASCADE'), nullable=False)

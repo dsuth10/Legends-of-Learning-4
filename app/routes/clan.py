@@ -3,6 +3,12 @@ from flask_jwt_extended import jwt_required, current_user
 from app.models.clan import Clan
 from app.models.clan_progress import ClanProgressHistory
 from app.services.clan_metrics import calculate_clan_metrics, calculate_percentile_rankings
+from app.utils.jwt_access import (
+    user_can_access_clan,
+    user_can_access_class_for_clan_api,
+    clamp_history_days,
+    CLAN_HISTORY_METRIC_FIELDS,
+)
 from app import db
 from datetime import datetime, timedelta
 
@@ -11,6 +17,8 @@ clan_api = Blueprint('clan_api', __name__)
 @clan_api.route('/clans/<int:clan_id>/metrics', methods=['GET'])
 @jwt_required()
 def get_clan_metrics(clan_id):
+    if not user_can_access_clan(current_user.id, clan_id):
+        return jsonify({'error': 'Forbidden'}), 403
     metrics = calculate_clan_metrics(clan_id)
     if not metrics:
         return jsonify({'error': 'Clan not found'}), 404
@@ -19,7 +27,9 @@ def get_clan_metrics(clan_id):
 @clan_api.route('/clans/<int:clan_id>/history', methods=['GET'])
 @jwt_required()
 def get_clan_history(clan_id):
-    days = request.args.get('days', 30, type=int)
+    if not user_can_access_clan(current_user.id, clan_id):
+        return jsonify({'error': 'Forbidden'}), 403
+    days = clamp_history_days(request.args.get('days', default=30, type=int))
     cutoff = datetime.utcnow() - timedelta(days=days)
     history = ClanProgressHistory.query.filter(
         ClanProgressHistory.clan_id == clan_id,
@@ -41,7 +51,8 @@ def get_clan_history(clan_id):
 @clan_api.route('/classes/<int:class_id>/clan-leaderboard', methods=['GET'])
 @jwt_required()
 def get_clan_leaderboard_for_class(class_id):
-    # Optionally: check current_user has access to this class
+    if not user_can_access_class_for_clan_api(current_user.id, class_id):
+        return jsonify({'error': 'Forbidden'}), 403
     percentiles = calculate_percentile_rankings(class_id=class_id)
     clans = Clan.query.filter_by(class_id=class_id).all()
     leaderboard = []
@@ -65,8 +76,12 @@ def get_clan_leaderboard_for_class(class_id):
 @clan_api.route('/clans/<int:clan_id>/trend-data', methods=['GET'])
 @jwt_required()
 def get_clan_trend_data(clan_id):
-    days = request.args.get('days', 30, type=int)
+    if not user_can_access_clan(current_user.id, clan_id):
+        return jsonify({'error': 'Forbidden'}), 403
+    days = clamp_history_days(request.args.get('days', default=30, type=int))
     metric = request.args.get('metric', 'total_points')
+    if metric not in CLAN_HISTORY_METRIC_FIELDS:
+        metric = 'total_points'
     cutoff = datetime.utcnow() - timedelta(days=days)
     history = ClanProgressHistory.query.filter(
         ClanProgressHistory.clan_id == clan_id,

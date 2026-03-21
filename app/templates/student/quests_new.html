@@ -232,10 +232,10 @@
                         {# Action Buttons #}
                         <div id="quest-action-buttons" class="mt-auto flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                             {% if selected_status.value == 'in_progress' %}
-                                <button class="flex-1 bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 flex items-center justify-center">
+                                <a href="{{ url_for('student.character') }}" class="flex-1 bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 flex items-center justify-center text-center no-underline">
                                     <span class="material-icons mr-2">play_arrow</span>
                                     Continue Quest
-                                </button>
+                                </a>
                             {% elif selected_status.value == 'not_started' %}
                                 <form method="POST" action="{{ url_for('student.start_quest', quest_id=selected_quest.id) }}" class="flex-1">
                                     <button type="submit" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 flex items-center justify-center">
@@ -328,7 +328,8 @@ const questsData = {
                 {% endif %}
             ],
             startUrl: {{ url_for('student.start_quest', quest_id=quest.id)|tojson }},
-            completeUrl: {{ url_for('student.complete_quest', quest_id=quest.id)|tojson }}
+            completeUrl: {{ url_for('student.complete_quest', quest_id=quest.id)|tojson }},
+            continueUrl: {{ url_for('student.character')|tojson }}
         }{% if not loop.last %},{% endif %}
     {% endfor %}
 };
@@ -484,11 +485,12 @@ function selectQuest(questId, event) {
         let buttonsHTML = '';
         
         if (quest.status === 'in_progress') {
+            const cUrl = quest.continueUrl || '#';
             buttonsHTML = `
-                <button class="flex-1 bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 flex items-center justify-center">
+                <a href="${cUrl}" class="flex-1 bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 flex items-center justify-center text-center no-underline">
                     <span class="material-icons mr-2">play_arrow</span>
                     Continue Quest
-                </button>
+                </a>
             `;
         } else if (quest.status === 'not_started') {
             buttonsHTML = `

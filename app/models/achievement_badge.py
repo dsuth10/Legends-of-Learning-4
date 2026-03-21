@@ -1,18 +1,19 @@
 from app.models import db
+from app.models.base import Base
 
 clan_badges = db.Table(
     'clan_badges',
-    db.Column('clan_id', db.Integer, db.ForeignKey('clans.id'), primary_key=True),
-    db.Column('badge_id', db.Integer, db.ForeignKey('achievement_badge.id'), primary_key=True)
+    db.Column('clan_id', db.Integer, db.ForeignKey('clans.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('badge_id', db.Integer, db.ForeignKey('achievement_badge.id', ondelete='CASCADE'), primary_key=True),
 )
 
 character_badges = db.Table(
     'character_badges',
-    db.Column('character_id', db.Integer, db.ForeignKey('characters.id'), primary_key=True),
-    db.Column('badge_id', db.Integer, db.ForeignKey('achievement_badge.id'), primary_key=True)
+    db.Column('character_id', db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('badge_id', db.Integer, db.ForeignKey('achievement_badge.id', ondelete='CASCADE'), primary_key=True),
 )
 
-class AchievementBadge(db.Model):
+class AchievementBadge(Base):
     __tablename__ = 'achievement_badge'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)

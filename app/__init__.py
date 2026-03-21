@@ -1,4 +1,5 @@
 from flask import Flask
+from dotenv import load_dotenv
 from app.models import db, init_db  # Use the single db instance from app.models
 from flask_login import LoginManager
 from flask_migrate import Migrate
@@ -15,6 +16,7 @@ login_manager = LoginManager()
 migrate = Migrate()
 
 def create_app(config=None):
+    load_dotenv()
     app = Flask(__name__, template_folder="templates", static_folder="../static")
     
     # Load database configuration
@@ -36,6 +38,14 @@ def create_app(config=None):
     # Override with passed config if any
     if config:
         app.config.update(config)
+
+    # Require a real secret in production (not when running tests)
+    if not app.config.get('TESTING') and os.environ.get('FLASK_ENV', '').lower() == 'production':
+        sk = app.config.get('SECRET_KEY')
+        if not sk or sk == 'dev-key-change-in-production':
+            raise ValueError(
+                'SECRET_KEY must be set to a secure value when FLASK_ENV=production.'
+            )
 
     # Remove pool options for in-memory SQLite
     uri = app.config['SQLALCHEMY_DATABASE_URI']
@@ -77,9 +87,13 @@ def create_app(config=None):
     from app.routes import init_app
     init_app(app)
 
-    # --- DB maintenance: version check and weekly integrity check ---
-    # check_db_version(app)
-    # start_weekly_integrity_check(app)
+    # --- DB maintenance: version check (production / non-test only) ---
+    if not app.config.get('TESTING') and not app.debug:
+        try:
+            check_db_version(app)
+        except Exception as exc:
+            app.logger.warning('DB version check skipped: %s', exc)
+    # start_weekly_integrity_check(app)  # optional: enable for long-running prod processes
     # --------------------------------------------------------------
 
     # Configure logging

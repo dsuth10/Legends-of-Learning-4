@@ -1,5 +1,5 @@
 from app.models import db, Base
-from datetime import datetime
+from app.utils.date_utils import get_utc_now
 
 class AssistLog(Base):
     __tablename__ = 'assist_logs'
@@ -8,7 +8,7 @@ class AssistLog(Base):
     target_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     ability_id = db.Column(db.Integer, db.ForeignKey('abilities.id', ondelete='SET NULL'), nullable=True)
     xp_awarded = db.Column(db.Integer, default=0, nullable=False)
-    used_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    used_at = db.Column(db.DateTime, nullable=False, default=get_utc_now)
 
     # Relationships
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('assist_logs', lazy='dynamic'))

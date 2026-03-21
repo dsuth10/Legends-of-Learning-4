@@ -4,11 +4,12 @@ from flask import render_template, request, jsonify, flash, send_file, abort
 from app.models import db
 from app.models.classroom import Classroom
 from app.models.clan import Clan
-from app.models.quest import Quest
+from app.models.quest import Quest, QuestLog, QuestStatus
 from app.models.audit import AuditLog
 from app.models.user import User
 from app.models.character import Character
 from app.models.shop import ShopPurchase
+from sqlalchemy.orm import joinedload
 from app.models.student import Student
 from app.models.equipment import Equipment
 from app.models.ability import Ability
@@ -50,10 +51,15 @@ def dashboard():
             filter(Classroom.teacher_id == current_user.id,
                   Clan.is_active == True).\
             count(),
-        'active_quests': Quest.query.\
-            join(Classroom, Quest.id == Classroom.id).\
-            filter(Classroom.teacher_id == current_user.id,
-                  Quest.end_date >= datetime.now(timezone.utc).replace(tzinfo=None)).\
+        'active_quests': db.session.query(QuestLog).\
+            join(Character, QuestLog.character_id == Character.id).\
+            join(Student, Character.student_id == Student.id).\
+            join(Classroom, Student.class_id == Classroom.id).\
+            filter(
+                Classroom.teacher_id == current_user.id,
+                QuestLog.status == QuestStatus.IN_PROGRESS,
+            ).\
+            distinct().\
             count()
     }
     total_classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).count()
@@ -72,7 +78,8 @@ def dashboard():
     recent_activities = []
     audit_logs = AuditLog.query.\
         join(Character, AuditLog.character_id == Character.id).\
-        join(Classroom, Classroom.id == Character.student_id).\
+        join(Student, Character.student_id == Student.id).\
+        join(Classroom, Student.class_id == Classroom.id).\
         filter(
             Classroom.teacher_id == current_user.id,
             AuditLog.event_timestamp >= seven_days_ago,
@@ -547,18 +554,36 @@ def backup_export_table():
 @login_required
 @teacher_required
 def purchase_log():
-    purchases = ShopPurchase.query.order_by(ShopPurchase.purchase_date.desc()).limit(100).all()
+    purchases = (
+        ShopPurchase.query.join(Student, ShopPurchase.student_id == Student.id)
+        .join(Classroom, Student.class_id == Classroom.id)
+        .filter(Classroom.teacher_id == current_user.id)
+        .options(joinedload(ShopPurchase.student).joinedload(Student.user))
+        .order_by(ShopPurchase.purchase_date.desc())
+        .limit(100)
+        .all()
+    )
+    eq_ids = {p.item_id for p in purchases if p.purchase_type == 'equipment'}
+    ab_ids = {p.item_id for p in purchases if p.purchase_type == 'ability'}
+    shop_ids = {p.item_id for p in purchases if p.purchase_type == 'shop'}
+    eq_ids |= shop_ids
+    ab_ids |= shop_ids
+    equipment_by_id = {e.id: e for e in Equipment.query.filter(Equipment.id.in_(eq_ids)).all()} if eq_ids else {}
+    ability_by_id = {a.id: a for a in Ability.query.filter(Ability.id.in_(ab_ids)).all()} if ab_ids else {}
     purchase_data = []
     for p in purchases:
-        student = Student.query.get(p.student_id)
-        user = User.query.get(student.user_id) if student else None
+        student = p.student
+        user = student.user if student else None
         item_name = None
         if p.purchase_type == 'equipment':
-            item = Equipment.query.get(p.item_id)
+            item = equipment_by_id.get(p.item_id)
             item_name = item.name if item else 'Unknown Equipment'
         elif p.purchase_type == 'ability':
-            item = Ability.query.get(p.item_id)
+            item = ability_by_id.get(p.item_id)
             item_name = item.name if item else 'Unknown Ability'
+        elif p.purchase_type == 'shop':
+            item = equipment_by_id.get(p.item_id) or ability_by_id.get(p.item_id)
+            item_name = item.name if item else 'Unknown'
         else:
             item_name = 'Unknown'
         purchase_data.append({

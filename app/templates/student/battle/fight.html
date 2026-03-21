@@ -118,14 +118,14 @@
                     <button type="submit" class="btn btn-primary" id="submit-answer">
                         <i class="bi bi-check-circle"></i> Submit Answer
                     </button>
-                    <form action="{{ url_for('student_battle.flee', battle_id=battle.id) }}" method="post"
-                        style="display:inline;"
-                        onsubmit="return confirm('Are you sure you want to flee? You will lose this battle.');">
-                        <button type="submit" class="btn btn-warning">
-                            <i class="bi bi-flag"></i> Flee
-                        </button>
-                    </form>
                 </div>
+            </form>
+            <form action="{{ url_for('student_battle.flee', battle_id=battle.id) }}" method="post"
+                class="mt-2 d-inline"
+                onsubmit="return confirm('Are you sure you want to flee? You will lose this battle.');">
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-flag"></i> Flee
+                </button>
             </form>
         </div>
     </div>

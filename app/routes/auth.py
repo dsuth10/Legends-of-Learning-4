@@ -57,7 +57,7 @@ def login():
         elif current_user.role == UserRole.STUDENT:
             return redirect(url_for('student.character'))
         else:
-            return redirect(url_for('main.index'))
+            return redirect(url_for('main.home'))
     
     form = LoginForm()
     if form.validate_on_submit():
@@ -79,7 +79,7 @@ def login():
                 elif user.role == UserRole.STUDENT:
                     return redirect(safe_next or url_for('student.character'))
                 else:
-                    return redirect(safe_next or url_for('main.index'))
+                    return redirect(safe_next or url_for('main.home'))
         else:
             flash('Invalid username/email or password.', 'danger')
             

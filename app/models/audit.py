@@ -1,5 +1,5 @@
-from datetime import datetime
 from sqlalchemy.types import JSON
+from app.utils.date_utils import get_utc_now
 from app.models import db
 from app.models.base import Base
 from enum import Enum
@@ -50,7 +50,7 @@ class AuditLog(Base):
     character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=True)
     event_data = db.Column(JSON, nullable=False)  # Stores event-specific data
     ip_address = db.Column(db.String(45), nullable=True)  # IPv4/IPv6 address
-    event_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    event_timestamp = db.Column(db.DateTime, nullable=False, default=get_utc_now, index=True)
     
     # Relationships
     user = db.relationship('User', back_populates='audit_logs')

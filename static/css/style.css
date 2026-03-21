@@ -49,10 +49,6 @@ input, select, textarea {
   color: var(--alert-text) !important;
 }
 
-div.row {
-  background-color: var(--btn-primary-bg) !important;
-}
-
 /* Dark mode overrides */
 body.dark-mode {
   --bg-main: #181a1b;

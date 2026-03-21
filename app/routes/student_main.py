@@ -20,11 +20,24 @@ logger = logging.getLogger(__name__)
 
 student_bp = Blueprint('student', __name__, url_prefix='/student')
 
-@student_bp.route('/profile')
+@student_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 @student_required
 def profile():
     try:
+        if request.method == 'POST':
+            display_name = (request.form.get('display_name') or '').strip()[:64]
+            first_name = (request.form.get('first_name') or '').strip()[:64]
+            last_name = (request.form.get('last_name') or '').strip()[:64]
+            if display_name:
+                current_user.display_name = display_name
+            if first_name:
+                current_user.first_name = first_name
+            if last_name:
+                current_user.last_name = last_name
+            db.session.commit()
+            flash('Profile updated.', 'success')
+            return redirect(url_for('student.profile'))
         return render_template('student/profile.html', student=current_user)
     except Exception as e:
         logger.error(f"Error loading profile page: {str(e)}", exc_info=True)
@@ -390,9 +403,10 @@ def shop():
         char_gold = main_character.gold if main_character else 0
         char_level = main_character.level if main_character else 1
         char_class = main_character.character_class if main_character else ''
-        # Query all items and abilities for the shop
-        items = Equipment.query.all()
-        ability_items = Ability.query.all()
+        # Shop catalog (cap row count for performance on large seed DBs)
+        _shop_limit = 2000
+        items = Equipment.query.order_by(Equipment.id).limit(_shop_limit).all()
+        ability_items = Ability.query.order_by(Ability.id).limit(_shop_limit).all()
         logger.debug(f"Shop route: Equipment count={len(items)}, Ability count={len(ability_items)}")
         # Query overrides for the student's active classroom
         overrides_map = {}

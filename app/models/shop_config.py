@@ -1,6 +1,6 @@
 from app.models.base import Base
 from app.models import db
-from datetime import datetime
+from app.utils.date_utils import get_utc_now
 
 class ShopItemOverride(Base):
     """Model for overriding shop item properties per classroom."""
@@ -17,8 +17,8 @@ class ShopItemOverride(Base):
     override_level_req = db.Column(db.Integer, nullable=True)
     is_visible = db.Column(db.Boolean, default=True, nullable=False)
     
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, nullable=False, default=get_utc_now, onupdate=get_utc_now)
     
     # Relationships
     classroom = db.relationship('Classroom', backref=db.backref('shop_overrides', lazy='dynamic', cascade='all, delete-orphan'))

@@ -1,5 +1,5 @@
 from app.models import db, Base
-from datetime import datetime
+from app.utils.date_utils import get_utc_now
 
 class Teacher(Base):
     __tablename__ = 'teachers'
@@ -11,8 +11,8 @@ class Teacher(Base):
     title = db.Column(db.String(32), nullable=True)  # e.g., Mr., Mrs., Dr.
     bio = db.Column(db.Text, nullable=True)
     
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, nullable=False, default=get_utc_now, onupdate=get_utc_now)
     
     # Relationships
     user = db.relationship('User', backref=db.backref('teacher_profile', uselist=False))

@@ -243,20 +243,23 @@ function updateQuestLogToInProgress(questLogId) {
         startQuestCell.innerHTML = '<span class="text-muted">-</span>';
     }
     
-    // Update actions column (add Mark Complete button)
+    // Update actions column (add Mark Complete button) — DOM API avoids XSS in data attributes
     const actionsCell = row.querySelector('td:nth-child(7)');
     if (actionsCell) {
         const questTitle = row.getAttribute('data-quest-title') || 'Quest';
         const studentName = row.getAttribute('data-student-name') || 'Student';
-        actionsCell.innerHTML = `
-            <button type="button" class="btn btn-sm btn-success complete-quest-btn" 
-                    data-quest-log-id="${questLogId}"
-                    data-quest-title="${questTitle}"
-                    data-student-name="${studentName}">
-                <i class="fas fa-check me-1"></i>Mark Complete
-            </button>
-        `;
-        // Re-initialize the complete button
+        actionsCell.textContent = '';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-success complete-quest-btn';
+        btn.dataset.questLogId = String(questLogId);
+        btn.dataset.questTitle = questTitle;
+        btn.dataset.studentName = studentName;
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-check me-1';
+        btn.appendChild(icon);
+        btn.appendChild(document.createTextNode('Mark Complete'));
+        actionsCell.appendChild(btn);
         initializeCompleteButtons();
     }
 }

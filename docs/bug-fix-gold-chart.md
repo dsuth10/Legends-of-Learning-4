@@ -74,3 +74,4 @@ The gold chart on the student progress page was empty even though students had g
 
 
 
+

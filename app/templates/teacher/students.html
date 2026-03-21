@@ -91,7 +91,20 @@
         <tr>
           {% macro sort_link(label, col) %}
           {% set is_sorted = sort == col %}
-          <a href="?{{ request.query_string|safe|replace('sort=' ~ sort, 'sort=' ~ col)|replace('direction=' ~ direction, 'direction=' ~ ('desc' if is_sorted and direction == 'asc' else 'asc')) }}"
+          {% set next_dir = 'desc' if is_sorted and direction == 'asc' else 'asc' %}
+          <a href="{{ url_for('teacher.students',
+              class_id=selected_class.id,
+              sort=col,
+              direction=next_dir,
+              search=search or none,
+              level=level,
+              gold=gold,
+              xp=xp,
+              health=health,
+              power=power,
+              clan_id=clan_id,
+              character_class=(character_class or none)
+            ) }}"
             class="text-decoration-none">
             {{ label }}
             {% if is_sorted %}

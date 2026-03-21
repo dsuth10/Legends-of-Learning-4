@@ -35,6 +35,9 @@ class Character(Base):
     # Relationships
     student = db.relationship('Student', backref=db.backref('characters', lazy='dynamic', cascade='all, delete-orphan'))
     clan = db.relationship('Clan', foreign_keys=[clan_id], backref=db.backref('members', lazy='dynamic', foreign_keys='Character.clan_id'))
+    purchases = db.relationship(
+        'ShopPurchase', back_populates='character', cascade='all, delete-orphan'
+    )
     # abilities = db.relationship('CharacterAbility', back_populates='character', lazy='dynamic')
     
     __table_args__ = (
@@ -213,7 +216,7 @@ class CharacterRead(CharacterBase):
     class Config:
         from_attributes = True
 
-class StatusEffect(db.Model):
+class StatusEffect(Base):
     __tablename__ = 'status_effects'
     id = db.Column(db.Integer, primary_key=True)
     character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=False)

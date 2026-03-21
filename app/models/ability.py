@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
+from app.utils.date_utils import get_utc_now
 from sqlalchemy import ForeignKey, String, Integer, Float, DateTime, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pydantic import BaseModel, Field
@@ -70,7 +71,7 @@ class CharacterAbility(Base):
     ability_id = db.Column(db.Integer, db.ForeignKey('abilities.id', ondelete='CASCADE'), nullable=False)
     level = db.Column(db.Integer, default=1, nullable=False)  # Ability can be leveled up
     is_equipped = db.Column(db.Boolean, default=False, nullable=False)  # Some abilities might need to be "equipped" to be used
-    learned_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    learned_at = db.Column(db.DateTime, nullable=False, default=get_utc_now)
     last_used_at = db.Column(db.DateTime, nullable=True)  # Track when ability was last used
     # Relationships
     character = db.relationship('Character', back_populates='abilities')

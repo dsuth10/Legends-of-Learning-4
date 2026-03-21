@@ -1,6 +1,7 @@
 from app.models.base import Base
-from datetime import datetime
+from app.utils.date_utils import get_utc_now
 from enum import Enum
+from sqlalchemy.orm import validates
 
 class EquipmentType(Enum):
     WEAPON = 'weapon'
@@ -48,6 +49,24 @@ class Equipment(Base):
         self.type = type
         self.slot = slot
         self.cost = cost
+
+    @validates('type')
+    def _validate_type(self, key, value):
+        if isinstance(value, EquipmentType):
+            return value.value
+        allowed = {e.value for e in EquipmentType}
+        if value not in allowed:
+            raise ValueError(f"type must be one of {sorted(allowed)}")
+        return value
+
+    @validates('slot')
+    def _validate_slot(self, key, value):
+        if isinstance(value, EquipmentSlot):
+            return value.value
+        allowed = {e.value for e in EquipmentSlot}
+        if value not in allowed:
+            raise ValueError(f"slot must be one of {sorted(allowed)}")
+        return value
     
     def __repr__(self):
         return f'<Equipment {self.name} ({self.type})>'
@@ -62,7 +81,7 @@ class Inventory(Base):
     character_id = db.Column(db.Integer, db.ForeignKey('characters.id', ondelete='CASCADE'), nullable=False)
     item_id = db.Column(db.Integer, db.ForeignKey('equipment.id', ondelete='CASCADE'), nullable=False)
     is_equipped = db.Column(db.Boolean, default=False, nullable=False)
-    acquired_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    acquired_at = db.Column(db.DateTime, nullable=False, default=get_utc_now)
     
     # Relationships
     character = db.relationship('Character', backref=db.backref('inventory_items', lazy='dynamic', cascade='all, delete-orphan'))

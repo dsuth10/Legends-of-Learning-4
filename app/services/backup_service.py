@@ -9,7 +9,7 @@ import json
 import tempfile
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from sqlalchemy import inspect
 from app.models import db
 from app.models.db_config import DB_PATH
@@ -194,7 +194,7 @@ def export_table_to_json(table_name: str, output_path: Optional[Path] = None) ->
         raise Exception(f"Error exporting table to JSON: {e}")
 
 
-def get_database_info() -> Dict[str, any]:
+def get_database_info() -> Dict[str, Any]:
     """
     Get information about the database file.
     

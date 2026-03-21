@@ -14,7 +14,8 @@
     <div class="row g-2 align-items-end">
       <div class="col-md-4">
         <label for="class_id" class="form-label">Select Class</label>
-        <select class="form-select" id="class_id" name="class_id" required onchange="window.location.href='/teacher/students/' + this.value + '/characters'">
+        {% set _char_url = url_for('teacher.student_characters', class_id=999999999) %}
+        <select class="form-select" id="class_id" name="class_id" required onchange="var v=this.value,u={{ _char_url|tojson }};if(v)location.href=u.split('999999999').join(v);">
           <option value="" disabled {% if not selected_class %}selected{% endif %}>Select a class</option>
           {% for class in classes %}
             <option value="{{ class.id }}" {% if selected_class and class.id == selected_class.id %}selected{% endif %}>{{ class.name }} (Join Code: {{ class.join_code }})</option>

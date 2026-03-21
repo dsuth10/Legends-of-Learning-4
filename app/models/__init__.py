@@ -28,6 +28,10 @@ def init_db(app):
     from app.models.education import QuestionSet, Question
     from app.models.battle import Monster, Battle
     from app.models.shop_config import ShopItemOverride
+    from app.models.quest import Quest, QuestLog, Reward, Consequence
+    from app.models.shop import ShopPurchase
+    from app.models.audit import AuditLog
+    # AchievementBadge, ClanProgressHistory imported at module level
     # from app.models.clan_progress import ClanProgressHistory  # Already imported at top level
     
     # Create tables

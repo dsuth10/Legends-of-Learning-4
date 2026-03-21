@@ -10,7 +10,9 @@ from app.models.user import User
 from app.models.clan_progress import ClanProgressHistory
 from app.models.student import Student
 import os
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.services.clan_metrics import calculate_clan_metrics
+from app.utils.jwt_access import user_can_access_clan, clamp_history_days, CLAN_HISTORY_METRIC_FIELDS
 from datetime import datetime, timedelta
 from app.models.achievement_badge import AchievementBadge
 
@@ -229,17 +231,23 @@ def api_list_clan_icons():
         return {"success": False, "message": str(e)}, 500
 
 @teacher_bp.route('/api/clans/<int:clan_id>/metrics', methods=['GET'], endpoint='api_get_clan_metrics')
-@jwt_required
+@jwt_required()
 def api_get_clan_metrics(clan_id):
+    user_id = int(get_jwt_identity())
+    if not user_can_access_clan(user_id, clan_id):
+        return jsonify({'error': 'Forbidden'}), 403
     metrics = calculate_clan_metrics(clan_id)
     if not metrics:
         return jsonify({'error': 'Clan not found'}), 404
     return jsonify(metrics)
 
 @teacher_bp.route('/api/clans/<int:clan_id>/history', methods=['GET'], endpoint='api_get_clan_history')
-@jwt_required
+@jwt_required()
 def api_get_clan_history(clan_id):
-    days = request.args.get('days', 30, type=int)
+    user_id = int(get_jwt_identity())
+    if not user_can_access_clan(user_id, clan_id):
+        return jsonify({'error': 'Forbidden'}), 403
+    days = clamp_history_days(request.args.get('days', default=30, type=int))
     cutoff = datetime.utcnow() - timedelta(days=days)
     history = ClanProgressHistory.query.filter(
         ClanProgressHistory.clan_id == clan_id,

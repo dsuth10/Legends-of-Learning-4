@@ -1,6 +1,21 @@
 // static/js/clans.js
 // Teacher Clan Management UI Logic
 
+function escapeHtml(text) {
+  if (text == null || text === '') return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+function escapeAttr(text) {
+  if (text == null || text === '') return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;');
+}
+
 // Debug logging only in development (remove in production)
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
   console.log('[DEBUG] clans.js loaded');
@@ -144,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function () {
       li.className = 'list-group-item d-flex align-items-center draggable-student';
       li.draggable = true;
       li.dataset.characterId = character.id;
-      li.innerHTML = `<img src="${character.avatar_url || '/static/avatars/default.png'}" class="rounded me-2" width="32" height="32" alt="avatar"> <span>${student.username} (${character.name})</span>`;
+      li.innerHTML = `<img src="${escapeAttr(character.avatar_url || '/static/avatars/default.png')}" class="rounded me-2" width="32" height="32" alt="avatar"> <span>${escapeHtml(student.username)} (${escapeHtml(character.name)})</span>`;
       li.addEventListener('dragstart', handleStudentDragStart);
       studentRoster.appendChild(li);
     });
@@ -163,9 +178,9 @@ document.addEventListener('DOMContentLoaded', function () {
       col.innerHTML = `
         <div class="card clan-card" data-clan-id="${clan.id}">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <span><img src="${clan.emblem || '/static/avatars/default.png'}" width="32" height="32" class="me-2"> <strong>${clan.name}</strong></span>
+            <span><img src="${escapeAttr(clan.emblem || '/static/avatars/default.png')}" width="32" height="32" class="me-2"> <strong>${escapeHtml(clan.name)}</strong></span>
             <div class="d-flex flex-wrap gap-1 mt-1">
-              ${(clan.badges || []).map(b => `<img src='${b.icon}' title='${b.name}: ${b.description}' alt='${b.name}' style='width:28px;height:28px;' class='badge-icon'>`).join('')}
+              ${(clan.badges || []).map(b => `<img src='${escapeAttr(b.icon)}' title='${escapeAttr(b.name)}: ${escapeAttr(b.description)}' alt='${escapeAttr(b.name)}' style='width:28px;height:28px;' class='badge-icon'>`).join('')}
             </div>
             <span>
               <button class="btn btn-sm btn-outline-success ms-2 award-badge-btn" data-clan-id="${clan.id}"><i class="fas fa-medal"></i> Award Badge</button>
@@ -177,8 +192,8 @@ document.addEventListener('DOMContentLoaded', function () {
             <ul class="list-group mb-2 clan-member-list" id="clan-members-${clan.id}">
               ${clan.members.map(m => `
                 <li class="list-group-item d-flex align-items-center draggable-student" draggable="true" data-character-id="${m.id}">
-                  <img src="${m.avatar_url || '/static/avatars/default.png'}" class="rounded me-2" width="32" height="32" alt="avatar">
-                  <span>${m.name}</span>
+                  <img src="${escapeAttr(m.avatar_url || '/static/avatars/default.png')}" class="rounded me-2" width="32" height="32" alt="avatar">
+                  <span>${escapeHtml(m.name)}</span>
                   <button class="btn btn-sm btn-outline-danger ms-auto remove-member-btn" data-character-id="${m.id}" data-clan-id="${clan.id}"><i class="fas fa-times"></i></button>
                 </li>
               `).join('')}
