@@ -81,15 +81,15 @@ class StudentImportService:
                 user = User.query.filter_by(id=user_id, role=UserRole.STUDENT).first()
                 
                 if student_profile and user:
-                    student_profile.class_id = classroom.id
-                    student_profile.status = 'active'
                     if row.get('first_name'):
                         user.first_name = row['first_name']
                     if row.get('last_name'):
                         user.last_name = row['last_name']
                     if row.get('password'):
                         user.set_password(row['password'])
-                    db.session.commit()
+                    student_profile.class_id = classroom.id
+                    student_profile.status = 'active'
+                    classroom.add_student(user)
                     reassigned += 1
                 else:
                     failed += 1

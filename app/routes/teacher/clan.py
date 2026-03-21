@@ -16,12 +16,6 @@ from app.utils.jwt_access import user_can_access_clan, clamp_history_days, CLAN_
 from datetime import datetime, timedelta
 from app.models.achievement_badge import AchievementBadge
 
-@teacher_bp.route('/clans')
-@login_required
-@teacher_required
-def clans():
-    return render_template('teacher/clans.html', active_page='clans')
-
 @teacher_bp.route('/api/teacher/clans', methods=['GET'])
 @login_required
 @teacher_required
@@ -161,6 +155,9 @@ def api_add_clan_member(clan_id):
             if prev_clan:
                 prev_clan.remove_member(character)
         clan.add_member(character)
+        if character.student:
+            character.student.clan_id = clan.id
+        db.session.commit()
         return {"success": True}
     except Exception as e:
         db.session.rollback()
@@ -180,6 +177,9 @@ def api_remove_clan_member(clan_id):
         return {"success": False, "message": "Character not found or not in this clan."}, 400
     try:
         clan.remove_member(character)
+        if character.student:
+            character.student.clan_id = None
+        db.session.commit()
         return {"success": True}
     except Exception as e:
         db.session.rollback()
@@ -380,7 +380,7 @@ def clan_dashboard():
         clans=clan_data,
         chart_data=chart_data,
         selected_class_id=class_id,
-        active_page='clans_dashboard'
+        active_page='clans'
     )
 
 @teacher_bp.route('/api/badges', methods=['GET'])

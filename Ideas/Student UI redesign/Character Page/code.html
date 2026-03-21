@@ -47,6 +47,10 @@
         .dark .custom-scrollbar::-webkit-scrollbar-thumb {
             background: rgba(255,255,255,0.2);
         }
+        .mask-image-gradient {
+            -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+            mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+        }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-body text-gray-800 dark:text-gray-100 h-screen flex flex-col overflow-hidden">
@@ -221,10 +225,10 @@
 <div class="relative w-full h-full max-w-4xl mx-auto flex items-end justify-center pb-12 pointer-events-auto">
 <div class="absolute bottom-20 w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] animate-pulse"></div>
 <img alt="Warrior Character" class="h-[85%] object-contain drop-shadow-2xl relative z-10 mask-image-gradient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwLsiIVpcqRn_Bgt06Wj5QZxTjbeUOzOzPBOZYJFNvkm_PZ6LYjxZKTcQ1BK2EeNTRtvAdB8CkCOWVduRJWDGZaWuN-KoF7tJzVv1zcYVKYykRZxBnO_yM8OxInYap2KMaM72cqdeiHGCuNTRM2TCCa0WMkCthM-zIRa5A3ufqTW1hjKiosRF1rvv7xKAMOqfB29x0sf4VzO-j9D7BkCOVikyL0_pE5IV_-IDbf-RDMXCC8BxgnSglhx5ZrpI_0QGAqlW-m62VEiWM"/>
-<div class="absolute bottom-4 right-8 flex space-x-[-20px] scale-75 origin-bottom-right opacity-90 hover:opacity-100 transition-opacity cursor-pointer">
+<div class="absolute bottom-4 right-8 flex scale-75 origin-bottom-right opacity-90 hover:opacity-100 transition-opacity cursor-pointer">
 <img alt="Party Member 1" class="w-24 h-32 object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg transform rotate-[-5deg]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSA6mYIXT6shJURAX5vZvhXVH6R4dUMfv29QLvUDDbIsW9u3BfpRKaQTVZFfa2FHeDoVvyXJWiP-vJ2X1FwMMlF6xwew321ebVHlGvucAIKPplXnPBrpzLx0iATjx-f8weTZVBEGEzFJiIsIeCubZgLL_GcNiuH3pieOTwWhqPz-kbGttlYc8zFv3f5WGFo3epT3j1WhRck6GyPM87ThNsQT-vqvN3sc1STHATcHv1vshuj_BbL_7dyu5OKJfO1W85LjGzDp2Vjza3"/>
-<img alt="Party Member 2" class="w-24 h-32 object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg transform rotate-[5deg] z-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAorZY3RPU3tU5bZGfrcxtyM06yKuAOe0olG_JNPy-p8i7z9x4UZZDacnznqUsSpR3tPq0hY8T61FSqWXNdYxgxjGb_2QTBBWwRAsLbV8tkcYn9IV3e5S37_elPdIkJSIeFhs_CcJUB1Z9kzfa4jaHjBDdHPvczNJMjVvjDRr876vx96K70iUYRihg5xikGGUQGR0atVwD7-dMoPFPdQYeGDPdzSU3qohPi227RS5nEjHXba9qDY3s0xGKExrA4BKLH2amJSED8doay"/>
-<img alt="Party Member 3" class="w-24 h-32 object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg transform rotate-[-2deg]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfkVxgmptHFjaRsiyyvc3DOG3xe46_L5q7IHT2eh-5RhnDnPhcbiQ26H1Bw0pddqEEgY79DECQrKXuTbDzrAYIf_oHQhM9c09CfmJCdkdTtLdvZlFtxGZKmANzuorhEjT1q0rfETwElWLsE2JzCalt_6kP-Jn74iYMnLTIWZ-irEs8W9GEWM254U44yeAu9XmHXgfvfUQnMRKwhmB4u7RFjoU1-XAVjjrUnVQYe1zoyEynCWM7DSMqSO212dpeyavpsBpP7emf46r7"/>
+<img alt="Party Member 2" class="w-24 h-32 ml-[-20px] object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg transform rotate-[5deg] z-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAorZY3RPU3tU5bZGfrcxtyM06yKuAOe0olG_JNPy-p8i7z9x4UZZDacnznqUsSpR3tPq0hY8T61FSqWXNdYxgxjGb_2QTBBWwRAsLbV8tkcYn9IV3e5S37_elPdIkJSIeFhs_CcJUB1Z9kzfa4jaHjBDdHPvczNJMjVvjDRr876vx96K70iUYRihg5xikGGUQGR0atVwD7-dMoPFPdQYeGDPdzSU3qohPi227RS5nEjHXba9qDY3s0xGKExrA4BKLH2amJSED8doay"/>
+<img alt="Party Member 3" class="w-24 h-32 ml-[-20px] object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg transform rotate-[-2deg]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfkVxgmptHFjaRsiyyvc3DOG3xe46_L5q7IHT2eh-5RhnDnPhcbiQ26H1Bw0pddqEEgY79DECQrKXuTbDzrAYIf_oHQhM9c09CfmJCdkdTtLdvZlFtxGZKmANzuorhEjT1q0rfETwElWLsE2JzCalt_6kP-Jn74iYMnLTIWZ-irEs8W9GEWM254U44yeAu9XmHXgfvfUQnMRKwhmB4u7RFjoU1-XAVjjrUnVQYe1zoyEynCWM7DSMqSO212dpeyavpsBpP7emf46r7"/>
 </div>
 </div>
 </main>

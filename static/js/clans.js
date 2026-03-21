@@ -22,8 +22,11 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  // DOM elements
+  // DOM elements (clan management block on teacher Clans dashboard only)
   const classSelect = document.getElementById('class-select');
+  if (!classSelect) {
+    return;
+  }
   const clanColumns = document.getElementById('clan-columns');
   const studentRoster = document.getElementById('student-roster');
   const addClanBtn = document.getElementById('add-clan-btn');

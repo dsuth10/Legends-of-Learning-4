@@ -41,8 +41,8 @@ def dashboard():
             teacher_id=current_user.id, 
             is_active=True
         ).count(),
-        'total_students': db.session.query(User).\
-            join(Classroom.students).\
+        'total_students': db.session.query(Student).\
+            join(Classroom, Student.class_id == Classroom.id).\
             filter(Classroom.teacher_id == current_user.id).\
             distinct().\
             count(),
@@ -63,13 +63,14 @@ def dashboard():
             count()
     }
     total_classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).count()
-    total_students = db.session.query(User).\
-        join(Classroom.students).\
+    total_students = db.session.query(Student).\
+        join(Classroom, Student.class_id == Classroom.id).\
         filter(Classroom.teacher_id == current_user.id).\
         distinct().\
         count()
-    active_students = db.session.query(User).\
-        join(Classroom.students).\
+    active_students = db.session.query(Student).\
+        join(Classroom, Student.class_id == Classroom.id).\
+        join(User, Student.user_id == User.id).\
         filter(Classroom.teacher_id == current_user.id, User.is_active == True).\
         distinct().\
         count()
@@ -106,9 +107,9 @@ def dashboard():
     inactive_counts = []
     for c in classes:
         class_labels.append(c.name)
-        total = c.students.count()
+        total = c.student_members.count()
         class_counts.append(total)
-        active = sum(1 for s in c.students if s.is_active)
+        active = sum(1 for s in c.student_members if s.user and s.user.is_active)
         inactive = total - active
         active_counts.append(active)
         inactive_counts.append(inactive)
@@ -256,9 +257,9 @@ def analytics():
         selected_class = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first()
         if selected_class:
             class_labels = [selected_class.name]
-            total = selected_class.students.count()
+            total = selected_class.student_members.count()
             class_counts = [total]
-            active = sum(1 for s in selected_class.students if s.is_active)
+            active = sum(1 for s in selected_class.student_members if s.user and s.user.is_active)
             inactive = total - active
             active_counts = [active]
             inactive_counts = [inactive]
@@ -294,9 +295,9 @@ def analytics_data():
         
         # Basic class composition
         class_labels = [selected_class.name]
-        total = selected_class.students.count()
+        total = selected_class.student_members.count()
         class_counts = [total]
-        active = sum(1 for s in selected_class.students if s.is_active)
+        active = sum(1 for s in selected_class.student_members if s.user and s.user.is_active)
         inactive = total - active
         active_counts = [active]
         inactive_counts = [inactive]

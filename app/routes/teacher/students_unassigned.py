@@ -42,10 +42,10 @@ def reassign_unassigned_student(user_id):
     student_profile = Student.query.filter_by(user_id=user_id, class_id=None, status='unassigned').first_or_404()
     classroom = Classroom.query.filter_by(id=class_id, teacher_id=current_user.id).first_or_404()
     try:
-        # Reassign student
+        # Reassign student (keep class_students association in sync with Student.class_id)
         student_profile.class_id = class_id
         student_profile.status = 'active'
-        db.session.commit()
+        classroom.add_student(student_profile.user)
         flash('Student reassigned to class.', 'success')
     except Exception as e:
         db.session.rollback()

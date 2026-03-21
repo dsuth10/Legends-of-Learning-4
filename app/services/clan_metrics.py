@@ -8,7 +8,6 @@ from app.models.clan_progress import ClanProgressHistory
 from app.models.quest import QuestLog as QuestAssignment, QuestStatus
 from app.models import db
 from app.models.audit import AuditLog
-from sqlalchemy import and_
 
 # Registry for custom metrics
 CUSTOM_METRICS = {}
@@ -28,12 +27,8 @@ def _is_quest_completed(status):
 
 
 def calculate_avg_completion_rate(clan):
-    """Calculate the average quest completion rate for clan members"""
-    members = Student.query.filter_by(clan_id=clan.id).all()
-    if not members:
-        return 0.0
-    student_ids = [m.id for m in members]
-    characters = Character.query.filter(Character.student_id.in_(student_ids)).all()
+    """Calculate the average quest completion rate for clan members (Character.clan_id)."""
+    characters = clan.members.all()
     if not characters:
         return 0.0
     char_ids = [c.id for c in characters]
@@ -59,24 +54,25 @@ def calculate_avg_completion_rate(clan):
     return sum(completion_rates) / len(completion_rates) if completion_rates else 0.0
 
 def calculate_total_points(clan):
-    """Calculate total points earned by all clan members"""
+    """Calculate total experience of all characters in the clan."""
     return (db.session.query(func.sum(Character.experience))
-        .join(Student, Student.id == Character.student_id)
-        .filter(Student.clan_id == clan.id)
+        .filter(Character.clan_id == clan.id)
         .scalar() or 0)
 
 def calculate_active_members(clan, days=7):
-    """Count members with activity in the last N days"""
+    """Count distinct students (by Student.id) with a character in this clan and recent activity."""
     cutoff = datetime.utcnow() - timedelta(days=days)
-    return (db.session.query(func.count(Student.id))
-        .filter(Student.clan_id == clan.id, Student.last_activity >= cutoff)
+    return (db.session.query(func.count(func.distinct(Student.id)))
+        .select_from(Character)
+        .join(Student, Student.id == Character.student_id)
+        .filter(Character.clan_id == clan.id, Student.last_activity >= cutoff)
         .scalar() or 0)
 
 def calculate_avg_daily_points(clan, days=7):
     """Calculate average daily points earned by clan in the last N days using AuditLog XP_GAIN events."""
     cutoff = datetime.utcnow() - timedelta(days=days)
     # Get all character IDs in the clan
-    character_ids = [char.id for char in clan.members]
+    character_ids = [char.id for char in clan.members.all()]
     if not character_ids:
         return 0.0
     # Query all XP_GAIN events for these characters in the time window
@@ -101,15 +97,8 @@ def calculate_avg_daily_points(clan, days=7):
     return total_xp / days if days > 0 else 0.0
 
 def calculate_quest_completion_rate(clan):
-    """Calculate the ratio of completed quests to assigned quests"""
-    members = Student.query.filter_by(clan_id=clan.id).all()
-    if not members:
-        return 0.0
-    student_ids = [m.id for m in members]
-    char_ids = [
-        c.id
-        for c in Character.query.filter(Character.student_id.in_(student_ids)).all()
-    ]
+    """Calculate the ratio of completed quests to assigned quests for clan characters."""
+    char_ids = [c.id for c in clan.members.all()]
     if not char_ids:
         return 0.0
     assignments = QuestAssignment.query.filter(QuestAssignment.character_id.in_(char_ids)).all()
@@ -119,10 +108,8 @@ def calculate_quest_completion_rate(clan):
     return completed / len(assignments)
 
 def calculate_avg_member_level(clan):
-    """Calculate average level of clan members"""
-    levels = db.session.query(Character.level).join(
-        Student, Student.id == Character.student_id
-    ).filter(Student.clan_id == clan.id).all()
+    """Calculate average level of characters in the clan."""
+    levels = db.session.query(Character.level).filter(Character.clan_id == clan.id).all()
     if not levels:
         return 0.0
     return sum(level[0] for level in levels) / len(levels)
@@ -156,8 +143,7 @@ def calculate_percentile_rankings(class_id=None, school_id=None):
             func.sum(Character.experience).label('total_points'),
         )
         .select_from(Clan)
-        .join(Student, Student.clan_id == Clan.id)
-        .join(Character, Character.student_id == Student.id)
+        .join(Character, Character.clan_id == Clan.id)
         .group_by(Clan.id)
     )
     if class_id is not None:

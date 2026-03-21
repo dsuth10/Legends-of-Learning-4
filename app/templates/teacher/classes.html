@@ -70,7 +70,7 @@
               <td>{{ class.description or '-' }}</td>
               <td>{{ class.join_code }}</td>
               <td>{{ class.max_students }}</td>
-              <td>{{ class.students.count() }}</td>
+              <td>{{ class.student_members.count() }}</td>
               <td>
                 <a href="{{ url_for('teacher.edit_class', class_id=class.id) }}" class="btn btn-primary btn-sm me-2">Edit</a>
                 <form method="POST" action="{{ url_for('teacher.archive_class', class_id=class.id) }}" style="display:inline;">

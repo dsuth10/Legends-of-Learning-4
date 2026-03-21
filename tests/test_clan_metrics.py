@@ -73,7 +73,13 @@ def test_students_and_characters(db_session, test_clan):
         student = Student(user_id=user.id, clan_id=test_clan.id, last_activity=now if i < 3 else now - timedelta(days=10))
         db_session.add(student)
         db_session.commit()
-        character = Character(name=f"Char{i}_{unique_id}", student_id=student.id, experience=100 * i, level=i+1)
+        character = Character(
+            name=f"Char{i}_{unique_id}",
+            student_id=student.id,
+            experience=100 * i,
+            level=i + 1,
+            clan_id=test_clan.id,
+        )
         db_session.add(character)
         db_session.commit()
         students.append(student)
@@ -105,7 +111,13 @@ def test_students2(db_session, test_clan2):
         student = Student(user_id=user.id, clan_id=test_clan2.id, last_activity=now)
         db_session.add(student)
         db_session.commit()
-        character = Character(name=f"Char{i+5}_{unique_id}", student_id=student.id, experience=200 * i, level=i+2)
+        character = Character(
+            name=f"Char{i+5}_{unique_id}",
+            student_id=student.id,
+            experience=200 * i,
+            level=i + 2,
+            clan_id=test_clan2.id,
+        )
         db_session.add(character)
         db_session.commit()
         students.append(student)

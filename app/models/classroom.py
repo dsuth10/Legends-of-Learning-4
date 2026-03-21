@@ -38,13 +38,19 @@ class Classroom(Base):
 
     def add_student(self, student):
         """Add a student to the classroom."""
+        from app.models.student import Student
+
         if not self.is_active:
             raise ValueError("Cannot add student to inactive classroom")
-        if self.students.count() >= self.max_students:
+        if self.students.filter_by(id=student.id).first():
+            return
+        # Roster size follows Student.class_id; allow association sync when already assigned.
+        profile = Student.query.filter_by(user_id=student.id).first()
+        already_on_roster = profile is not None and profile.class_id == self.id
+        if not already_on_roster and self.student_members.count() >= self.max_students:
             raise ValueError("Classroom is at maximum capacity")
-        if not self.students.filter_by(id=student.id).first():
-            self.students.append(student)
-            self.save()
+        self.students.append(student)
+        self.save()
 
     def remove_student(self, student):
         """Remove a student from the classroom."""
@@ -59,7 +65,7 @@ class Classroom(Base):
 
     def get_student_count(self):
         """Get the current number of students in the classroom."""
-        return self.students.count()
+        return self.student_members.count()
 
     @classmethod
     def get_active_by_teacher(cls, teacher_id):

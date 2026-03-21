@@ -34,7 +34,7 @@
               <td>{{ class.description or '-' }}</td>
               <td>{{ class.join_code }}</td>
               <td>{{ class.max_students }}</td>
-              <td>{{ class.students.count() }}</td>
+              <td>{{ class.student_members.count() }}</td>
               <td><span class="text-muted">(future: restore/delete)</span></td>
             </tr>
             {% endfor %}

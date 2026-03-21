@@ -153,8 +153,8 @@
 - **Auth:** `@login_required`, `@teacher_required`
 - **Returns:** JSON
 
-### GET `/teacher/clans`
-- **Description:** Clan management page
+### GET `/teacher/clans/dashboard`
+- **Description:** Clans overview (analytics) and clan/student roster management UI
 - **Auth:** `@login_required`, `@teacher_required`
 
 ## JWT API Endpoints
