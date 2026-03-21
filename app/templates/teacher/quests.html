@@ -293,30 +293,30 @@ function fetchClassDetails(questId, classId) {
 }
 document.addEventListener('DOMContentLoaded', function() {
   {% for quest in quests %}
-  const modal = document.getElementById('assignModal{{ quest.id }}');
-  modal.addEventListener('show.bs.modal', function() {
-    fetchAssignmentData({{ quest.id }});
-    // Reset form
-    document.getElementById('assignForm{{ quest.id }}').reset();
-    document.getElementById('clan_select_group_{{ quest.id }}').classList.add('d-none');
-    document.getElementById('student_select_group_{{ quest.id }}').classList.add('d-none');
-  });
-  document.getElementById('class_select_{{ quest.id }}').addEventListener('change', function(e) {
-    fetchClassDetails({{ quest.id }}, e.target.value);
-  });
-  // Show/hide clan/student selectors based on radio
-  document.getElementById('assign_class_{{ quest.id }}').addEventListener('change', function() {
-    document.getElementById('clan_select_group_{{ quest.id }}').classList.add('d-none');
-    document.getElementById('student_select_group_{{ quest.id }}').classList.add('d-none');
-  });
-  document.getElementById('assign_clan_{{ quest.id }}').addEventListener('change', function() {
-    document.getElementById('clan_select_group_{{ quest.id }}').classList.remove('d-none');
-    document.getElementById('student_select_group_{{ quest.id }}').classList.add('d-none');
-  });
-  document.getElementById('assign_student_{{ quest.id }}').addEventListener('change', function() {
-    document.getElementById('clan_select_group_{{ quest.id }}').classList.add('d-none');
-    document.getElementById('student_select_group_{{ quest.id }}').classList.remove('d-none');
-  });
+  {
+    const modal = document.getElementById('assignModal{{ quest.id }}');
+    modal.addEventListener('show.bs.modal', function() {
+      fetchAssignmentData({{ quest.id }});
+      document.getElementById('assignForm{{ quest.id }}').reset();
+      document.getElementById('clan_select_group_{{ quest.id }}').classList.add('d-none');
+      document.getElementById('student_select_group_{{ quest.id }}').classList.add('d-none');
+    });
+    document.getElementById('class_select_{{ quest.id }}').addEventListener('change', function(e) {
+      fetchClassDetails({{ quest.id }}, e.target.value);
+    });
+    document.getElementById('assign_class_{{ quest.id }}').addEventListener('change', function() {
+      document.getElementById('clan_select_group_{{ quest.id }}').classList.add('d-none');
+      document.getElementById('student_select_group_{{ quest.id }}').classList.add('d-none');
+    });
+    document.getElementById('assign_clan_{{ quest.id }}').addEventListener('change', function() {
+      document.getElementById('clan_select_group_{{ quest.id }}').classList.remove('d-none');
+      document.getElementById('student_select_group_{{ quest.id }}').classList.add('d-none');
+    });
+    document.getElementById('assign_student_{{ quest.id }}').addEventListener('change', function() {
+      document.getElementById('clan_select_group_{{ quest.id }}').classList.add('d-none');
+      document.getElementById('student_select_group_{{ quest.id }}').classList.remove('d-none');
+    });
+  }
   {% endfor %}
 });
 </script>
