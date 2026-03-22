@@ -1,0 +1,35 @@
+/* Fullscreen Cursed Die display */
+#dieCube {
+  width: 140px;
+  height: 140px;
+  background: linear-gradient(145deg, #4a148c, #7b1fa2);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.2);
+  transition: transform 0.1s ease-out;
+}
+
+#dieCube.rolling {
+  animation: dieShake 0.45s ease-in-out infinite;
+}
+
+@keyframes dieShake {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-18deg) scale(1.05); }
+  50% { transform: rotate(14deg) scale(1.02); }
+  75% { transform: rotate(-10deg) scale(1.05); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.die-face {
+  font-size: 4rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+#dieResultText.nothing {
+  color: #69f0ae;
+}

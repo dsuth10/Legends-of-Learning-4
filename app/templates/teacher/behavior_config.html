@@ -1,0 +1,167 @@
+{% extends "teacher/base_dashboard.html" %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('teacher.classes') }}">Classes</a></li>
+<li class="breadcrumb-item active" aria-current="page">{{ classroom.name }} — Behavior</li>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="container-fluid mt-3">
+  <h2 class="h4 mb-2"><i class="fas fa-gavel me-2"></i>Behavior &amp; Cursed Die</h2>
+  <p class="text-muted small">Class: <strong>{{ classroom.name }}</strong>. Configure infractions, six die faces, and ripple settings.</p>
+
+  <ul class="nav nav-tabs mb-3" id="behTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-inf" data-bs-toggle="tab" data-bs-target="#pane-inf" type="button">Infractions</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-face" data-bs-toggle="tab" data-bs-target="#pane-face" type="button">Cursed Die (6 faces)</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-set" data-bs-toggle="tab" data-bs-target="#pane-set" type="button">Settings</button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+    <div class="tab-pane fade show active" id="pane-inf" role="tabpanel">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Add infraction</h5>
+          <div class="row g-2 align-items-end">
+            <div class="col-md-5">
+              <label class="form-label">Name</label>
+              <input type="text" class="form-control" id="newInfName" placeholder="e.g. Phone out">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">HP cost</label>
+              <input type="number" class="form-control" id="newInfHp" min="1" max="500" value="8">
+            </div>
+            <div class="col-md-3">
+              <button type="button" class="btn btn-primary" id="btnAddInf">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered" id="tblInfractions">
+          <thead><tr><th>Name</th><th>HP</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="pane-face" role="tabpanel">
+      <p class="small text-muted">Edit each face (1–6). Mark one as &ldquo;Nothing&rdquo; for a lucky escape.</p>
+      <div id="facesContainer" class="row g-3"></div>
+    </div>
+
+    <div class="tab-pane fade" id="pane-set" role="tabpanel">
+      <div class="card" style="max-width: 24rem;">
+        <div class="card-body">
+          <label class="form-label">Teammate ripple damage (HP) after sentence</label>
+          <input type="number" class="form-control mb-2" id="setCascade" min="0" max="500" value="10">
+          <label class="form-label">Rescue window (minutes)</label>
+          <input type="number" class="form-control mb-2" id="setRescue" min="1" max="120" value="5">
+          <button type="button" class="btn btn-success" id="btnSaveSettings">Save settings</button>
+          <span class="ms-2 text-success small" id="setMsg" style="display:none;">Saved</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="mt-4 small"><a href="{{ url_for('teacher.student_characters', class_id=classroom.id) }}">&larr; Back to Character Management</a></p>
+</div>
+{% endblock %}
+
+{% block super_extra_js %}
+{{ super() }}
+<script>
+(function() {
+  const classId = {{ classroom.id }};
+  const api = '/teacher/api/behavior/' + classId;
+
+  async function bootstrap() {
+    const r = await fetch(api + '/bootstrap');
+    const d = await r.json();
+    document.getElementById('setCascade').value = d.settings.cascade_hp_damage;
+    document.getElementById('setRescue').value = d.settings.rescue_window_minutes;
+
+    const tb = document.querySelector('#tblInfractions tbody');
+    tb.innerHTML = '';
+    d.infractions.forEach(function(i) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + escapeHtml(i.name) + '</td><td>' + i.hp_cost + '</td><td><button class="btn btn-sm btn-outline-danger btn-del-inf" data-id="' + i.id + '">Remove</button></td>';
+      tb.appendChild(tr);
+    });
+
+    const fc = document.getElementById('facesContainer');
+    fc.innerHTML = '';
+    d.faces.forEach(function(f) {
+      const col = document.createElement('div');
+      col.className = 'col-md-6';
+      col.innerHTML = '<div class="card h-100"><div class="card-body">' +
+        '<h6 class="card-title">Face ' + f.face_number + '</h6>' +
+        '<textarea class="form-control face-desc mb-2" rows="2" data-face="' + f.face_number + '"></textarea>' +
+        '<div class="form-check"><input class="form-check-input face-nothing" type="checkbox" data-face="' + f.face_number + '" id="fn' + f.face_number + '"' + (f.is_nothing ? ' checked' : '') + '>' +
+        '<label class="form-check-label" for="fn' + f.face_number + '">This is &ldquo;Nothing&rdquo; (no consequence)</label></div>' +
+        '<button type="button" class="btn btn-sm btn-primary mt-2 btn-save-face" data-face="' + f.face_number + '">Save face</button></div></div>';
+      fc.appendChild(col);
+      col.querySelector('textarea.face-desc').value = f.description || '';
+    });
+
+    tb.querySelectorAll('.btn-del-inf').forEach(function(b) {
+      b.addEventListener('click', async function() {
+        if (!confirm('Remove this infraction?')) return;
+        await fetch(api + '/infractions', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete', id: parseInt(b.dataset.id, 10) }) });
+        bootstrap();
+      });
+    });
+
+    fc.querySelectorAll('.btn-save-face').forEach(function(b) {
+      b.addEventListener('click', async function() {
+        const fn = parseInt(b.dataset.face, 10);
+        const ta = fc.querySelector('textarea.face-desc[data-face="' + fn + '"]');
+        const cb = fc.querySelector('input.face-nothing[data-face="' + fn + '"]');
+        const res = await fetch(api + '/faces', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ face_number: fn, description: ta.value, is_nothing: cb.checked }) });
+        const j = await res.json();
+        alert(j.success ? 'Face saved.' : (j.message || 'Error'));
+      });
+    });
+  }
+
+  function escapeHtml(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  document.getElementById('btnAddInf').addEventListener('click', async function() {
+    const name = document.getElementById('newInfName').value.trim();
+    const hp = parseInt(document.getElementById('newInfHp').value, 10);
+    if (!name) { alert('Enter a name'); return; }
+    const res = await fetch(api + '/infractions', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create', name: name, hp_cost: hp }) });
+    const j = await res.json();
+    if (j.success) { document.getElementById('newInfName').value = ''; bootstrap(); }
+    else alert(j.message || 'Error');
+  });
+
+  document.getElementById('btnSaveSettings').addEventListener('click', async function() {
+    const res = await fetch(api + '/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cascade_hp_damage: parseInt(document.getElementById('setCascade').value, 10),
+        rescue_window_minutes: parseInt(document.getElementById('setRescue').value, 10),
+      }) });
+    const j = await res.json();
+    const m = document.getElementById('setMsg');
+    m.style.display = j.success ? 'inline' : 'none';
+    setTimeout(function() { m.style.display = 'none'; }, 2000);
+  });
+
+  bootstrap();
+})();
+</script>
+{% endblock %}

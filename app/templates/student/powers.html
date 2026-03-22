@@ -29,6 +29,20 @@
       Spend <strong>Power Points</strong> (earned when you level up) to learn powers. Using a power spends <strong>Power</strong>, which regenerates over time (1 per hour, up to your max).
     </p>
 
+    {% if fallen_self %}
+    <div class="mb-6 rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/30 dark:border-red-700 px-4 py-3 text-sm text-red-900 dark:text-red-100">
+      <strong>You have fallen</strong> (0 HP). A teammate can target you with <strong>Revive</strong> (Druid) or <strong>Cheat Death</strong> (Sorcerer) if they have it equipped.
+    </div>
+    {% elif clan_fallen and clan_fallen|length > 0 %}
+    <div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
+      <strong>Fallen teammates:</strong>
+      {% for f in clan_fallen %}
+        {{ f.character_name or 'Ally' }}{% if not loop.last %}, {% endif %}
+      {% endfor %}
+      — select them in the target dropdown and use Revive or Cheat Death.
+    </div>
+    {% endif %}
+
     {% for tier_label, tier_title in [('basic', 'Basic'), ('advanced', 'Advanced'), ('elite', 'Elite')] %}
     {% set rows = powers_by_tier.get(tier_label, []) %}
     {% if rows %}

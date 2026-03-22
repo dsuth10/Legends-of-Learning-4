@@ -58,6 +58,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'behavior_home' %}active{% endif %}" href="{{ url_for('teacher.behavior_home') }}">
+                            <i class="fas fa-gavel"></i> Behavior
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if active_page == 'classroom_tools' %}active{% endif %}" href="{{ url_for('teacher.classroom_tools') }}">
                             <i class="fas fa-toolbox"></i> Classroom Tools
                         </a>

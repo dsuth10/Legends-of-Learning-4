@@ -111,11 +111,12 @@ def test_batch_reset_health(client, db_session):
     })
     assert resp.status_code == 200
     data = resp.get_json()
+    assert data.get('success')
     assert 'results' in data
-    # Check that both students are present and status is 'reset'
-    reset_ids = [r['student_id'] for r in data['results'] if r['status'] == 'reset']
-    assert student_profile1.id in reset_ids
-    assert student_profile2.id in reset_ids
+    r1 = data['results'].get(str(character1.id))
+    r2 = data['results'].get(str(character2.id))
+    assert r1 and r1.get('success')
+    assert r2 and r2.get('success')
     db_session.refresh(character1)
     db_session.refresh(character2)
     assert character1.health == character1.max_health
@@ -151,11 +152,10 @@ def test_batch_grant_item(client, db_session):
     })
     assert resp.status_code == 200
     data = resp.get_json()
+    assert data.get('success')
     assert 'results' in data
-    # Check that both students are present in results (status may be 'unknown_action' if grant-item is not implemented)
-    result_ids = [r['student_id'] for r in data['results']]
-    assert student_profile1.id in result_ids
-    assert student_profile2.id in result_ids
+    assert data['results'].get(str(character1.id), {}).get('success')
+    assert data['results'].get(str(character2.id), {}).get('success')
     # Check inventory for both characters
     inv1 = Inventory.query.filter_by(character_id=character1.id, item_id=equipment.id).first()
     inv2 = Inventory.query.filter_by(character_id=character2.id, item_id=equipment.id).first()

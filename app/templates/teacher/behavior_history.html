@@ -1,0 +1,79 @@
+{% extends "teacher/base_dashboard.html" %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('teacher.classes') }}">Classes</a></li>
+<li class="breadcrumb-item active" aria-current="page">{{ classroom.name }} — Behavior history</li>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="container-fluid mt-3">
+  <h2 class="h4 mb-3">Behavior history — {{ classroom.name }}</h2>
+
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card"><div class="card-body">
+        <h6 class="text-muted">Rescues (fallen)</h6>
+        <p class="display-6">{{ rescue_count }}</p>
+      </div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card"><div class="card-body">
+        <h6 class="text-muted">Cursed Die sentences</h6>
+        <p class="display-6">{{ sentenced_count }}</p>
+      </div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card"><div class="card-body">
+        <h6 class="text-muted">Configure</h6>
+        <a class="btn btn-outline-primary btn-sm" href="{{ url_for('teacher.behavior_config', class_id=classroom.id) }}">Behavior settings</a>
+      </div></div>
+    </div>
+  </div>
+
+  {% if infraction_counts %}
+  <h5 class="h6">Incidents by infraction</h5>
+  <ul class="list-group mb-4" style="max-width: 28rem;">
+    {% for name, cnt in infraction_counts %}
+    <li class="list-group-item d-flex justify-content-between">{{ name }} <span class="badge bg-secondary">{{ cnt }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <h5 class="h6">Recent HP deductions</h5>
+  <div class="table-responsive">
+    <table class="table table-sm table-striped">
+      <thead>
+        <tr><th>When</th><th>Character</th><th>HP</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {% for inc in pagination.items %}
+        <tr>
+          <td>{{ inc.created_at.strftime('%Y-%m-%d %H:%M') if inc.created_at else '' }}</td>
+          <td>{{ inc.character.name if inc.character else inc.character_id }}</td>
+          <td>{{ inc.hp_deducted }}</td>
+          <td>{{ inc.description }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-muted">No incidents yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <nav>
+    <ul class="pagination">
+      {% if pagination.has_prev %}
+      <li class="page-item"><a class="page-link" href="{{ url_for('teacher.behavior_history', class_id=classroom.id, page=pagination.prev_num) }}">Previous</a></li>
+      {% endif %}
+      <li class="page-item disabled"><span class="page-link">Page {{ pagination.page }} / {{ pagination.pages }}</span></li>
+      {% if pagination.has_next %}
+      <li class="page-item"><a class="page-link" href="{{ url_for('teacher.behavior_history', class_id=classroom.id, page=pagination.next_num) }}">Next</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  <p class="mt-3"><a href="{{ url_for('teacher.student_characters', class_id=classroom.id) }}">&larr; Character Management</a></p>
+</div>
+{% endblock %}

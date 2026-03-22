@@ -9,6 +9,22 @@
     
     {# Main content area #}
     <div class="flex-1 flex overflow-hidden relative">
+        {% if fallen_self %}
+        <div class="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[min(90vw,28rem)] rounded-xl bg-red-900/95 text-white px-4 py-3 shadow-xl border border-red-400/50 text-center text-sm">
+          <strong>Fallen in battle</strong> — you are at 0 HP. Teammates can use <em>Revive</em> or <em>Cheat Death</em> from Powers before the teacher rolls the Cursed Die.
+          {% if fallen_self.rescue_deadline %}
+          <div class="text-xs mt-1 opacity-90">Rescue window (approx.): {{ fallen_self.rescue_deadline }}</div>
+          {% endif %}
+        </div>
+        {% elif clan_fallen and clan_fallen|length > 0 %}
+        <div class="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[min(90vw,28rem)] rounded-xl bg-amber-900/95 text-amber-50 px-4 py-3 shadow-xl border border-amber-400/50 text-center text-sm">
+          <strong>Teammate needs help:</strong>
+          {% for f in clan_fallen %}
+            <span class="font-semibold">{{ f.character_name or 'Ally' }}</span>{% if not loop.last %}, {% endif %}
+          {% endfor %}
+          — open <a class="underline font-semibold text-white" href="{{ url_for('student.powers') }}">Powers</a> and use Revive or Cheat Death on them.
+        </div>
+        {% endif %}
         {# Background image #}
         <div class="absolute inset-0 z-0">
             <img alt="Fantasy Landscape Background" class="w-full h-full object-cover" 

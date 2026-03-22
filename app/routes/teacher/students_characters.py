@@ -11,6 +11,8 @@ from app.models.user import User
 from app.models.student import Student
 from app.models.character import Character
 from app.models.equipment import Equipment
+from app.models.behavior import BehaviorInfraction, FallenEvent, FallenStatus
+from app.services.behavior import ensure_classroom_behavior_defaults
 
 @teacher_bp.route('/students/<int:class_id>/characters', methods=['GET'])
 @login_required
@@ -44,11 +46,26 @@ def student_characters(class_id):
     # Fetch all equipment for dropdown
     all_equipment = Equipment.query.order_by(Equipment.name.asc()).all()
 
+    ensure_classroom_behavior_defaults(selected_class.id)
+    db.session.commit()
+    behavior_infractions = (
+        BehaviorInfraction.query.filter_by(classroom_id=class_id, is_active=True)
+        .order_by(BehaviorInfraction.name)
+        .all()
+    )
+    awaiting = FallenEvent.query.filter_by(
+        classroom_id=class_id,
+        status=FallenStatus.AWAITING_RESCUE.value,
+    ).all()
+    fallen_by_character = {fe.character_id: fe for fe in awaiting}
+
     return render_template(
         'teacher/student_characters.html',
         classes=classes,
         selected_class=selected_class,
         students=students,
         all_equipment=all_equipment,
+        behavior_infractions=behavior_infractions,
+        fallen_by_character=fallen_by_character,
         active_page='student_characters'
     )

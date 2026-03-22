@@ -20,6 +20,11 @@ alwaysApply: true
   - `AuditLog` (`audit_log`): Tracks important game events, links to `User` and `Character`
   - `AssistLog` (`assist_logs`): Tracks ability assists between users
   - `ClanProgressHistory` (`clan_progress_history`): Tracks clan metrics over time
+  - `ClassroomBehaviorSettings` (`classroom_behavior_settings`): Per-class behavior system settings (cascade HP, rescue window)
+  - `BehaviorInfraction` (`behavior_infractions`): Teacher-defined behaviors with default HP cost (per classroom)
+  - `CursedDieFace` (`cursed_die_faces`): Six configurable Cursed Die sentences per classroom
+  - `BehaviorIncident` (`behavior_incidents`): Log of HP deductions for behavior
+  - `FallenEvent` (`fallen_events`): 0 HP fall, rescue window, die roll / rescue resolution
 
 - **Key Relationships:**
   - **User <-> Student**: One-to-one (Student.user_id → User.id)
@@ -40,6 +45,9 @@ alwaysApply: true
   - **Ability <-> AssistLog**: One-to-many (AssistLog.ability_id → Ability.id)
   - **User <-> AssistLog**: One-to-many (AssistLog.user_id/target_id → User.id)
   - **Clan <-> ClanProgressHistory**: One-to-many (ClanProgressHistory.clan_id → Clan.id)
+  - **Classroom <-> ClassroomBehaviorSettings**: One-to-one (settings.classroom_id → Classroom.id)
+  - **Classroom <-> BehaviorInfraction / CursedDieFace / BehaviorIncident / FallenEvent**: One-to-many
+  - **Character <-> BehaviorIncident / FallenEvent**: One-to-many on incidents and fall events
 
 - **Association & Join Tables:**
   - `class_students`: User-classroom many-to-many

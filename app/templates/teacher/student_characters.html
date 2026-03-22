@@ -25,9 +25,14 @@
     </div>
   </form>
   {% if selected_class %}
-    <div class="mb-3 d-flex justify-content-between align-items-center">
+    <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
       <div>
         <input type="text" class="form-control" id="search" placeholder="Search by name or class..." style="width: 250px; display: inline-block;">
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('teacher.behavior_config', class_id=selected_class.id) }}"><i class="fas fa-gavel me-1"></i> Behavior &amp; Cursed Die</a>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('teacher.behavior_history', class_id=selected_class.id) }}"><i class="fas fa-history me-1"></i> Behavior history</a>
+        <button type="button" class="btn btn-outline-warning btn-sm" id="btnResolveExpiredFalls">Resolve expired falls</button>
       </div>
       <div>
         <!-- Batch Actions Dropdown -->
@@ -97,6 +102,9 @@
                 {% if student.character.health <= (student.character.max_health or 100) * 0.3 %}
                   <span class="badge bg-danger ms-2">Low Health</span>
                 {% endif %}
+                {% if student.character and fallen_by_character.get(student.character.id) %}
+                  <span class="badge bg-dark ms-2" title="Awaiting rescue or Cursed Die">Fallen — awaiting rescue</span>
+                {% endif %}
               {% endif %}
             </button>
             <a href="{{ url_for('teacher.edit_student', user_id=student.user.id) }}" class="btn btn-sm btn-outline-secondary ms-2" title="Edit Character"><i class="fas fa-edit"></i></a>
@@ -121,6 +129,43 @@
                   </table>
                 </div>
                 <div class="col-md-4">
+                  <h6>Behavior</h6>
+                  <div class="mb-2 d-flex flex-wrap gap-1 align-items-end">
+                    <select class="form-select form-select-sm infraction-select" style="max-width: 220px;" data-character-id="{{ student.character.id }}" aria-label="Infraction">
+                      <option value="">— Quick infraction —</option>
+                      {% for inf in behavior_infractions %}
+                      <option value="{{ inf.id }}" data-hp="{{ inf.hp_cost }}">{{ inf.name }} (−{{ inf.hp_cost }} HP)</option>
+                      {% endfor %}
+                    </select>
+                    <button type="button" class="btn btn-sm btn-warning deduct-hp-btn" data-character-id="{{ student.character.id }}">Deduct HP</button>
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label small mb-0">Custom deduction</label>
+                    <div class="input-group input-group-sm">
+                      <input type="number" class="form-control custom-hp-input" min="1" max="500" placeholder="HP" data-character-id="{{ student.character.id }}" style="max-width: 5rem;">
+                      <input type="text" class="form-control custom-reason-input" placeholder="Reason" data-character-id="{{ student.character.id }}">
+                      <button type="button" class="btn btn-outline-warning custom-deduct-btn" data-character-id="{{ student.character.id }}">Apply</button>
+                    </div>
+                  </div>
+                  {% set fe = fallen_by_character.get(student.character.id) %}
+                  {% if fe %}
+                  <div class="alert alert-dark py-2 small mb-2">
+                    <strong>Fallen.</strong> Rescue window ends {{ fe.rescue_deadline.strftime('%H:%M') if fe.rescue_deadline else '—' }}.
+                    <div class="mt-1 d-flex flex-wrap gap-1">
+                      <button type="button" class="btn btn-sm btn-danger roll-die-btn" data-event-id="{{ fe.id }}" data-character-name="{{ student.character.name }}">Roll Cursed Die</button>
+                      <a class="btn btn-sm btn-outline-light" target="_blank" href="{{ url_for('teacher.behavior_die_display', class_id=selected_class.id) }}?event_id={{ fe.id }}">Project die</a>
+                    </div>
+                  </div>
+                  {% endif %}
+                  <h6>Rewards</h6>
+                  <div class="input-group input-group-sm mb-1">
+                    <input type="number" class="form-control award-gold-input" min="1" max="100000" placeholder="Gold" data-student-id="{{ student.student.id }}" style="max-width: 6rem;">
+                    <button type="button" class="btn btn-outline-success award-gold-btn" data-student-id="{{ student.student.id }}">Award gold</button>
+                  </div>
+                  <div class="input-group input-group-sm mb-3">
+                    <input type="number" class="form-control award-xp-input" min="1" max="100000" placeholder="XP" data-student-id="{{ student.student.id }}" style="max-width: 6rem;">
+                    <button type="button" class="btn btn-outline-primary award-xp-btn" data-student-id="{{ student.student.id }}">Award XP</button>
+                  </div>
                   <h6>Equipped Items</h6>
                   <ul class="list-group mb-2">
                     {% for item in student.equipped_items %}
@@ -315,6 +360,156 @@ document.addEventListener('DOMContentLoaded', function() {
         const text = card.innerText.toLowerCase();
         card.style.display = text.includes(query) ? '' : 'none';
       });
+    });
+  }
+
+  const classId = {{ selected_class.id }};
+  const apiBase = '/teacher/api/behavior/' + classId;
+
+  async function postDeduction(characterId, body) {
+    const resp = await fetch(apiBase + '/deduct', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ character_id: characterId }, body)),
+    });
+    return resp.json();
+  }
+
+  document.querySelectorAll('.deduct-hp-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const cid = parseInt(btn.dataset.characterId, 10);
+      const sel = document.querySelector('select.infraction-select[data-character-id="' + cid + '"]');
+      const infId = sel && sel.value ? parseInt(sel.value, 10) : null;
+      if (!infId) {
+        alert('Select an infraction first.');
+        return;
+      }
+      btn.disabled = true;
+      try {
+        const data = await postDeduction(cid, { infraction_id: infId });
+        if (data.success) {
+          alert(data.awaiting_rescue ? 'HP deducted. Student has fallen — awaiting rescue or die roll.' : 'HP deducted.');
+          window.location.reload();
+        } else {
+          alert(data.message || 'Failed');
+        }
+      } catch (e) {
+        alert('Error: ' + e);
+      }
+      btn.disabled = false;
+    });
+  });
+
+  document.querySelectorAll('.custom-deduct-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const cid = parseInt(btn.dataset.characterId, 10);
+      const hpEl = document.querySelector('.custom-hp-input[data-character-id="' + cid + '"]');
+      const reasonEl = document.querySelector('.custom-reason-input[data-character-id="' + cid + '"]');
+      const hp = parseInt(hpEl && hpEl.value, 10);
+      const reason = (reasonEl && reasonEl.value) || '';
+      if (!hp || hp < 1) {
+        alert('Enter a valid HP amount.');
+        return;
+      }
+      if (!reason.trim()) {
+        alert('Enter a reason.');
+        return;
+      }
+      btn.disabled = true;
+      try {
+        const data = await postDeduction(cid, { custom_hp: hp, custom_description: reason.trim() });
+        if (data.success) {
+          alert(data.awaiting_rescue ? 'HP deducted. Student has fallen.' : 'HP deducted.');
+          window.location.reload();
+        } else {
+          alert(data.message || 'Failed');
+        }
+      } catch (e) {
+        alert('Error: ' + e);
+      }
+      btn.disabled = false;
+    });
+  });
+
+  document.querySelectorAll('.roll-die-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const eid = parseInt(btn.dataset.eventId, 10);
+      const name = btn.dataset.characterName || 'Student';
+      if (!confirm('Roll the Cursed Die for ' + name + '?')) return;
+      btn.disabled = true;
+      try {
+        const resp = await fetch(apiBase + '/roll/' + eid, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await resp.json();
+        if (data.success) {
+          alert('Result: ' + (data.description || '') + (data.is_nothing ? ' (No consequence!)' : ''));
+          window.location.reload();
+        } else {
+          alert(data.message || 'Roll failed');
+        }
+      } catch (e) {
+        alert('Error: ' + e);
+      }
+      btn.disabled = false;
+    });
+  });
+
+  document.querySelectorAll('.award-gold-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const sid = parseInt(btn.dataset.studentId, 10);
+      const inp = document.querySelector('.award-gold-input[data-student-id="' + sid + '"]');
+      const amount = parseInt(inp && inp.value, 10);
+      if (!amount || amount < 1) { alert('Enter gold amount'); return; }
+      btn.disabled = true;
+      try {
+        const resp = await fetch('/teacher/api/teacher/student/' + sid + '/award-gold', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount, reason: 'Teacher award' }),
+        });
+        const data = await resp.json();
+        if (data.success) { alert('Gold awarded.'); window.location.reload(); }
+        else { alert(data.message || 'Failed'); }
+      } catch (e) { alert('Error: ' + e); }
+      btn.disabled = false;
+    });
+  });
+
+  document.querySelectorAll('.award-xp-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const sid = parseInt(btn.dataset.studentId, 10);
+      const inp = document.querySelector('.award-xp-input[data-student-id="' + sid + '"]');
+      const amount = parseInt(inp && inp.value, 10);
+      if (!amount || amount < 1) { alert('Enter XP amount'); return; }
+      btn.disabled = true;
+      try {
+        const resp = await fetch('/teacher/api/teacher/student/' + sid + '/award-xp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount, reason: 'Teacher award' }),
+        });
+        const data = await resp.json();
+        if (data.success) { alert('XP awarded.'); window.location.reload(); }
+        else { alert(data.message || 'Failed'); }
+      } catch (e) { alert('Error: ' + e); }
+      btn.disabled = false;
+    });
+  });
+
+  const btnExp = document.getElementById('btnResolveExpiredFalls');
+  if (btnExp) {
+    btnExp.addEventListener('click', async function() {
+      btnExp.disabled = true;
+      try {
+        const resp = await fetch(apiBase + '/resolve-expired', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await resp.json();
+        if (data.success) {
+          alert('Resolved ' + (data.results && data.results.length) + ' fall(s).');
+          window.location.reload();
+        } else {
+          alert('Nothing to resolve or error.');
+        }
+      } catch (e) { alert('Error: ' + e); }
+      btnExp.disabled = false;
     });
   }
 });

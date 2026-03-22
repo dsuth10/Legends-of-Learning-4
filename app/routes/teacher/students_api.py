@@ -82,73 +82,110 @@ def api_student_equipment(student_id):
         })
     return jsonify({'equipped': equipped})
 
+def _batch_character_action_impl():
+    data = request.get_json() or {}
+    action = data.get('action')
+    student_ids = list(data.get('student_ids') or [])
+    character_ids = list(data.get('character_ids') or [])
+
+    if character_ids:
+        for cid in character_ids:
+            ch = Character.query.filter_by(id=cid, is_active=True).first()
+            if not ch:
+                continue
+            if not teacher_owns_student(current_user.id, ch.student_id):
+                continue
+            if ch.student_id not in student_ids:
+                student_ids.append(ch.student_id)
+
+    student_ids = list(dict.fromkeys(int(s) for s in student_ids))
+
+    if not action or not student_ids:
+        return jsonify({'success': False, 'message': 'Missing action or character/student ids'}), 400
+
+    results = {}
+    for student_id in student_ids:
+        if not teacher_owns_student(current_user.id, student_id):
+            results[str(student_id)] = {'success': False, 'message': 'forbidden'}
+            continue
+        character = Character.query.filter_by(student_id=student_id, is_active=True).first()
+        if not character:
+            results[str(student_id)] = {'success': False, 'message': 'no_character'}
+            continue
+        cid_key = str(character.id)
+        if action in ('reset-health', 'reset_health'):
+            character.health = character.max_health
+            db.session.add(character)
+            db.session.add(
+                AuditLog(
+                    character_id=character.id,
+                    event_type=EventType.CHARACTER_UPDATE.value,
+                    event_data={'action': 'batch-reset-health'},
+                )
+            )
+            results[cid_key] = {'success': True, 'new_health': character.health}
+        elif action == 'grant-item':
+            item_id = data.get('item_id')
+            if not item_id:
+                results[cid_key] = {'success': False, 'message': 'missing_item_id'}
+                continue
+            equipment = Equipment.query.filter_by(id=item_id).first()
+            if not equipment:
+                results[cid_key] = {'success': False, 'message': 'item_not_found'}
+                continue
+            existing = Inventory.query.filter_by(character_id=character.id, item_id=equipment.id).first()
+            if existing:
+                results[cid_key] = {'success': False, 'message': 'already_has_item'}
+                continue
+            new_inv = Inventory(character_id=character.id, item_id=equipment.id, is_equipped=False)
+            db.session.add(new_inv)
+            db.session.add(
+                AuditLog(
+                    character_id=character.id,
+                    event_type=EventType.EQUIPMENT_CHANGE.value,
+                    event_data={
+                        'action': 'batch-grant-item',
+                        'item_id': equipment.id,
+                        'item_name': equipment.name,
+                    },
+                )
+            )
+            results[cid_key] = {'success': True}
+        elif action in ('reset-character', 'reset_character'):
+            db.session.delete(character)
+            results[cid_key] = {'success': True}
+        else:
+            results[cid_key] = {'success': False, 'message': 'unknown_action'}
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+    ok = any(r.get('success') for r in results.values())
+    return jsonify(
+        {
+            'success': ok,
+            'message': 'Batch action completed.' if ok else 'No changes applied.',
+            'results': results,
+        }
+    )
+
+
 @teacher_bp.route('/api/teacher/students/batch-character-action', methods=['POST'])
 @login_required
 @teacher_required
 def batch_character_action():
-    data = request.get_json()
-    action = data.get('action')
-    student_ids = data.get('student_ids', [])
-    if not action or not student_ids:
-        return jsonify({'error': 'Missing action or student_ids'}), 400
-    results = []
-    for student_id in student_ids:
-        if not teacher_owns_student(current_user.id, student_id):
-            results.append({'student_id': student_id, 'status': 'forbidden'})
-            continue
-        character = Character.query.filter_by(student_id=student_id, is_active=True).first()
-        if not character:
-            results.append({'student_id': student_id, 'status': 'no_character'})
-            continue
-        # Example: reset health
-        if action in ('reset-health', 'reset_health'):
-            character.health = character.max_health
-            db.session.commit()
-            # Add audit log
-            audit = AuditLog(
-                character_id=character.id,
-                event_type=EventType.CHARACTER_UPDATE.value,
-                event_data={
-                    'action': 'batch-reset-health'
-                }
-            )
-            db.session.add(audit)
-            db.session.commit()
-            results.append({'student_id': student_id, 'status': 'reset'})
-        elif action == 'grant-item':
-            item_id = data.get('item_id')
-            if not item_id:
-                results.append({'student_id': student_id, 'status': 'missing_item_id'})
-                continue
-            equipment = Equipment.query.filter_by(id=item_id).first()
-            if not equipment:
-                results.append({'student_id': student_id, 'status': 'item_not_found'})
-                continue
-            # Check if already in inventory
-            existing = Inventory.query.filter_by(character_id=character.id, item_id=equipment.id).first()
-            if existing:
-                results.append({'student_id': student_id, 'status': 'already_has_item'})
-                continue
-            # Add to inventory as unequipped
-            new_inv = Inventory(character_id=character.id, item_id=equipment.id, is_equipped=False)
-            db.session.add(new_inv)
-            db.session.commit()
-            # Add audit log
-            audit = AuditLog(
-                character_id=character.id,
-                event_type=EventType.EQUIPMENT_CHANGE.value,
-                event_data={
-                    'action': 'batch-grant-item',
-                    'item_id': equipment.id,
-                    'item_name': equipment.name
-                }
-            )
-            db.session.add(audit)
-            db.session.commit()
-            results.append({'student_id': student_id, 'status': 'item_granted'})
-        else:
-            results.append({'student_id': student_id, 'status': 'unknown_action'})
-    return jsonify({'results': results})
+    return _batch_character_action_impl()
+
+
+@teacher_bp.route('/api/teacher/characters/batch-action', methods=['POST'])
+@login_required
+@teacher_required
+def batch_character_action_by_character_id():
+    """Same as batch-character-action; accepts character_ids (preferred by Character Management UI)."""
+    return _batch_character_action_impl()
 
 @teacher_bp.route('/api/teacher/student/<int:student_id>/award-gold', methods=['POST'])
 @login_required

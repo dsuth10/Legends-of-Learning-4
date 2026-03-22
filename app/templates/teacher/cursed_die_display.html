@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Cursed Die — {{ classroom.name }}{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex flex-column align-items-center justify-content-center bg-dark text-white p-4" id="dieStage">
+  <h1 class="display-5 mb-4 text-center">Cursed Die</h1>
+  <p class="text-center text-white-50 mb-4">{{ classroom.name }}</p>
+  <div id="dieCube" class="die-cube mb-4" aria-hidden="true">
+    <span class="die-face" id="dieFaceNum">?</span>
+  </div>
+  <p id="dieResultText" class="fs-3 text-center fw-bold" style="min-height: 3rem;"></p>
+  <p class="small text-white-50 mt-4">Open with <code>?event_id=</code> after rolling, or use Roll from Character Management first.</p>
+</div>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/cursed_die.css') }}">
+<script src="{{ url_for('static', filename='js/cursed_die.js') }}"></script>
+<script>
+  window.CURSED_DIE_CLASS_ID = {{ classroom.id }};
+  window.CURSED_DIE_EVENT_ID = {{ event_id | tojson }};
+</script>
+{% endblock %}

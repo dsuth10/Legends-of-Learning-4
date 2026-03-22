@@ -247,6 +247,22 @@ ABILITY_DATA = [
         "prerequisite": "Power Surge",
     },
     {
+        "name": "Cheat Death",
+        "description": "When a teammate has fallen (0 HP), roll the Cursed Die twice — they take the better outcome.",
+        "type": "utility",
+        "level_requirement": 12,
+        "power": 0,
+        "cost": 8,
+        "cooldown": 60,
+        "duration": 1,
+        "tier": "advanced",
+        "class_restriction": "Sorcerer",
+        "target_type": "single_ally",
+        "pp_cost": 1,
+        "prerequisite": "Power Surge",
+        "special_effect": "cheat_death",
+    },
+    {
         "name": "Arcane Mastery",
         "description": "Elevate the whole team’s focus. Game: +10 power to all allies.",
         "type": "buff",
@@ -496,12 +512,23 @@ ABILITY_DATA = [
 
 def seed_default_abilities(db, ability_model):
     """
-    Insert default abilities and wire prerequisites. Idempotent if rows already exist.
+    Insert default abilities and wire prerequisites.
+    Idempotent and additive: only inserts abilities that don't already exist by name.
+    This means new abilities added to ABILITY_DATA (e.g. Cheat Death) are created
+    in existing databases the next time the app starts or seed-db / sync-powers is run.
     """
-    if ability_model.query.count() > 0:
-        return
+    existing_names = {a.name for a in ability_model.query.with_entities(ability_model.name).all()}
     name_to_row = {}
-    for item in ABILITY_DATA:
+
+    # Collect all existing rows so we can look up prerequisite ids later
+    for existing in ability_model.query.all():
+        name_to_row[existing.name] = existing
+
+    new_items = [item for item in ABILITY_DATA if item["name"] not in existing_names]
+    if not new_items:
+        return
+
+    for item in new_items:
         row = ability_model(
             name=item["name"],
             type=item["type"],
@@ -522,12 +549,15 @@ def seed_default_abilities(db, ability_model):
         )
         db.session.add(row)
         name_to_row[item["name"]] = row
+
     db.session.flush()
-    for item in ABILITY_DATA:
+
+    for item in new_items:
         prereq_name = item.get("prerequisite")
         if prereq_name:
-            child = name_to_row[item["name"]]
+            child = name_to_row.get(item["name"])
             parent = name_to_row.get(prereq_name)
-            if parent:
+            if child and parent and parent.id:
                 child.prerequisite_id = parent.id
+
     db.session.commit()

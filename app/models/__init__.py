@@ -32,6 +32,15 @@ def init_db(app):
     from app.models.shop import ShopPurchase
     from app.models.audit import AuditLog
     from app.models.classroom_tool import ClassroomToolConfig
+    from app.models.behavior import (
+        ClassroomBehaviorSettings,
+        BehaviorInfraction,
+        CursedDieFace,
+        BehaviorIncident,
+        FallenEvent,
+        FallenStatus,
+        FallenTriggerSource,
+    )
     # AchievementBadge, ClanProgressHistory imported at module level
     # from app.models.clan_progress import ClanProgressHistory  # Already imported at top level
     

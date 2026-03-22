@@ -338,7 +338,8 @@ def character():
                         'cooldown': ca.ability.cooldown,
                         'duration': ca.ability.duration,
                         'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
-                        'is_equipped': ca.is_equipped
+                        'is_equipped': ca.is_equipped,
+                        'special_effect': getattr(ca.ability, 'special_effect', None),
                     }
                     for ca in main_character.abilities.filter_by(is_equipped=True).all()
                 ]
@@ -363,6 +364,22 @@ def character():
                 {'id': member.id, 'name': member.name, 'character_class': member.character_class}
                 for member in main_character.clan.members if member.id != main_character.id
             ]
+
+        fallen_self = None
+        clan_fallen = []
+        if main_character:
+            from app.services.behavior import get_active_awaiting_fallen, serialize_fallen_event
+
+            fe_self = get_active_awaiting_fallen(main_character.id)
+            if fe_self:
+                fallen_self = serialize_fallen_event(fe_self)
+            if main_character.clan_id:
+                for member in main_character.clan.members:
+                    if member.id == main_character.id:
+                        continue
+                    fe_m = get_active_awaiting_fallen(member.id)
+                    if fe_m:
+                        clan_fallen.append(serialize_fallen_event(fe_m))
         
         # Ensure student_profile is available for template
         if not student_profile:
@@ -380,7 +397,9 @@ def character():
                              now=now, 
                              ability_targets=ability_targets, 
                              active_status_effects=active_status_effects, 
-                             student_profile=student_profile)
+                             student_profile=student_profile,
+                             fallen_self=fallen_self,
+                             clan_fallen=clan_fallen)
     except Exception as e:
         logger.error(f"Error loading character page: {str(e)}", exc_info=True)
         flash('An error occurred while loading your character. Please try again.', 'danger')
@@ -449,13 +468,59 @@ def powers():
             if m.id != main_character.id:
                 clan_targets.append({'id': m.id, 'name': m.name})
 
+    from app.services.behavior import get_active_awaiting_fallen, serialize_fallen_event
+
+    fallen_self = None
+    clan_fallen = []
+    fe_self = get_active_awaiting_fallen(main_character.id)
+    if fe_self:
+        fallen_self = serialize_fallen_event(fe_self)
+    if main_character.clan_id:
+        for m in Character.query.filter_by(clan_id=main_character.clan_id, is_active=True).all():
+            if m.id == main_character.id:
+                continue
+            fe_m = get_active_awaiting_fallen(m.id)
+            if fe_m:
+                clan_fallen.append(serialize_fallen_event(fe_m))
+
     return render_template(
         'student/powers.html',
         student=current_user,
         main_character=main_character,
         powers_by_tier=powers_by_tier,
         clan_targets=clan_targets,
+        fallen_self=fallen_self,
+        clan_fallen=clan_fallen,
     )
+
+
+@student_bp.route('/behavior/status', methods=['GET'])
+@login_required
+@student_required
+def behavior_status():
+    """JSON: fallen state for active character and clanmates."""
+    from app.services.behavior import get_active_awaiting_fallen, serialize_fallen_event
+
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        return jsonify({'success': False, 'message': 'No student profile.'}), 400
+    main_character = student_profile.characters.filter_by(is_active=True).first()
+    if not main_character:
+        return jsonify({'success': True, 'fallen_self': None, 'clan_fallen': []})
+
+    fallen_self = None
+    fe_self = get_active_awaiting_fallen(main_character.id)
+    if fe_self:
+        fallen_self = serialize_fallen_event(fe_self)
+    clan_fallen = []
+    if main_character.clan_id:
+        for m in Character.query.filter_by(clan_id=main_character.clan_id, is_active=True).all():
+            if m.id == main_character.id:
+                continue
+            fe_m = get_active_awaiting_fallen(m.id)
+            if fe_m:
+                clan_fallen.append(serialize_fallen_event(fe_m))
+    return jsonify({'success': True, 'fallen_self': fallen_self, 'clan_fallen': clan_fallen})
 
 
 @student_bp.route('/powers/learn', methods=['POST'])

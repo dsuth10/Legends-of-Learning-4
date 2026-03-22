@@ -28,6 +28,9 @@ class EventType(Enum):
     XP_TRANSACTION = 'XP_TRANSACTION'
     TOOL_PENALTY = 'TOOL_PENALTY'
     TOOL_REWARD = 'TOOL_REWARD'
+    BEHAVIOR_PENALTY = 'BEHAVIOR_PENALTY'
+    BEHAVIOR_RESCUE = 'BEHAVIOR_RESCUE'
+    CURSED_DIE_ROLL = 'CURSED_DIE_ROLL'
 
 class AuditLog(Base):
     """Model for tracking important game events and changes.
@@ -44,7 +47,10 @@ class AuditLog(Base):
         user_id=<user_id>
       )
     """
-    
+
+    # Alias for code that references AuditLog.EventType
+    EventType = EventType
+
     __tablename__ = 'audit_log'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -82,24 +88,41 @@ class AuditLog(Base):
         'XP_TRANSACTION': 'XP transaction',
         'TOOL_PENALTY': 'Classroom tool penalty',
         'TOOL_REWARD': 'Classroom tool reward',
+        'BEHAVIOR_PENALTY': 'Behavior HP penalty',
+        'BEHAVIOR_RESCUE': 'Fallen character rescued',
+        'CURSED_DIE_ROLL': 'Cursed Die sentence resolved',
     }
     
     @classmethod
-    def log_event(cls, event_type, event_data, user_id=None, character_id=None, ip_address=None):
-        """Create a new audit log entry."""
+    def log_event(
+        cls,
+        event_type,
+        event_data,
+        user_id=None,
+        character_id=None,
+        ip_address=None,
+        commit=True,
+    ):
+        """Create a new audit log entry. Set commit=False to flush with the current transaction."""
         if isinstance(event_type, EventType):
             event_type = event_type.value
         if event_type not in cls.EVENT_TYPES:
             raise ValueError(f"Invalid event type: {event_type}")
-            
+
         log = cls(
             event_type=event_type,
             user_id=user_id,
             character_id=character_id,
             event_data=event_data,
-            ip_address=ip_address
+            ip_address=ip_address,
         )
-        log.save()
+        db.session.add(log)
+        if commit:
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                raise e
         return log
     
     @classmethod

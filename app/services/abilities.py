@@ -40,6 +40,12 @@ def execute_ability_effect(caster, ability, target, *, skip_assist_xp=False):
                 if target.id != caster.id and not skip_assist_xp:
                     xp_awarded = 5
                     caster.gain_experience(xp_awarded)
+                try:
+                    from app.services import behavior as behavior_service
+
+                    behavior_service.try_resolve_fallen_on_revive(target, caster, ability)
+                except Exception as exc:  # pragma: no cover
+                    logger.warning('try_resolve_fallen_on_revive: %s', exc)
         elif special == 'full_heal':
             heal_amount = target.max_health - target.health
             if heal_amount <= 0:
@@ -123,6 +129,12 @@ def execute_ability_effect(caster, ability, target, *, skip_assist_xp=False):
         message = f'Debuffed {target.name} ({stat} {amount} for {duration} minutes).'
 
     elif effect_type == 'utility':
+        if special == 'cheat_death':
+            from app.services import behavior as behavior_service
+
+            return behavior_service.execute_cheat_death_effect(
+                caster, ability, target, skip_assist_xp=skip_assist_xp
+            )
         if special == 'restore_power_full':
             max_p = getattr(target, 'max_power', target.power)
             restore_amount = max_p - target.power
