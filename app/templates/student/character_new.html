@@ -42,16 +42,21 @@
                         </div>
                     </div>
                     
-                    {# PP #}
+                    {# Power (resource for using powers) #}
                     <div class="flex items-center">
-                        <span class="w-8 text-lg font-bold text-gray-600 dark:text-gray-300 uppercase">pp</span>
-                        {% set max_pp = main_character.total_power %}
-                        {% set pp_percent = (main_character.power / max_pp * 100) if max_pp > 0 else 0 %}
+                        <span class="w-8 text-lg font-bold text-gray-600 dark:text-gray-300 uppercase" title="Spend Power to activate powers; regenerates over time">pwr</span>
+                        {% set max_pwr = main_character.max_power %}
+                        {% set pwr_percent = (main_character.power / max_pwr * 100) if max_pwr > 0 else 0 %}
                         <div class="flex-1 h-8 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
-                            <div class="absolute left-0 top-0 bottom-0 bg-ap-blue" style="width: {{ pp_percent }}%"></div>
+                            <div class="absolute left-0 top-0 bottom-0 bg-ap-blue" style="width: {{ pwr_percent }}%"></div>
                             <div class="absolute left-1 z-10 w-8 h-6 bg-ap-blue rounded-full flex items-center justify-center text-white text-xs font-bold shadow">{{ main_character.power }}</div>
-                            <span class="ml-auto mr-2 text-xs text-gray-500 dark:text-gray-400 z-10">{{ max_pp }}</span>
+                            <span class="ml-auto mr-2 text-xs text-gray-500 dark:text-gray-400 z-10">{{ max_pwr }}</span>
                         </div>
+                    </div>
+                    {# Power Points (learn new powers) #}
+                    <div class="flex items-center px-1">
+                        <span class="w-8 text-xs font-bold text-purple-600 dark:text-purple-400">PP</span>
+                        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ main_character.power_points }} <span class="text-gray-400 font-normal">unspent</span></span>
                     </div>
                     
                     {# XP #}
@@ -90,11 +95,7 @@
                     {% for ability in equipped_abilities[:6] %}
                         <div class="flex flex-col items-center group cursor-pointer">
                             <div class="w-14 h-14 rounded-full border-2 border-gray-400 dark:border-gray-600 overflow-hidden shadow-md group-hover:border-primary transition-colors bg-gray-800">
-                                {% if ability.icon %}
-                                    <img alt="{{ ability.name }} icon" class="w-full h-full object-cover opacity-80" src="{{ ability.icon }}">
-                                {% else %}
-                                    <div class="w-full h-full flex items-center justify-center text-white text-2xl">⚡</div>
-                                {% endif %}
+                                <div class="w-full h-full flex items-center justify-center text-white text-2xl" title="{{ ability.name }}">⚡</div>
                             </div>
                             <span class="text-xs mt-2 text-center text-gray-600 dark:text-gray-400 group-hover:text-primary">{{ ability.name }}</span>
                         </div>
@@ -110,10 +111,13 @@
                     {% endif %}
                 </div>
                 
-                {# Learn Powers button #}
-                <div class="mt-auto p-4">
-                    <a href="{{ url_for('student.shop') }}" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-full shadow-lg uppercase tracking-wider text-sm transition-transform hover:scale-105 block text-center">
-                        Learn Powers
+                {# Powers & shop #}
+                <div class="mt-auto p-4 space-y-2">
+                    <a href="{{ url_for('student.powers') }}" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-full shadow-lg uppercase tracking-wider text-sm transition-transform hover:scale-105 block text-center">
+                        Powers
+                    </a>
+                    <a href="{{ url_for('student.shop') }}" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full shadow uppercase tracking-wider text-xs transition-transform hover:scale-105 block text-center">
+                        Shop
                     </a>
                 </div>
             {% else %}

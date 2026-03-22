@@ -155,4 +155,13 @@ def create_app(config=None):
                 db.session.commit()
     # --------------------------------------------------------------
 
+    # --- Populate default Powers (abilities) if empty ---
+    from app.models.ability import Ability
+    from app.models.ability_data import seed_default_abilities
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if inspector.has_table(Ability.__tablename__):
+            seed_default_abilities(db, Ability)
+    # --------------------------------------------------------------
+
     return app

@@ -1,0 +1,95 @@
+{% extends "teacher/base_dashboard.html" %}
+
+{% block head_extra %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/classroom_tools.css') }}">
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Classroom Tools</li>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="classroom-tools-config">
+  <h2 class="h4 mb-3"><i class="fas fa-toolbox me-2"></i>Classroom Tools</h2>
+  <p class="text-muted">Configure tools for your projection display. Save settings, then open the display on your classroom screen.</p>
+
+  {% if not classes %}
+  <div class="alert alert-warning">You have no active classes. Create a class first.</div>
+  {% else %}
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <label for="ct-class-select" class="form-label fw-semibold">Class</label>
+      <select id="ct-class-select" class="form-select" style="max-width: 28rem;">
+        {% for c in classes %}
+        <option value="{{ c.id }}">{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <strong><i class="fas fa-volume-high me-2"></i>Volume Meter</strong>
+    </div>
+    <div class="card-body">
+      <p class="small text-muted">Uses this device&rsquo;s microphone. Noise above the threshold for the set duration applies damage to <strong>all</strong> active characters in the class. A session timer can award XP and gold; each penalty halves the potential reward.</p>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Noise threshold <span id="ct-threshold-label" class="text-muted small"></span></label>
+          <input type="range" class="form-range" id="ct-threshold" min="5" max="95" value="35">
+          <div class="ct-threshold-preview border rounded p-3 bg-light position-relative" style="height: 120px;">
+            <div class="ct-preview-bar-fill" id="ct-preview-fill"></div>
+            <div class="ct-preview-threshold-line" id="ct-preview-line"></div>
+            <p class="small text-muted mb-0 position-relative" style="z-index: 2;">Preview (drag slider)</p>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label for="ct-breach-seconds" class="form-label">Seconds above threshold to trigger penalty</label>
+          <input type="number" class="form-control" id="ct-breach-seconds" min="1" max="60" value="5">
+          <label for="ct-cooldown" class="form-label mt-2">Cooldown after penalty (seconds)</label>
+          <input type="number" class="form-control" id="ct-cooldown" min="0" max="30" value="2">
+        </div>
+        <div class="col-md-4">
+          <label for="ct-damage" class="form-label">Damage per penalty (HP)</label>
+          <input type="number" class="form-control" id="ct-damage" min="1" max="500" value="10">
+        </div>
+        <div class="col-md-4">
+          <label for="ct-timer-min" class="form-label">Session timer (minutes)</label>
+          <input type="number" class="form-control" id="ct-timer-min" min="1" max="120" value="15">
+        </div>
+        <div class="col-md-4">
+          <label for="ct-base-xp" class="form-label">Base XP reward (if timer completes)</label>
+          <input type="number" class="form-control" id="ct-base-xp" min="0" max="100000" value="50">
+        </div>
+        <div class="col-md-4">
+          <label for="ct-base-gold" class="form-label">Base gold reward</label>
+          <input type="number" class="form-control" id="ct-base-gold" min="0" max="100000" value="25">
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-primary" id="ct-save-config">
+          <i class="fas fa-save me-1"></i> Save configuration
+        </button>
+        <a class="btn btn-success" id="ct-launch-display" href="#" target="_blank" rel="noopener">
+          <i class="fas fa-external-link-alt me-1"></i> Open display (new tab)
+        </a>
+      </div>
+      <div id="ct-save-status" class="small mt-2 text-muted" role="status"></div>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.classroomToolsApiBase = "{{ url_for('teacher.api_classroom_tools_config', class_id=0) }}".replace('/0', '');
+</script>
+<script src="{{ url_for('static', filename='js/tools/tool_registry.js') }}"></script>
+<script src="{{ url_for('static', filename='js/classroom_tools_config.js') }}"></script>
+{% endblock %}

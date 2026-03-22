@@ -390,11 +390,13 @@ class Reward(Base):
                 # Handle level up manually without calling level_up() which commits
                 levels_gained = new_level - character.level
                 character.level = new_level
-                # Increase stats with each level (same logic as level_up())
+                # Increase stats with each level (same logic as Character.level_up())
                 character.max_health += 10 * levels_gained
                 character.health = character.max_health  # Heal to full on level up
-                character.power += 2 * levels_gained
+                character.max_power += 2 * levels_gained
+                character.power = min(character.max_power, character.power + 2 * levels_gained)
                 character.defense += 2 * levels_gained
+                character.power_points += levels_gained
                 logger.debug(f"Character {character.id} leveled up to {character.level} (gained {levels_gained} levels)")
                 
                 # Log level up to AuditLog

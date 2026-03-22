@@ -1,0 +1,172 @@
+/* --- Config page --- */
+.classroom-tools-config .ct-threshold-preview {
+  position: relative;
+  overflow: hidden;
+}
+
+.ct-preview-bar-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 20%;
+  background: linear-gradient(to top, #198754, #ffc107, #dc3545);
+  opacity: 0.55;
+  transition: height 0.08s ease-out;
+  z-index: 1;
+}
+
+.ct-preview-threshold-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #0d6efd;
+  z-index: 2;
+  pointer-events: none;
+  transform: translateY(50%);
+}
+
+/* --- Fullscreen display --- */
+.classroom-tools-display-body {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #0f172a 100%);
+}
+
+.classroom-display-header {
+  background: rgba(15, 23, 42, 0.92);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.classroom-display-main {
+  min-height: calc(100vh - 56px);
+}
+
+.tool-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.tool-grid.tool-grid--dual {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 992px) {
+  .tool-grid.tool-grid--dual {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tool-slot {
+  min-height: 320px;
+}
+
+/* --- Volume meter widget --- */
+.volume-meter-widget {
+  background: rgba(30, 41, 59, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.vm-meter-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.vm-meter {
+  position: relative;
+  width: min(100%, 140px);
+  height: 320px;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.9);
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  overflow: hidden;
+}
+
+.vm-meter-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0%;
+  background: linear-gradient(to top, #22c55e, #eab308, #ef4444);
+  opacity: 0.92;
+  transition: height 0.05s linear;
+}
+
+.vm-meter-threshold {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+  pointer-events: none;
+  transform: translateY(50%);
+}
+
+.vm-stat-card {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.vm-timer-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.vm-timer-label {
+  font-size: 0.85rem;
+  color: rgba(248, 250, 252, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.vm-timer-value {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #f8fafc;
+  line-height: 1.1;
+}
+
+.vm-flash-penalty {
+  animation: vmPenaltyFlash 0.55s ease-out;
+}
+
+.vm-flash-reward {
+  animation: vmRewardFlash 1.2s ease-out;
+}
+
+@keyframes vmPenaltyFlash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+  30% {
+    box-shadow: 0 0 0 12px rgba(239, 68, 68, 0.45);
+    border-color: rgba(239, 68, 68, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes vmRewardFlash {
+  0%,
+  100% {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  }
+  40% {
+    box-shadow: 0 0 32px rgba(34, 197, 94, 0.45);
+    border-color: rgba(34, 197, 94, 0.7);
+  }
+}

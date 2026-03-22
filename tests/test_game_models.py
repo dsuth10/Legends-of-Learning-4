@@ -5,6 +5,7 @@ import uuid
 import json
 from app.models.character import Character, StatusEffect
 from app.models.ability import Ability, CharacterAbility
+from app.models.student import Student
 from app import db
 
 @pytest.fixture
@@ -127,15 +128,46 @@ def test_weapon(db_session):
     return weapon
 
 @pytest.fixture
-def student_character(db_session, student_user):
-    c = Character(name='StudentChar', student_id=1, health=80, max_health=100, power=10, defense=10)
+def api_shared_clan(db_session, student_user):
+    """Clan shared by API test characters (same class as logged-in student)."""
+    from app.models.clan import Clan
+
+    s1 = Student.query.filter_by(user_id=student_user.id).first()
+    clan = Clan(name='ApiSharedClan', class_id=s1.class_id)
+    db_session.add(clan)
+    db_session.commit()
+    return clan
+
+
+@pytest.fixture
+def student_character(db_session, student_user, api_shared_clan):
+    s1 = Student.query.filter_by(user_id=student_user.id).first()
+    c = Character(
+        name='StudentChar',
+        student_id=s1.id,
+        health=80,
+        max_health=100,
+        power=50,
+        max_power=50,
+        defense=10,
+        clan_id=api_shared_clan.id,
+    )
     db.session.add(c)
     db.session.commit()
     return c
 
+
 @pytest.fixture
 def student_ability(db_session):
-    a = Ability(name='Heal', type='heal', power=20, cooldown=5, duration=1)
+    a = Ability(
+        name='Heal',
+        type='heal',
+        power=20,
+        cooldown=5,
+        duration=1,
+        target_type='single_ally',
+        cost=0,
+    )
     db.session.add(a)
     db.session.commit()
     return a
@@ -148,10 +180,29 @@ def student_char_ability(db_session, student_character, student_ability):
     return ca
 
 @pytest.fixture
-def clanmate(db_session):
-    c = Character(name='Clanmate', student_id=2, health=60, max_health=100, power=8, defense=8)
-    db.session.add(c)
-    db.session.commit()
+def clanmate(db_session, student_user, api_shared_clan):
+    from app.models.user import User, UserRole
+
+    s1 = Student.query.filter_by(user_id=student_user.id).first()
+    u2 = User(username='student2_api', email='student2_api@test.com', role=UserRole.STUDENT)
+    u2.set_password('testpass')
+    db_session.add(u2)
+    db_session.flush()
+    s2 = Student(user_id=u2.id, class_id=s1.class_id, level=1, gold=0, xp=0, health=100, power=10)
+    db_session.add(s2)
+    db_session.flush()
+    c = Character(
+        name='Clanmate',
+        student_id=s2.id,
+        health=60,
+        max_health=100,
+        power=8,
+        max_power=8,
+        defense=8,
+        clan_id=api_shared_clan.id,
+    )
+    db_session.add(c)
+    db_session.commit()
     return c
 
 @pytest.fixture
@@ -161,21 +212,45 @@ def login_student(client, student_user):
 
 @pytest.fixture
 def api_buff_ability(db_session):
-    a = Ability(name='APIBuff', type='buff', power=5, cooldown=2, duration=2)
+    a = Ability(
+        name='APIBuff',
+        type='buff',
+        power=5,
+        cooldown=2,
+        duration=2,
+        target_type='self',
+        cost=0,
+    )
     db.session.add(a)
     db.session.commit()
     return a
 
 @pytest.fixture
 def api_debuff_ability(db_session):
-    a = Ability(name='APIDebuff', type='debuff', power=3, cooldown=2, duration=2)
+    a = Ability(
+        name='APIDebuff',
+        type='debuff',
+        power=3,
+        cooldown=2,
+        duration=2,
+        target_type='single_ally',
+        cost=0,
+    )
     db.session.add(a)
     db.session.commit()
     return a
 
 @pytest.fixture
 def api_protect_ability(db_session):
-    a = Ability(name='APIProtect', type='defense', power=4, cooldown=2, duration=2)
+    a = Ability(
+        name='APIProtect',
+        type='defense',
+        power=4,
+        cooldown=2,
+        duration=2,
+        target_type='self',
+        cost=0,
+    )
     db.session.add(a)
     db.session.commit()
     return a
@@ -208,18 +283,23 @@ def test_character_creation(test_character):
     assert test_character.health == 100
     assert test_character.max_health == 100
     assert test_character.power == 10
+    assert test_character.max_power == 10
     assert test_character.defense == 10
     assert test_character.is_active is True
 
 def test_character_experience_and_leveling(test_character):
     initial_health = test_character.max_health
     initial_power = test_character.power
+    initial_max_power = test_character.max_power
     initial_defense = test_character.defense
+    initial_pp = test_character.power_points
     test_character.gain_experience(1000)
     assert test_character.level == 2
     assert test_character.max_health == initial_health + 10
+    assert test_character.max_power == initial_max_power + 2
     assert test_character.power == initial_power + 2
     assert test_character.defense == initial_defense + 2
+    assert test_character.power_points == initial_pp + 1
     assert test_character.health == test_character.max_health
 
 def test_clan_management(test_clan, test_character):
@@ -477,4 +557,5 @@ def test_api_invalid_buff_target(client, db_session, login_student, api_buff_abi
     })
     data = resp.get_json()
     assert not data['success']
-    assert 'Target not found' in data['message'] 
+    # Self-target powers reject wrong target before generic "target not found"
+    assert 'Target not found' in data['message'] or 'yourself' in data['message'].lower() 

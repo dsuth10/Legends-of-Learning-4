@@ -19,12 +19,15 @@ class EventType(Enum):
     CLAN_JOIN = 'CLAN_JOIN'
     CLAN_LEAVE = 'CLAN_LEAVE'
     ABILITY_LEARN = 'ABILITY_LEARN'
+    POWER_LEARNED = 'POWER_LEARNED'
     ABILITY_USE = 'ABILITY_USE'
     EQUIPMENT_CHANGE = 'EQUIPMENT_CHANGE'
     GOLD_TRANSACTION = 'GOLD_TRANSACTION'
     XP_GAIN = 'XP_GAIN'
     LEVEL_UP = 'LEVEL_UP'
     XP_TRANSACTION = 'XP_TRANSACTION'
+    TOOL_PENALTY = 'TOOL_PENALTY'
+    TOOL_REWARD = 'TOOL_REWARD'
 
 class AuditLog(Base):
     """Model for tracking important game events and changes.
@@ -70,12 +73,15 @@ class AuditLog(Base):
         'CLAN_JOIN': 'Joined clan',
         'CLAN_LEAVE': 'Left clan',
         'ABILITY_LEARN': 'Learned ability',
+        'POWER_LEARNED': 'Learned power (Power Points)',
         'ABILITY_USE': 'Ability used',
         'EQUIPMENT_CHANGE': 'Equipment changed',
         'GOLD_TRANSACTION': 'Gold transaction',
         'XP_GAIN': 'Experience gained',
         'LEVEL_UP': 'Level up',
-        'XP_TRANSACTION': 'XP transaction'
+        'XP_TRANSACTION': 'XP transaction',
+        'TOOL_PENALTY': 'Classroom tool penalty',
+        'TOOL_REWARD': 'Classroom tool reward',
     }
     
     @classmethod

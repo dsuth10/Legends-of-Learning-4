@@ -3,6 +3,8 @@ from flask.cli import with_appcontext
 from app.models import db
 from app.models.equipment import Equipment
 from app.models.equipment_data import EQUIPMENT_DATA
+from app.models.ability import Ability
+from app.models.ability_data import seed_default_abilities
 from sqlalchemy import inspect
 
 @click.command('seed-db')
@@ -39,5 +41,11 @@ def seed_db_command():
                 print("Equipment table already populated.")
         else:
             print("Equipment table does not exist. Run migrations first.")
+
+        if 'abilities' in inspector.get_table_names():
+            seed_default_abilities(db, Ability)
+            print("Abilities checked / seeded.")
+        else:
+            print("Abilities table does not exist. Run migrations first.")
     except Exception as e:
         print(f"Error seeding database: {e}")

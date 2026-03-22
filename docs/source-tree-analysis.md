@@ -97,17 +97,15 @@ Legends-of-Learning-4/
 │   │       ├── analytics.html
 │   │       └── ...
 │   │
-│   ├── static/                        # App-specific static files
-│   │   └── csv/                      # CSV templates
-│   │       └── student_import_template.csv
-│   │
 │   └── utils/                         # Utility functions
 │       ├── __init__.py
 │       ├── backup_utils.py           # Backup utilities
 │       ├── date_utils.py             # Date/time utilities
 │       └── error_handling.py         # Error handling utilities
 │
-├── static/                            # Global static assets
+├── static/                            # Global static assets (Flask static_folder)
+│   ├── csv/                           # Downloadable CSV templates
+│   │   └── student_import_template.csv
 │   ├── css/
 │   │   └── style.css                 # Main stylesheet
 │   ├── js/                           # JavaScript files

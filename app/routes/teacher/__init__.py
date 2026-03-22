@@ -45,6 +45,8 @@ from . import students_import  # noqa: F401
 from . import students_unassigned  # noqa: F401
 from . import students_characters  # noqa: F401
 from . import students_api  # noqa: F401
+from . import classroom_tools  # noqa: F401
+from . import powers  # noqa: F401
 
 # All duplicated route blocks have been removed from this file.
 # All teacher routes are now handled in their respective submodules.

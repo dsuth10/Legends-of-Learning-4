@@ -26,6 +26,7 @@ from app.models.shop_config import ShopItemOverride
 from app.models.shop import ShopPurchase
 from app.models.audit import AuditLog
 from app.models.assist_log import AssistLog
+from app.models.classroom_tool import ClassroomToolConfig  # noqa: F401 — register with metadata
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

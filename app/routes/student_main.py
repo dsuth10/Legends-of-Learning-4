@@ -13,6 +13,7 @@ from app.models.achievement_badge import AchievementBadge
 from app.models.shop_config import ShopItemOverride
 from datetime import datetime, timedelta
 from collections import defaultdict
+from sqlalchemy import or_
 import time
 import logging
 
@@ -324,6 +325,9 @@ def character():
         if student_profile:
             main_character = student_profile.characters.filter_by(is_active=True).first()
             if main_character:
+                main_character.regenerate_power()
+                db.session.add(main_character)
+                db.session.commit()
                 equipped_abilities = [
                     {
                         'id': ca.ability.id,
@@ -382,6 +386,156 @@ def character():
         flash('An error occurred while loading your character. Please try again.', 'danger')
         return redirect(url_for('student.character'))
 
+
+@student_bp.route('/powers')
+@login_required
+@student_required
+def powers():
+    """Power tree: learn with PP, view class and universal powers."""
+    from app.services.powers import character_can_learn_power
+
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        flash('No student profile found.', 'danger')
+        return redirect(url_for('student.character'))
+    main_character = student_profile.characters.filter_by(is_active=True).first()
+    if not main_character:
+        flash('Create a character first.', 'info')
+        return redirect(url_for('student.character_create'))
+
+    main_character.regenerate_power()
+    db.session.add(main_character)
+    db.session.commit()
+
+    teacher_id = None
+    if student_profile.class_id and student_profile.classroom:
+        teacher_id = student_profile.classroom.teacher_id
+
+    q = Ability.query
+    if teacher_id is not None:
+        q = q.filter(or_(Ability.is_default.is_(True), Ability.created_by_teacher_id == teacher_id))
+    else:
+        q = q.filter(Ability.is_default.is_(True))
+    all_powers = q.order_by(Ability.tier, Ability.level_requirement, Ability.name).all()
+
+    learned_ids = set()
+    learned_by_ability = {}
+    for ca in main_character.abilities.all():
+        learned_ids.add(ca.ability_id)
+        learned_by_ability[ca.ability_id] = ca
+
+    powers_by_tier = {'basic': [], 'advanced': [], 'elite': []}
+    for ab in all_powers:
+        tier = (ab.tier or 'basic').lower()
+        if tier not in powers_by_tier:
+            tier = 'basic'
+        can_learn, learn_reason = character_can_learn_power(main_character, ab)
+        locked = not can_learn and ab.id not in learned_ids
+        powers_by_tier[tier].append(
+            {
+                'ability': ab,
+                'learned': ab.id in learned_ids,
+                'equipped': learned_by_ability.get(ab.id).is_equipped
+                if ab.id in learned_ids
+                else False,
+                'can_learn': can_learn,
+                'learn_reason': learn_reason if locked else '',
+            }
+        )
+
+    clan_targets = [{'id': main_character.id, 'name': main_character.name + ' (You)'}]
+    if main_character.clan_id:
+        for m in Character.query.filter_by(clan_id=main_character.clan_id).all():
+            if m.id != main_character.id:
+                clan_targets.append({'id': m.id, 'name': m.name})
+
+    return render_template(
+        'student/powers.html',
+        student=current_user,
+        main_character=main_character,
+        powers_by_tier=powers_by_tier,
+        clan_targets=clan_targets,
+    )
+
+
+@student_bp.route('/powers/learn', methods=['POST'])
+@login_required
+@student_required
+def powers_learn():
+    from app.services.powers import learn_power
+
+    data = request.get_json() or {}
+    ability_id = data.get('ability_id')
+    if not ability_id:
+        return jsonify({'success': False, 'message': 'Missing ability_id.'}), 400
+
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        return jsonify({'success': False, 'message': 'No student profile.'}), 400
+    character = student_profile.characters.filter_by(is_active=True).first()
+    if not character:
+        return jsonify({'success': False, 'message': 'No active character.'}), 400
+
+    ability = Ability.query.get(ability_id)
+    if not ability:
+        return jsonify({'success': False, 'message': 'Power not found.'}), 404
+
+    tid = None
+    if student_profile.class_id and student_profile.classroom:
+        tid = student_profile.classroom.teacher_id
+    if not ability.is_default and ability.created_by_teacher_id != tid:
+        return jsonify({'success': False, 'message': 'This power is not available in your class.'}), 403
+
+    result = learn_power(
+        character,
+        ability,
+        user_id=current_user.id,
+        ip_address=request.remote_addr,
+    )
+    if result['success']:
+        db.session.commit()
+    else:
+        db.session.rollback()
+    return jsonify(result)
+
+
+@student_bp.route('/powers/equip', methods=['POST'])
+@login_required
+@student_required
+def powers_equip():
+    """Equip or unequip a learned power (max 4 equipped)."""
+    data = request.get_json() or {}
+    ability_id = data.get('ability_id')
+    action = (data.get('action') or '').strip().lower()
+    if not ability_id:
+        return jsonify({'success': False, 'message': 'Missing ability_id.'}), 400
+    if action not in ('equip', 'unequip'):
+        return jsonify({'success': False, 'message': 'action must be equip or unequip.'}), 400
+
+    student_profile = Student.query.filter_by(user_id=current_user.id).first()
+    if not student_profile:
+        return jsonify({'success': False, 'message': 'No student profile.'}), 400
+    character = student_profile.characters.filter_by(is_active=True).first()
+    if not character:
+        return jsonify({'success': False, 'message': 'No active character.'}), 400
+
+    ca = CharacterAbility.query.filter_by(
+        character_id=character.id, ability_id=int(ability_id)
+    ).first()
+    if not ca:
+        return jsonify({'success': False, 'message': 'You have not learned this power.'}), 404
+
+    try:
+        if action == 'equip':
+            ca.equip()
+        else:
+            ca.unequip()
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+    return jsonify({'success': True, 'message': 'Updated.', 'is_equipped': ca.is_equipped})
+
+
 @student_bp.route('/shop')
 @login_required
 @student_required
@@ -390,15 +544,11 @@ def shop():
         student_profile = Student.query.filter_by(user_id=current_user.id).first()
         main_character = None
         owned_item_ids = set()
-        owned_ability_ids = set()
         if student_profile:
             main_character = student_profile.characters.filter_by(is_active=True).first()
             if main_character:
                 # Get owned item IDs
                 owned_item_ids = set(inv.item_id for inv in main_character.inventory_items)
-                # Get owned ability IDs
-                if hasattr(main_character, 'abilities'):
-                    owned_ability_ids = set(a.ability_id for a in main_character.abilities)
         # Always define these, even if main_character is None
         char_gold = main_character.gold if main_character else 0
         char_level = main_character.level if main_character else 1
@@ -406,8 +556,7 @@ def shop():
         # Shop catalog (cap row count for performance on large seed DBs)
         _shop_limit = 2000
         items = Equipment.query.order_by(Equipment.id).limit(_shop_limit).all()
-        ability_items = Ability.query.order_by(Ability.id).limit(_shop_limit).all()
-        logger.debug(f"Shop route: Equipment count={len(items)}, Ability count={len(ability_items)}")
+        logger.debug(f"Shop route: Equipment count={len(items)}")
         # Query overrides for the student's active classroom
         overrides_map = {}
         if main_character and student_profile:
@@ -502,55 +651,6 @@ def shop():
                 'health_bonus': health_bonus,  # Direct field for template fallback
                 'power_bonus': power_bonus,
                 'defense_bonus': defense_bonus,
-                'owned': owned,
-                'can_afford': can_afford,
-                'unlocked': unlocked,
-                'can_buy': can_buy,
-            })
-        
-        for ab in ability_items:
-            # Apply Overrides
-            override = overrides_map.get(('ability', ab.id))
-            effective_cost = override.override_cost if override and override.override_cost is not None else ab.cost
-            effective_level = override.override_level_req if override and override.override_level_req is not None else getattr(ab, 'level_requirement', 1)
-            visible = override.is_visible if override else True
-            
-            if not visible:
-                continue
-
-            owned = ab.id in owned_ability_ids
-            can_afford = char_gold >= effective_cost
-            unlocked = (char_level >= effective_level)
-            can_buy = (not owned) and can_afford and unlocked
-            
-            # Abilities are typically considered as "accessory" type for filtering
-            item_type = 'accessory'
-            
-            # Build stats dict for abilities
-            stats = {}
-            if hasattr(ab, 'power'):
-                stats['power_bonus'] = ab.power
-            
-            rarity_info = RARITY_MAP.get(getattr(ab, 'tier', 1), RARITY_MAP[1])
-            
-            items_list.append({
-                'id': ab.id,
-                'name': ab.name,
-                'price': effective_cost,
-                'original_price': ab.cost if effective_cost != ab.cost else None,
-                'image': '/static/images/default_item.png',
-                'category': 'ability',
-                'item_type': item_type,  # For filtering
-                'slot': None,  # Abilities don't have slots
-                'type': 'ability',
-                'tier': getattr(ab, 'tier', 1),
-                'rarity_name': rarity_info['name'],
-                'rarity_class': rarity_info['class'],
-                'description': ab.description or '',
-                'level_requirement': effective_level,
-                'original_level_requirement': getattr(ab, 'level_requirement', 1) if effective_level != getattr(ab, 'level_requirement', 1) else None,
-                'class_restriction': None,
-                'stats': stats,
                 'owned': owned,
                 'can_afford': can_afford,
                 'unlocked': unlocked,
@@ -847,6 +947,7 @@ def character_create():
         if not student_profile:
             flash('Student profile not found. Please contact your teacher or admin.', 'danger')
             return redirect(url_for('student.character'))
+        mp = base_stats["power"]
         # Create character
         new_character = Character(
             name=name,
@@ -856,11 +957,17 @@ def character_create():
             student_id=student_profile.id,
             health=base_stats["health"],
             max_health=base_stats["max_health"],
-            power=base_stats["power"],
+            power=mp,
+            max_power=mp,
             defense=base_stats["defense"],
-            gold=base_stats["gold"]
+            gold=base_stats["gold"],
+            power_points=0,
         )
         db.session.add(new_character)
+        db.session.flush()
+        from app.services.powers import grant_starter_powers
+
+        grant_starter_powers(new_character)
         db.session.commit()
         flash('Character created successfully!', 'success')
         return redirect(url_for('student.character'))
@@ -1088,18 +1195,27 @@ def api_get_student_clan():
 def shop_buy():
     from flask import request
     from app.models.equipment import Equipment, Inventory
-    from app.models.ability import Ability, CharacterAbility
     from app.models.shop import ShopPurchase, PurchaseType
     from app.models.shop_config import ShopItemOverride
+
     item_id = None  # Initialize before try block to avoid UnboundLocalError
     try:
         data = request.get_json()
         item_id = data.get('item_id') if data else None
-        item_type = data.get('item_type') if data else None  # 'equipment' or 'ability', optional
-        logger.info(f"Shop purchase attempt: user={current_user.id}, item_id={item_id}, item_type={item_type}")
-        
+        item_type = data.get('item_type') if data else None  # 'equipment' only
+        logger.info(
+            f"Shop purchase attempt: user={current_user.id}, item_id={item_id}, item_type={item_type}"
+        )
+
         if not item_id:
             return jsonify({'success': False, 'message': 'Missing item_id.'}), 400
+        if item_type == 'ability':
+            return jsonify(
+                {
+                    'success': False,
+                    'message': 'Powers are learned on the Powers page with Power Points, not bought with gold.',
+                }
+            ), 400
         # Get current student's active character
         student_profile = Student.query.filter_by(user_id=current_user.id).first()
         if not student_profile:
@@ -1109,26 +1225,19 @@ def shop_buy():
         if not character:
             return jsonify({'success': False, 'message': 'No active character found.'}), 404
         logger.info(f"Character found: id={character.id}, name={character.name}, gold={character.gold}, level={character.level}")
-        # Determine item type and fetch item
+        # Shop sells equipment only
         item = None
         purchase_type = None
         if item_type == 'equipment' or item_type is None:
             item = Equipment.query.filter_by(id=item_id).first()
             if item:
                 purchase_type = PurchaseType.EQUIPMENT.value
-        if not item and (item_type == 'ability' or item_type is None):
-            item = Ability.query.filter_by(id=item_id).first()
-            if item:
-                purchase_type = PurchaseType.ABILITY.value
         if not item:
             return jsonify({'success': False, 'message': 'Item not found.'}), 404
         if not purchase_type:
             return jsonify({'success': False, 'message': 'Could not determine item type.'}), 400
         # Check ownership
-        if purchase_type == PurchaseType.EQUIPMENT.value:
-            already_owned = Inventory.query.filter_by(character_id=character.id, item_id=item.id).first()
-        else:
-            already_owned = CharacterAbility.query.filter_by(character_id=character.id, ability_id=item.id).first()
+        already_owned = Inventory.query.filter_by(character_id=character.id, item_id=item.id).first()
         if already_owned:
             return jsonify({'success': False, 'message': 'Item already owned.'}), 400
         # Check for overrides
@@ -1141,8 +1250,8 @@ def shop_buy():
             try:
                 override = ShopItemOverride.query.filter_by(
                     classroom_id=active_class.id,
-                    item_type='equipment' if purchase_type == PurchaseType.EQUIPMENT.value else 'ability',
-                    item_id=item.id
+                    item_type='equipment',
+                    item_id=item.id,
                 ).first()
                 if override:
                     if not override.is_visible:
@@ -1163,9 +1272,9 @@ def shop_buy():
         # Validate level
         if character.level < effective_level_req:
             return jsonify({'success': False, 'message': f'Level {effective_level_req} required.'}), 400
-        # Validate class restriction (equipment only)
+        # Validate class restriction
         class_restr = getattr(item, 'class_restriction', None)
-        if purchase_type == PurchaseType.EQUIPMENT.value and class_restr and class_restr.lower() != character.character_class.lower():
+        if class_restr and class_restr.lower() != character.character_class.lower():
             return jsonify({'success': False, 'message': f'Class restriction: {class_restr}.'}), 400
         # Deduct gold
         character.gold -= effective_cost
@@ -1177,13 +1286,8 @@ def shop_buy():
 
         if gold_spent <= 0:
             return jsonify({'success': False, 'message': 'Item has no cost set. Please contact your teacher/admin.'}), 400
-        # Add to inventory or abilities
-        if purchase_type == PurchaseType.EQUIPMENT.value:
-            new_inv = Inventory(character_id=character.id, item_id=item.id, is_equipped=False)
-            db.session.add(new_inv)
-        else:
-            new_ability = CharacterAbility(character_id=character.id, ability_id=item.id)
-            db.session.add(new_ability)
+        new_inv = Inventory(character_id=character.id, item_id=item.id, is_equipped=False)
+        db.session.add(new_inv)
         # Log purchase
         purchase = ShopPurchase(
             character_id=character.id,

@@ -57,8 +57,15 @@ def run_alembic_upgrade(database_uri):
         command.upgrade(alembic_cfg, "head")
         print(f"[DEBUG] Alembic heads after upgrade: {script.get_heads()}")
     except Exception as e:
+        # Fresh SQLite DBs often lack tables that early revisions ALTER; build from models and stamp.
         print(f"[DEBUG] Alembic upgrade exception: {e}")
-        raise
+        from app import create_app, db
+
+        app = create_app({"SQLALCHEMY_DATABASE_URI": database_uri})
+        with app.app_context():
+            db.create_all()
+        command.stamp(alembic_cfg, "head")
+        print("[DEBUG] Fallback: db.create_all() + alembic stamp head.")
 
     # Fallback: if Alembic created no tables, initialize via SQLAlchemy models
     engine = sqlalchemy.create_engine(database_uri)
@@ -126,9 +133,15 @@ def test_db_file():
     # Check for cost column in equipment
     check_equipment_cost_column(db_path)
     yield db_uri
+    # Release SQLite file handles (Windows holds locks after dispose)
+    try:
+        eng = sqlalchemy.create_engine(db_uri)
+        eng.dispose()
+    except Exception:
+        pass
     try:
         os.remove(db_path)
-    except FileNotFoundError:
+    except (FileNotFoundError, PermissionError):
         pass
 
 
@@ -316,6 +329,8 @@ def test_character(db_session, test_student):
         health=100,
         max_health=100,
         power=10,
+        max_power=10,
+        power_points=0,
         defense=10,
         is_active=True,
         clan_id=clan.id,

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classroom display — Legends of Learning</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/classroom_tools.css') }}">
+</head>
+<body class="classroom-tools-display-body text-light">
+  {% if error %}
+  <div class="container py-5">
+    <div class="alert alert-danger">
+      <h1 class="h4">Cannot open display</h1>
+      <p class="mb-0">{{ error }}</p>
+      <a href="{{ url_for('teacher.classroom_tools') }}" class="btn btn-outline-light mt-3">Back to Classroom Tools</a>
+    </div>
+  </div>
+  {% else %}
+  <header class="classroom-display-header d-flex justify-content-between align-items-center px-3 py-2">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <span class="fw-semibold"><i class="fas fa-display me-2"></i>Classroom display</span>
+      {% if class_id %}<span class="text-white-50 small">Class ID {{ class_id }}</span>{% endif %}
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <button type="button" class="btn btn-sm btn-outline-light" id="display-toggle-fullscreen" title="Fullscreen">
+        <i class="fas fa-expand"></i>
+      </button>
+      <a href="{{ url_for('teacher.classroom_tools') }}" class="btn btn-sm btn-outline-secondary">Setup</a>
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-light">Logout</a>
+    </div>
+  </header>
+
+  <main class="classroom-display-main container-fluid py-3">
+    <div id="tool-grid" class="tool-grid" role="main"></div>
+  </main>
+
+  <script id="classroom-tools-config" type="application/json">{{ display_config | tojson }}</script>
+  <script id="classroom-tool-ids" type="application/json">{{ tool_ids | tojson }}</script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/tools/tool_registry.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/tools/volume_meter.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/classroom_tools_display.js') }}"></script>
+  {% endif %}
+</body>
+</html>

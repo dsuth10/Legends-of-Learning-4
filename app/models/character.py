@@ -23,6 +23,10 @@ class Character(Base):
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     character_class = db.Column(db.String(32), nullable=False, default='Adventurer')
     gold = db.Column(db.Integer, default=0, nullable=False)
+    # Spendable power resource (activation cost); max_power is regen cap and grows on level-up
+    max_power = db.Column(db.Integer, default=10, nullable=False)
+    power_points = db.Column(db.Integer, default=0, nullable=False)  # PP to learn new powers
+    last_power_regen = db.Column(DateTime, nullable=True)
     
     # New fields for character creation customization
     gender = db.Column(db.String(16), nullable=True)
@@ -38,7 +42,7 @@ class Character(Base):
     purchases = db.relationship(
         'ShopPurchase', back_populates='character', cascade='all, delete-orphan'
     )
-    # abilities = db.relationship('CharacterAbility', back_populates='character', lazy='dynamic')
+    abilities = db.relationship('CharacterAbility', back_populates='character', lazy='dynamic')
     
     __table_args__ = (
         db.Index('idx_character_student', 'student_id'),  # For looking up student's characters
@@ -65,9 +69,26 @@ class Character(Base):
         # Increase stats with each level
         self.max_health += 10 * levels_gained
         self.health = self.max_health  # Heal to full on level up
-        self.power += 2 * levels_gained
+        self.max_power += 2 * levels_gained
+        self.power = min(self.max_power, self.power + 2 * levels_gained)
         self.defense += 2 * levels_gained
+        self.power_points += levels_gained  # 1 PP per level gained
         self.save()
+
+    def regenerate_power(self, now=None):
+        """Passive regen: +1 power per full hour, up to max_power. Does not commit."""
+        if now is None:
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+        if self.last_power_regen is None:
+            self.last_power_regen = now
+            return self
+        delta = now - self.last_power_regen
+        hours = int(delta.total_seconds() // 3600)
+        if hours <= 0:
+            return self
+        self.power = min(self.max_power, self.power + hours)
+        self.last_power_regen = self.last_power_regen + timedelta(hours=hours)
+        return self
     
     def heal(self, amount):
         """Heal the character by the specified amount."""

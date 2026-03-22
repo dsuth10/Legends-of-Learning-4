@@ -18,23 +18,32 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create the shop_purchases table
-    op.create_table('shop_purchases',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('character_id', sa.Integer(), nullable=False),
-    sa.Column('student_id', sa.Integer(), nullable=False),
-    sa.Column('gold_spent', sa.Integer(), nullable=False),
-    sa.Column('purchase_type', sa.String(length=20), nullable=False),
-    sa.Column('item_id', sa.Integer(), nullable=False),
-    sa.Column('purchase_date', sa.DateTime(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['character_id'], ['characters.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['student_id'], ['students.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
+    conn = op.get_bind()
+    insp = sa.inspect(conn)
+    if insp.has_table('shop_purchases'):
+        return
+    # FK targets must exist (fresh DBs may run create_all after migrations skip)
+    if not insp.has_table('characters') or not insp.has_table('students'):
+        return
+    op.create_table(
+        'shop_purchases',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('character_id', sa.Integer(), nullable=False),
+        sa.Column('student_id', sa.Integer(), nullable=False),
+        sa.Column('gold_spent', sa.Integer(), nullable=False),
+        sa.Column('purchase_type', sa.String(length=20), nullable=False),
+        sa.Column('item_id', sa.Integer(), nullable=False),
+        sa.Column('purchase_date', sa.DateTime(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=True),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(['character_id'], ['characters.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['student_id'], ['students.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id'),
     )
 
 
 def downgrade() -> None:
-    op.drop_table('shop_purchases')
-
+    conn = op.get_bind()
+    insp = sa.inspect(conn)
+    if insp.has_table('shop_purchases'):
+        op.drop_table('shop_purchases')

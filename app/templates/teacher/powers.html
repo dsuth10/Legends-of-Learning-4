@@ -1,0 +1,313 @@
+{% extends "teacher/base_dashboard.html" %}
+
+{% block title %}Powers{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Powers</li>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="container-fluid py-3">
+  <h2 class="mb-4">Powers</h2>
+  <p class="text-muted">Default powers are built into the game. Create your own custom powers for your classes; students in your classes will see defaults plus powers you create.</p>
+
+  <div class="d-flex justify-content-end mb-3">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPowerModal">Create custom power</button>
+  </div>
+
+  <h4 class="mt-4">Your custom powers</h4>
+  {% if custom_powers %}
+  <div class="table-responsive">
+    <table class="table table-striped table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Class</th>
+          <th>Tier</th>
+          <th>Lv</th>
+          <th>PP</th>
+          <th>Power cost</th>
+          <th>Type</th>
+          <th>Target</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ab in custom_powers %}
+        <tr>
+          <td>{{ ab.name }}</td>
+          <td>{{ ab.class_restriction or 'Any' }}</td>
+          <td>{{ ab.tier }}</td>
+          <td>{{ ab.level_requirement }}</td>
+          <td>{{ ab.pp_cost }}</td>
+          <td>{{ ab.cost }}</td>
+          <td>{{ ab.type }}</td>
+          <td>{{ ab.target_type }}</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-secondary edit-power" data-id="{{ ab.id }}"
+              data-name="{{ ab.name|e }}" data-description="{{ (ab.description or '')|e }}"
+              data-type="{{ ab.type }}" data-class="{{ ab.class_restriction or '' }}" data-tier="{{ ab.tier }}"
+              data-target="{{ ab.target_type }}" data-level="{{ ab.level_requirement }}" data-power="{{ ab.power }}"
+              data-cost="{{ ab.cost }}" data-pp="{{ ab.pp_cost }}" data-cd="{{ ab.cooldown }}" data-dur="{{ ab.duration }}">Edit</button>
+            <button type="button" class="btn btn-sm btn-outline-danger delete-power" data-id="{{ ab.id }}">Delete</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">No custom powers yet.</p>
+  {% endif %}
+
+  <h4 class="mt-5">Default powers (read-only)</h4>
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Class</th>
+          <th>Tier</th>
+          <th>Lv</th>
+          <th>PP</th>
+          <th>Power cost</th>
+          <th>Type</th>
+          <th>Target</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ab in default_powers %}
+        <tr>
+          <td>{{ ab.name }}</td>
+          <td>{{ ab.class_restriction or 'Any' }}</td>
+          <td>{{ ab.tier }}</td>
+          <td>{{ ab.level_requirement }}</td>
+          <td>{{ ab.pp_cost }}</td>
+          <td>{{ ab.cost }}</td>
+          <td>{{ ab.type }}</td>
+          <td>{{ ab.target_type }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Create modal -->
+<div class="modal fade" id="createPowerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Create custom power</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="create-power-form">
+          <div class="row g-2">
+            <div class="col-md-6 mb-2"><label class="form-label">Name</label><input class="form-control" name="name" required maxlength="64"></div>
+            <div class="col-md-6 mb-2"><label class="form-label">Type</label>
+              <select class="form-select" name="type">
+                <option value="utility">utility</option>
+                <option value="heal">heal</option>
+                <option value="buff">buff</option>
+                <option value="defense">defense</option>
+                <option value="debuff">debuff</option>
+                <option value="attack">attack</option>
+              </select>
+            </div>
+            <div class="col-12 mb-2"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="2"></textarea></div>
+            <div class="col-md-4 mb-2"><label class="form-label">Class restriction</label>
+              <select class="form-select" name="class_restriction">
+                <option value="">Any class</option>
+                <option value="Warrior">Warrior</option>
+                <option value="Sorcerer">Sorcerer</option>
+                <option value="Druid">Druid</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-2"><label class="form-label">Tier</label>
+              <select class="form-select" name="tier">
+                <option value="basic">basic</option>
+                <option value="advanced">advanced</option>
+                <option value="elite">elite</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-2"><label class="form-label">Target</label>
+              <select class="form-select" name="target_type">
+                <option value="self">self</option>
+                <option value="single_ally">single ally (same clan)</option>
+                <option value="all_allies">all allies (clan)</option>
+                <option value="single_enemy">single enemy</option>
+              </select>
+            </div>
+            <div class="col-md-3 mb-2"><label class="form-label">Level req</label><input class="form-control" type="number" name="level_requirement" value="1" min="1"></div>
+            <div class="col-md-3 mb-2"><label class="form-label">Effect power</label><input class="form-control" type="number" name="power" value="0" min="0"></div>
+            <div class="col-md-3 mb-2"><label class="form-label">Activation cost (Power)</label><input class="form-control" type="number" name="cost" value="1" min="0"></div>
+            <div class="col-md-3 mb-2"><label class="form-label">PP to learn</label><input class="form-control" type="number" name="pp_cost" value="1" min="1"></div>
+            <div class="col-md-3 mb-2"><label class="form-label">Cooldown (sec)</label><input class="form-control" type="number" name="cooldown" value="0" min="0"></div>
+            <div class="col-md-3 mb-2"><label class="form-label">Duration (min)</label><input class="form-control" type="number" name="duration" value="1" min="1"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="save-create-power">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal fade" id="editPowerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit power</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="edit-power-form">
+          <input type="hidden" name="id" id="edit-id">
+          <div class="row g-2">
+            <div class="col-md-6 mb-2"><label class="form-label">Name</label><input class="form-control" id="edit-name" name="name" required></div>
+            <div class="col-md-6 mb-2"><label class="form-label">Type</label>
+              <select class="form-select" id="edit-type" name="type"></select>
+            </div>
+            <div class="col-12 mb-2"><label class="form-label">Description</label><textarea class="form-control" id="edit-description" name="description" rows="2"></textarea></div>
+            <div class="col-md-4 mb-2"><label class="form-label">Class</label>
+              <select class="form-select" id="edit-class" name="class_restriction">
+                <option value="">Any</option>
+                <option value="Warrior">Warrior</option>
+                <option value="Sorcerer">Sorcerer</option>
+                <option value="Druid">Druid</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-2"><label class="form-label">Tier</label>
+              <select class="form-select" id="edit-tier" name="tier">
+                <option value="basic">basic</option>
+                <option value="advanced">advanced</option>
+                <option value="elite">elite</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-2"><label class="form-label">Target</label>
+              <select class="form-select" id="edit-target" name="target_type">
+                <option value="self">self</option>
+                <option value="single_ally">single_ally</option>
+                <option value="all_allies">all_allies</option>
+                <option value="single_enemy">single_enemy</option>
+              </select>
+            </div>
+            <div class="col-md-3 mb-2"><label class="form-label">Level</label><input class="form-control" type="number" id="edit-level" name="level_requirement" min="1"></div>
+            <div class="col-md-3 mb-2"><label class="form-label">Power</label><input class="form-control" type="number" id="edit-power" name="power" min="0"></div>
+            <div class="col-md-3 mb-2"><label class="form-label">Cost</label><input class="form-control" type="number" id="edit-cost" name="cost" min="0"></div>
+            <div class="col-md-3 mb-2"><label class="form-label">PP</label><input class="form-control" type="number" id="edit-pp" name="pp_cost" min="1"></div>
+            <div class="col-md-3 mb-2"><label class="form-label">CD</label><input class="form-control" type="number" id="edit-cd" name="cooldown" min="0"></div>
+            <div class="col-md-3 mb-2"><label class="form-label">Dur</label><input class="form-control" type="number" id="edit-dur" name="duration" min="1"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="save-edit-power">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const types = ['utility','heal','buff','defense','debuff','attack'];
+  const editType = document.getElementById('edit-type');
+  types.forEach(function(t) {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    editType.appendChild(o);
+  });
+
+  document.getElementById('save-create-power').addEventListener('click', async function() {
+    const f = document.getElementById('create-power-form');
+    const fd = new FormData(f);
+    const body = Object.fromEntries(fd.entries());
+    body.level_requirement = parseInt(body.level_requirement, 10);
+    body.power = parseInt(body.power, 10);
+    body.cost = parseInt(body.cost, 10);
+    body.pp_cost = parseInt(body.pp_cost, 10);
+    body.cooldown = parseInt(body.cooldown, 10);
+    body.duration = parseInt(body.duration, 10);
+    if (!body.class_restriction) body.class_restriction = null;
+    const res = await fetch('{{ url_for("teacher.powers_create") }}', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert(data.message || 'Error');
+  });
+
+  document.querySelectorAll('.edit-power').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.getElementById('edit-id').value = btn.dataset.id;
+      document.getElementById('edit-name').value = btn.dataset.name || '';
+      document.getElementById('edit-description').value = btn.dataset.description || '';
+      editType.value = btn.dataset.type || 'utility';
+      document.getElementById('edit-class').value = btn.dataset.class || '';
+      document.getElementById('edit-tier').value = btn.dataset.tier || 'basic';
+      document.getElementById('edit-target').value = btn.dataset.target || 'self';
+      document.getElementById('edit-level').value = btn.dataset.level || 1;
+      document.getElementById('edit-power').value = btn.dataset.power || 0;
+      document.getElementById('edit-cost').value = btn.dataset.cost || 0;
+      document.getElementById('edit-pp').value = btn.dataset.pp || 1;
+      document.getElementById('edit-cd').value = btn.dataset.cd || 0;
+      document.getElementById('edit-dur').value = btn.dataset.dur || 1;
+      new bootstrap.Modal(document.getElementById('editPowerModal')).show();
+    });
+  });
+
+  document.getElementById('save-edit-power').addEventListener('click', async function() {
+    const id = document.getElementById('edit-id').value;
+    const body = {
+      name: document.getElementById('edit-name').value,
+      description: document.getElementById('edit-description').value,
+      type: editType.value,
+      class_restriction: document.getElementById('edit-class').value || null,
+      tier: document.getElementById('edit-tier').value,
+      target_type: document.getElementById('edit-target').value,
+      level_requirement: parseInt(document.getElementById('edit-level').value, 10),
+      power: parseInt(document.getElementById('edit-power').value, 10),
+      cost: parseInt(document.getElementById('edit-cost').value, 10),
+      pp_cost: parseInt(document.getElementById('edit-pp').value, 10),
+      cooldown: parseInt(document.getElementById('edit-cd').value, 10),
+      duration: parseInt(document.getElementById('edit-dur').value, 10),
+    };
+    const editUrl = "{{ url_for('teacher.powers_edit', power_id=0) }}".replace('/powers/0/', '/powers/' + id + '/');
+    const res = await fetch(editUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert(data.message || 'Error');
+  });
+
+  document.querySelectorAll('.delete-power').forEach(function(btn) {
+    btn.addEventListener('click', async function() {
+      if (!confirm('Delete this power?')) return;
+      const id = btn.dataset.id;
+      const deleteUrl = "{{ url_for('teacher.powers_delete', power_id=0) }}".replace('/powers/0/', '/powers/' + id + '/');
+      const res = await fetch(deleteUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (data.success) location.reload();
+      else alert(data.message || 'Error');
+    });
+  });
+})();
+</script>
+{% endblock %}
