@@ -1,0 +1,16 @@
+{
+  "integration": "cursor-agent",
+  "version": "0.8.12",
+  "installed_at": "2026-05-21T11:30:00.000000+00:00",
+  "files": {
+    ".cursor/skills/speckit-analyze/SKILL.md": "",
+    ".cursor/skills/speckit-checklist/SKILL.md": "",
+    ".cursor/skills/speckit-clarify/SKILL.md": "",
+    ".cursor/skills/speckit-constitution/SKILL.md": "",
+    ".cursor/skills/speckit-implement/SKILL.md": "",
+    ".cursor/skills/speckit-plan/SKILL.md": "",
+    ".cursor/skills/speckit-specify/SKILL.md": "",
+    ".cursor/skills/speckit-tasks/SKILL.md": "",
+    ".cursor/skills/speckit-taskstoissues/SKILL.md": ""
+  }
+}
