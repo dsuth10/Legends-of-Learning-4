@@ -5,4 +5,8 @@ alwaysApply: true
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
+at `specs/001-adventures-map-system/plan.md`. Related artefacts live in
+the same folder: `research.md` (Phase 0 decisions), `data-model.md`,
+`contracts/teacher-api.md`, `contracts/student-api.md`, and
+`quickstart.md`. The feature spec is `specs/001-adventures-map-system/spec.md`.
 <!-- SPECKIT END -->

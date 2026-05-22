@@ -1,0 +1,86 @@
+{% extends "teacher/base_dashboard.html" %}
+{% block dashboard_content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Assign: {{ adventure.title }}</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('adventures_teacher.read_adventure', adventure_id=adventure.id) }}">Back to editor</a>
+  </div>
+
+  <form id="assignment-form" class="row g-2 align-items-end mb-4">
+    <div class="col-md-4">
+      <label class="form-label" for="classroom_id">Classroom</label>
+      <select class="form-select" id="classroom_id" name="classroom_id" required>
+        {% for c in classes %}
+        {% if c.id not in assigned_class_ids %}
+        <option value="{{ c.id }}">{{ c.name }}</option>
+        {% endif %}
+        {% endfor %}
+      </select>
+      {% if assigned_class_ids and assigned_class_ids|length == classes|length %}
+      <div class="form-text text-muted">All of your classes already have an active assignment.</div>
+      {% endif %}
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary" {% if assigned_class_ids and assigned_class_ids|length == classes|length %}disabled{% endif %}>Assign to class</button>
+    </div>
+  </form>
+
+  <h2 class="h6">Active class assignments ({{ assignments|length }})</h2>
+  {% if assignments %}
+  <ul class="list-group mb-3">
+    {% for a in assignments %}
+    <li class="list-group-item">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <strong>{{ classroom_names.get(a.classroom_id, 'Class #' ~ a.classroom_id) }}</strong>
+          <span class="text-muted ms-2">version {{ a.adventure_version }}</span>
+          {% if a.starts_at or a.ends_at %}
+          <div class="small text-muted mt-1">
+            {% if a.starts_at %}Starts {{ a.starts_at }}{% endif %}
+            {% if a.ends_at %}{% if a.starts_at %} · {% endif %}Ends {{ a.ends_at }}{% endif %}
+          </div>
+          {% endif %}
+        </div>
+        <div class="btn-group btn-group-sm">
+          <a class="btn btn-outline-primary" href="{{ url_for('adventures_teacher.adventure_progress', adventure_id=adventure.id, classroom_id=a.classroom_id) }}">View progress</a>
+          <button type="button" class="btn btn-outline-danger btn-deactivate" data-id="{{ a.id }}">Deactivate</button>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="small text-muted mb-0">Assign the same adventure to additional classes anytime. Each class keeps its own student roster and progress.</p>
+  {% else %}
+  <p class="text-muted">No active assignments yet. Choose a class above to assign this adventure.</p>
+  {% endif %}
+</div>
+<script>
+  (function () {
+    const aid = {{ adventure.id }};
+    const form = document.getElementById('assignment-form');
+    if (!form) return;
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const classroom_id = parseInt(document.getElementById('classroom_id').value, 10);
+      const resp = await fetch(`/teacher/adventures/${aid}/assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classroom_id }),
+      });
+      const body = await resp.json();
+      if (!body.success) {
+        alert((body.errors && body.errors[0] && body.errors[0].message) || 'Assignment failed');
+        return;
+      }
+      location.reload();
+    });
+    document.querySelectorAll('.btn-deactivate').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        if (!window.confirm('Deactivate this class assignment? Students can no longer start new nodes.')) return;
+        await fetch(`/teacher/adventures/${aid}/assignments/${btn.dataset.id}`, { method: 'DELETE' });
+        location.reload();
+      });
+    });
+  })();
+</script>
+{% endblock %}

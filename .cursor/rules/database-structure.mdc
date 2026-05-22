@@ -26,6 +26,16 @@ alwaysApply: true
   - `BehaviorIncident` (`behavior_incidents`): Log of HP deductions for behavior
   - `FallenEvent` (`fallen_events`): 0 HP fall, rescue window, die roll / rescue resolution
 
+- **Adventures Tables & Models:**
+  - `Adventure` (`adventures`): Teacher-authored quest map; links to `User` (teacher), has many `AdventureNode`, `AdventureEdge`, `AdventureAssignment`
+  - `AdventureNode` (`adventure_nodes`): Map node (start, battle, quiz, choice, end, etc.); links to `Adventure`, has many `NodeReward`, `NodeConsequence`
+  - `AdventureEdge` (`adventure_edges`): Directed edge between nodes with choice/criteria conditions; links to `Adventure`, `AdventureNode` (from/to)
+  - `NodeReward` (`node_rewards`): Per-node reward config (XP, gold, equipment, badge, etc.); links to `AdventureNode`
+  - `NodeConsequence` (`node_consequences`): Per-node failure penalties; links to `AdventureNode`
+  - `AdventureAssignment` (`adventure_assignments`): Binds published adventure to classroom/clan/character; links to `Adventure`, `Classroom`, optional `Clan`/`Character`
+  - `CharacterAdventureProgress` (`character_adventure_progress`): Per-character adventure state, version pin, optional `snapshot_json`; links to `Character`, `Adventure`, optional `AdventureNode` (current)
+  - `CharacterNodeProgress` (`character_node_progress`): Per-character per-node status, attempts, score, choice; links to `Character`, `AdventureNode`
+
 - **Key Relationships:**
   - **User <-> Student**: One-to-one (Student.user_id → User.id)
   - **User <-> Classroom**: Many-to-many via `class_students` association table
@@ -48,6 +58,12 @@ alwaysApply: true
   - **Classroom <-> ClassroomBehaviorSettings**: One-to-one (settings.classroom_id → Classroom.id)
   - **Classroom <-> BehaviorInfraction / CursedDieFace / BehaviorIncident / FallenEvent**: One-to-many
   - **Character <-> BehaviorIncident / FallenEvent**: One-to-many on incidents and fall events
+  - **User (teacher) <-> Adventure**: One-to-many (Adventure.teacher_id → User.id)
+  - **Adventure <-> AdventureNode / AdventureEdge / AdventureAssignment**: One-to-many
+  - **AdventureNode <-> NodeReward / NodeConsequence / CharacterNodeProgress**: One-to-many
+  - **AdventureAssignment <-> Classroom**: Many-to-one (classroom-scoped assignments)
+  - **Character <-> CharacterAdventureProgress / CharacterNodeProgress**: One-to-many
+  - **Battle <-> AdventureNode**: Optional FK (`battles.adventure_node_id`) for adventure-bound fights
 
 - **Association & Join Tables:**
   - `class_students`: User-classroom many-to-many
@@ -63,6 +79,8 @@ alwaysApply: true
   - Clan ⟶ ClanProgressHistory
   - Ability ⟶ AssistLog
   - AchievementBadge ⟷ (Clan, Character)
+  - User (teacher) ⟶ Adventure ⟶ (AdventureNode, AdventureEdge, AdventureAssignment)
+  - Character ⟶ (CharacterAdventureProgress, CharacterNodeProgress) ⟶ AdventureNode
 
 - **Best Practices:**
   - Use foreign keys and association tables for all relationships

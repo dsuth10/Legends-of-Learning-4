@@ -1,0 +1,87 @@
+.adventure-map {
+  display: block;
+  background: #0f172a;
+}
+
+.adventure-map .edge-line {
+  stroke: #475569;
+  stroke-width: 2;
+}
+
+.adventure-map .edge-choice {
+  stroke: #a78bfa;
+  stroke-dasharray: 6 4;
+}
+
+.adventure-map .edge-active-branch {
+  stroke: #22c55e;
+  stroke-width: 3;
+}
+
+.adventure-map .edge-locked-branch {
+  stroke: #334155;
+  opacity: 0.35;
+}
+
+.adventure-map .map-node circle {
+  fill: #334155;
+  stroke: #64748b;
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.adventure-map .node-status-available circle {
+  fill: #2563eb;
+  stroke: #93c5fd;
+}
+
+.adventure-map .node-status-in_progress circle {
+  fill: #7c3aed;
+  stroke: #c4b5fd;
+}
+
+.adventure-map .node-status-completed circle {
+  fill: #16a34a;
+  stroke: #86efac;
+}
+
+.adventure-map .node-status-skipped circle {
+  fill: #475569;
+  stroke: #94a3b8;
+  opacity: 0.55;
+}
+
+.adventure-map .node-status-locked circle {
+  fill: #1e293b;
+  opacity: 0.6;
+}
+
+.adventure-map .node-optional circle {
+  stroke-dasharray: 4 3;
+}
+
+.adventure-map text {
+  fill: #f1f5f9;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.node-status-available { color: #93c5fd; }
+.node-status-completed { color: #86efac; }
+.node-status-skipped { color: #94a3b8; }
+.node-status-locked { color: #64748b; }
+
+.choice-options .choice-btn {
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.choice-options .choice-btn:hover {
+  background: #4338ca;
+}
+
+.choice-selected {
+  color: #86efac;
+}

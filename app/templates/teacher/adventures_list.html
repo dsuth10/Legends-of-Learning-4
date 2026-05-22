@@ -1,0 +1,22 @@
+{% extends "teacher/base_dashboard.html" %}
+{% block dashboard_content %}
+<div class="container-fluid py-4" id="adventures-list-page" data-current-user-id="{{ current_user_id }}">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Adventures</h1>
+    <button type="button" class="btn btn-primary" id="btn-new-adventure">New Adventure</button>
+  </div>
+  <h2 class="h5 text-muted mb-2">My Adventures</h2>
+  <div id="adventures-owned" class="list-group mb-4" aria-live="polite"></div>
+  <h2 class="h5 text-muted mb-2">Shared Adventures</h2>
+  <p class="small text-muted" id="shared-empty-hint">Public adventures from other teachers appear here.</p>
+  <div id="adventures-shared" class="list-group" aria-live="polite"></div>
+</div>
+<script src="{{ url_for('static', filename='js/adventure_editor.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.AdventureEditor && AdventureEditor.initList) {
+      AdventureEditor.initList({ currentUserId: {{ current_user_id }} });
+    }
+  });
+</script>
+{% endblock %}

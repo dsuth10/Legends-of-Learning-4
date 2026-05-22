@@ -38,6 +38,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'adventures' %}active{% endif %}" href="{{ url_for('adventures_teacher.adventures_list_page') }}">
+                            <i class="fas fa-map"></i> Adventures
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if active_page == 'quest_progress' %}active{% endif %}" href="{{ url_for('teacher_quests.quest_progress') }}">
                             <i class="fas fa-tasks"></i> Quest Progress
                         </a>

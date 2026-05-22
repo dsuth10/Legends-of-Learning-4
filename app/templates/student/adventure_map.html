@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/adventure_player.css') }}">
+{% endblock %}
+{% block content %}
+{# Keyboard: Tab reaches the map and detail panel; Enter/Space activate focused available nodes (see adventure_player.js). #}
+<div class="min-h-screen bg-gray-900" id="adventure-player" data-adventure-id="{{ adventure_id }}" role="main">
+  {% include "student/_student_header.html" %}
+  <div class="flex flex-col lg:flex-row h-[calc(100vh-6rem)]">
+    <div class="flex-1 relative overflow-auto" id="map-container" role="region" aria-label="Adventure map">
+      <svg id="adventure-map" class="adventure-map" tabindex="0"
+           aria-label="Interactive adventure map. Tab to nodes and press Enter to open details."
+           aria-describedby="map-keyboard-help"></svg>
+      <p id="map-keyboard-help" class="sr-only">
+        Use Tab to move between unlocked nodes. Press Enter or Space on a focused node to view its detail panel.
+      </p>
+    </div>
+    <aside class="w-full lg:w-80 bg-gray-800 text-white p-4 border-l border-gray-700"
+           id="node-detail-panel"
+           role="complementary"
+           aria-label="Node detail panel"
+           aria-live="polite">
+      <p class="text-gray-400 text-sm">Select a node to view details.</p>
+    </aside>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/adventure_player.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.AdventurePlayer && AdventurePlayer.init) {
+      AdventurePlayer.init({ adventureId: {{ adventure_id }} });
+    }
+  });
+</script>
+{% endblock %}

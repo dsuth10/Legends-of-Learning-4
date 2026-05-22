@@ -1,0 +1,136 @@
+{% extends "teacher/base_dashboard.html" %}
+{% block dashboard_content %}
+<div class="container-fluid py-4" id="adventure-progress" data-adventure-id="{{ adventure.id }}">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1 class="h4 mb-0">Progress: {{ adventure.title }}</h1>
+    <div class="btn-group btn-group-sm">
+      <a class="btn btn-outline-secondary" href="{{ url_for('adventures_teacher.assignments_page', adventure_id=adventure.id) }}">Manage assignments</a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('adventures_teacher.read_adventure', adventure_id=adventure.id) }}">Back to editor</a>
+    </div>
+  </div>
+
+  {% if assignments|length > 1 %}
+  <div class="alert alert-info py-2 small mb-3">
+    This adventure is assigned to {{ assignments|length }} classes.
+    {% if selected_classroom_name %}
+    Showing roster for <strong>{{ selected_classroom_name }}</strong> only.
+    {% else %}
+    Showing combined roster across all assigned classes — pick a class to scope the view.
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="GET" action="{{ url_for('adventures_teacher.adventure_progress', adventure_id=adventure.id) }}" class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label" for="classroom_id">Class scope</label>
+          <select class="form-select" id="classroom_id" name="classroom_id" onchange="this.form.submit()">
+            <option value="">All assigned classes ({{ assignments|length }})</option>
+            {% for c in classes %}
+            <option value="{{ c.id }}" {% if selected_classroom_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <span class="badge bg-secondary">{{ roster.summary.total_students }} students</span>
+          <span class="badge bg-light text-dark">{{ roster.summary.not_started }} not started</span>
+          <span class="badge bg-primary">{{ roster.summary.in_progress }} in progress</span>
+          <span class="badge bg-success">{{ roster.summary.completed }} completed</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Status</th>
+          <th>Current node</th>
+          <th>Nodes</th>
+          <th>Last active</th>
+          <th>Recent activity</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in roster.students %}
+        <tr class="{% if s.has_failures %}table-warning{% endif %}">
+          <td>{{ s.name }}</td>
+          <td>
+            <span class="badge {% if s.status == 'completed' %}bg-success{% elif s.status == 'in_progress' %}bg-primary{% else %}bg-secondary{% endif %}">
+              {{ s.status }}
+            </span>
+            {% if s.has_failures %}
+            <span class="badge bg-danger ms-1" title="Failed node attempts">Failed</span>
+            {% endif %}
+            {% if s.has_consequences %}
+            <span class="badge bg-dark ms-1" title="Consequences may apply">Consequence</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.current_node %}
+            {{ s.current_node.title }} <small class="text-muted">({{ s.current_node.node_type }})</small>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <small>
+              {{ s.node_counts.completed }} done /
+              {{ s.node_counts.available }} open /
+              {{ s.node_counts.failed }} fail /
+              {{ s.node_counts.skipped }} skip
+            </small>
+          </td>
+          <td><small>{{ s.last_active_at or '—' }}</small></td>
+          <td>
+            {% if s.recent_events %}
+            <ul class="list-unstyled mb-0 small">
+              {% for ev in s.recent_events[:3] %}
+              <li>
+                <span class="text-muted">{{ ev.timestamp }}</span>
+                {{ ev.event_type }}
+                {% if ev.node_slug %}<code>{{ ev.node_slug }}</code>{% endif %}
+                {% if ev.score is not none %}({{ ev.score }}%){% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}<small class="text-muted">No activity yet</small>{% endif %}
+          </td>
+          <td>
+            {% if s.status != 'completed' %}
+            <button type="button" class="btn btn-outline-success btn-sm btn-force-complete" data-character-id="{{ s.character_id }}">
+              Force complete
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-muted">No students in scope. Assign this adventure to a class first.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+(function () {
+  var root = document.getElementById('adventure-progress');
+  var aid = root.dataset.adventureId;
+  root.querySelectorAll('.btn-force-complete').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var cid = btn.dataset.characterId;
+      var reason = window.prompt('Optional reason for force-complete:') || undefined;
+      fetch('/teacher/adventures/' + aid + '/progress/' + cid + '/force-complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason }),
+      }).then(function (r) { return r.json(); }).then(function (body) {
+        if (body.success) location.reload();
+        else alert((body.errors && body.errors[0] && body.errors[0].message) || 'Force complete failed');
+      });
+    });
+  });
+})();
+</script>
+{% endblock %}

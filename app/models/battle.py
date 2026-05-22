@@ -50,6 +50,12 @@ class Battle(Base):
     
     # Log of turns: [{turn: 1, action: "attack", damage: 10, question_id: 5, correct: true}, ...]
     turn_log = db.Column(JSON, default=list)
+
+    adventure_node_id = db.Column(
+        db.Integer,
+        db.ForeignKey("adventure_nodes.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     
     created_at = db.Column(db.DateTime, default=get_utc_now)
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
@@ -58,6 +64,7 @@ class Battle(Base):
     student = db.relationship('Student', backref='battles')
     monster = db.relationship('Monster')
     question_set = db.relationship('QuestionSet')
+    adventure_node = db.relationship('AdventureNode', backref='battles')
 
     def __repr__(self):
         return f'<Battle {self.id} - {self.status.value}>'

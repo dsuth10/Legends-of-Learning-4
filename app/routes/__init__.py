@@ -18,4 +18,7 @@ def init_app(app):
     app.register_blueprint(teacher_education_bp)
     from .student.battle import student_battle_bp
     app.register_blueprint(student_battle_bp)
+    from app.routes.adventures import adventures_teacher_bp, adventures_student_bp
+    app.register_blueprint(adventures_teacher_bp)
+    app.register_blueprint(adventures_student_bp)
 

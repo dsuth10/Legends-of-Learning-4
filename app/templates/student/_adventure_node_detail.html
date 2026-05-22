@@ -1,0 +1,13 @@
+<div class="p-4" id="adventure-node-detail">
+  <h2 class="text-lg font-semibold">{{ node.title }}</h2>
+  <p class="text-sm text-gray-600">{{ node.description or '' }}</p>
+  {% if node.is_optional %}
+  <p class="text-xs text-gray-500 mt-1">Optional — bonus rewards, not required to finish.</p>
+  {% endif %}
+  {% if node.node_type == 'choice' %}
+  <p class="text-xs text-purple-600 mt-1">Choice node — pick one path to continue.</p>
+  {% endif %}
+  {% if quiz_mode %}
+  <p class="mt-2 text-sm">Quiz mode — submit answers via the API.</p>
+  {% endif %}
+</div>

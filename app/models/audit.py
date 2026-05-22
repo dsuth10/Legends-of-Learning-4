@@ -31,6 +31,9 @@ class EventType(Enum):
     BEHAVIOR_PENALTY = 'BEHAVIOR_PENALTY'
     BEHAVIOR_RESCUE = 'BEHAVIOR_RESCUE'
     CURSED_DIE_ROLL = 'CURSED_DIE_ROLL'
+    ADVENTURE_NODE_START = 'ADVENTURE_NODE_START'
+    ADVENTURE_NODE_COMPLETE = 'ADVENTURE_NODE_COMPLETE'
+    ADVENTURE_COMPLETE = 'ADVENTURE_COMPLETE'
 
 class AuditLog(Base):
     """Model for tracking important game events and changes.
@@ -91,6 +94,9 @@ class AuditLog(Base):
         'BEHAVIOR_PENALTY': 'Behavior HP penalty',
         'BEHAVIOR_RESCUE': 'Fallen character rescued',
         'CURSED_DIE_ROLL': 'Cursed Die sentence resolved',
+        'ADVENTURE_NODE_START': 'Adventure node started',
+        'ADVENTURE_NODE_COMPLETE': 'Adventure node completed',
+        'ADVENTURE_COMPLETE': 'Adventure completed',
     }
     
     @classmethod

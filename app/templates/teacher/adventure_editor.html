@@ -1,0 +1,115 @@
+{% extends "teacher/base_dashboard.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/adventure_editor.css') }}">
+{% endblock %}
+{% block dashboard_content %}
+<div class="container-fluid py-3" id="adventure-editor"
+     role="main"
+     aria-labelledby="adventure-editor-title"
+     data-adventure-id="{{ adventure.id }}"
+     data-can-edit="{{ 'true' if can_edit else 'false' }}"
+     data-is-public="{{ 'true' if adventure.is_public else 'false' }}"
+     data-adventure-status="{{ adventure.status }}">
+  <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+    <div>
+      <h1 class="h4 mb-0" id="adventure-editor-title">{{ adventure.title }}</h1>
+      {% if not can_edit and adventure.teacher %}
+      <p class="small text-muted mb-0" id="adventure-owner-label">
+        Shared by {{ adventure.teacher.display_name or adventure.teacher.username }}
+      </p>
+      {% endif %}
+    </div>
+    <div class="btn-group" role="toolbar" aria-label="Adventure editor actions">
+      {% if can_edit %}
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-save-graph" aria-label="Refresh map from server">Refresh</button>
+      <button type="button" class="btn btn-success btn-sm" id="btn-publish" aria-label="Publish adventure for student play">Publish</button>
+      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('adventures_teacher.assignments_page', adventure_id=adventure.id) }}" aria-label="Assign adventure to classes">Assign</a>
+      {% else %}
+      <button type="button" class="btn btn-primary btn-sm" id="btn-clone-adventure" aria-label="Clone this shared adventure to your account">Clone to My Adventures</button>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if can_edit %}
+  <div class="alert alert-light border py-2 mb-2" id="editor-help">
+    <strong>Build your map:</strong>
+    1) Pick a node type below & click the map to place it &nbsp;→&nbsp;
+    2) Turn on <em>Connect</em> and click two nodes to link them &nbsp;→&nbsp;
+    3) <em>Publish</em> when validation passes &nbsp;→&nbsp;
+    4) Click <em>Assign</em> to give it to a class.
+  </div>
+  <div class="btn-toolbar mb-2 flex-wrap gap-1" id="node-toolbar" role="toolbar" aria-label="Node placement tools">
+    <div class="btn-group btn-group-sm me-2">
+      <button type="button" class="btn btn-outline-warning active" data-node-type="start">Start</button>
+      <button type="button" class="btn btn-outline-primary" data-node-type="story">Story</button>
+      <button type="button" class="btn btn-outline-danger" data-node-type="battle">Battle</button>
+      <button type="button" class="btn btn-outline-info" data-node-type="quiz">Quiz</button>
+      <button type="button" class="btn btn-outline-secondary" data-node-type="choice">Choice</button>
+      <button type="button" class="btn btn-outline-success" data-node-type="end">End</button>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-dark" id="btn-connect-mode">Connect nodes</button>
+    <span class="small text-muted align-self-center ms-2" id="editor-mode-hint">Click the map to place a <strong>Start</strong> node.</span>
+  </div>
+  <div class="form-check form-switch mb-2" id="share-toggle-wrap">
+    <input class="form-check-input" type="checkbox" role="switch" id="toggle-is-public"
+           aria-describedby="share-toggle-help"
+           {% if adventure.is_public %}checked{% endif %}
+           {% if adventure.status == 'draft' %}disabled{% endif %}>
+    <label class="form-check-label" for="toggle-is-public">
+      Share with other teachers
+      {% if adventure.status == 'draft' %}
+      <span class="text-muted small" id="share-toggle-help">(publish first)</span>
+      {% endif %}
+    </label>
+  </div>
+  {% endif %}
+
+  <div id="editor-validation" class="alert alert-warning d-none" role="alert" aria-live="assertive"></div>
+  {% if adventure.status == 'published' and in_progress_count > 0 %}
+  <div id="published-edit-warning" class="alert alert-info py-2" role="status"
+       data-in-progress-count="{{ in_progress_count }}">
+    <strong>{{ in_progress_count }}</strong> student(s) are mid-flight on this adventure.
+    Structural edits bump the live version; those students keep the map they started on.
+    New starters see your latest changes.
+  </div>
+  {% else %}
+  <div id="published-edit-warning" class="alert alert-info py-2 d-none" role="status"
+       data-in-progress-count="0"></div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-lg-9">
+      <div class="editor-canvas-wrap" role="region" aria-label="Adventure map canvas">
+        <div id="canvas-empty-hint" class="canvas-empty-hint">
+          <p class="mb-1"><strong>Your map is empty.</strong></p>
+          <p class="mb-0 small">Select <em>Start</em> above, then click here to place your first node.</p>
+        </div>
+        <svg id="adventure-canvas" class="adventure-canvas" width="{{ adventure.width }}" height="{{ adventure.height }}"
+             tabindex="0"
+             aria-label="Adventure map editor canvas"></svg>
+      </div>
+    </div>
+    <div class="col-lg-3">
+      <div id="map-inspector" role="region" aria-label="Map inspector panel" aria-live="polite">
+        {% if can_edit %}
+        <p class="text-muted small mb-0">Click a node to edit it, or an edge to edit path rules.</p>
+        {% else %}
+        <p class="text-muted small mb-0">View-only preview. Clone this adventure to edit and assign your own copy.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/adventure_editor.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.AdventureEditor && AdventureEditor.init) {
+      AdventureEditor.init({
+        adventureId: {{ adventure.id }},
+        canEdit: {{ 'true' if can_edit else 'false' }},
+        monsters: {{ monster_options | tojson }}
+      });
+    }
+  });
+</script>
+{% endblock %}

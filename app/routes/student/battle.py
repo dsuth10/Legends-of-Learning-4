@@ -218,6 +218,10 @@ def attack(battle_id):
         xp_needed = character.level * 100
         if character.experience >= xp_needed:
             character.level_up()
+
+        from app.services.adventure_hooks import on_battle_resolved
+
+        on_battle_resolved(battle, session=db.session)
         
     elif battle.player_health <= 0:
         battle.status = BattleStatus.LOST

@@ -41,6 +41,18 @@ def init_db(app):
         FallenStatus,
         FallenTriggerSource,
     )
+    from app.models.adventure import (
+        Adventure,
+        AdventureNode,
+        AdventureEdge,
+        NodeReward,
+        NodeConsequence,
+    )
+    from app.models.adventure_progress import (
+        AdventureAssignment,
+        CharacterAdventureProgress,
+        CharacterNodeProgress,
+    )
     # AchievementBadge, ClanProgressHistory imported at module level
     # from app.models.clan_progress import ClanProgressHistory  # Already imported at top level
     

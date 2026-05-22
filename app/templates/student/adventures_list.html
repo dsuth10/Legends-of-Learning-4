@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  {% include "student/_student_header.html" %}
+  <main class="p-6 max-w-3xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">My Adventures</h1>
+    <ul id="student-adventures-list" class="space-y-3">
+      {% for a in adventures %}
+      <li>
+        <a href="{{ url_for('adventures_student.adventure_map_page', adventure_id=a.id) }}"
+           class="block p-4 rounded-lg bg-white dark:bg-gray-800 shadow hover:ring-2 ring-indigo-400">
+          <span class="font-semibold text-gray-900 dark:text-white">{{ a.title }}</span>
+          <span class="text-sm text-gray-500 ml-2">{{ a.my_progress.status }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </main>
+</div>
+{% endblock %}

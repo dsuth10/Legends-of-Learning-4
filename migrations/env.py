@@ -27,6 +27,25 @@ from app.models.shop import ShopPurchase
 from app.models.audit import AuditLog
 from app.models.assist_log import AssistLog
 from app.models.classroom_tool import ClassroomToolConfig  # noqa: F401 — register with metadata
+from app.models.behavior import (  # noqa: F401
+    ClassroomBehaviorSettings,
+    BehaviorInfraction,
+    CursedDieFace,
+    BehaviorIncident,
+    FallenEvent,
+)
+from app.models.adventure import (  # noqa: F401
+    Adventure,
+    AdventureNode,
+    AdventureEdge,
+    NodeReward,
+    NodeConsequence,
+)
+from app.models.adventure_progress import (  # noqa: F401
+    AdventureAssignment,
+    CharacterAdventureProgress,
+    CharacterNodeProgress,
+)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
