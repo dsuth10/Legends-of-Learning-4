@@ -68,6 +68,11 @@
         classId: cfg.class_id,
         penaltyUrl: urls.penalty,
         rewardUrl: urls.reward,
+        targetsUrl: urls.targets,
+        startUrl: urls.start,
+        triggerUrl: urls.trigger,
+        completeUrl: urls.complete,
+        abandonUrl: urls.abandon,
       });
     }
     return cfg;

@@ -34,7 +34,7 @@
       <strong><i class="fas fa-volume-high me-2"></i>Volume Meter</strong>
     </div>
     <div class="card-body">
-      <p class="small text-muted">Uses this device&rsquo;s microphone. Noise above the threshold for the set duration applies damage to <strong>all</strong> active characters in the class. A session timer can award XP and gold; each penalty halves the potential reward.</p>
+      <p class="small text-muted">Uses this device&rsquo;s microphone. Choose the whole class, clans, or individual students when you start a session. Each noise trigger halves the remaining reward (rounding up). HP damage is optional and off by default.</p>
 
       <div class="row g-3">
         <div class="col-md-6">
@@ -53,7 +53,11 @@
           <input type="number" class="form-control" id="ct-cooldown" min="0" max="30" value="2">
         </div>
         <div class="col-md-4">
-          <label for="ct-damage" class="form-label">Damage per penalty (HP)</label>
+          <div class="form-check mt-1 mb-2">
+            <input class="form-check-input" type="checkbox" id="ct-hp-enabled">
+            <label class="form-check-label" for="ct-hp-enabled">HP damage on trigger</label>
+          </div>
+          <label for="ct-damage" class="form-label">Damage per trigger (HP)</label>
           <input type="number" class="form-control" id="ct-damage" min="1" max="500" value="10">
         </div>
         <div class="col-md-4">

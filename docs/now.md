@@ -17,15 +17,13 @@ Last reviewed: 2026-09-21
 
 ## Current
 
-**No active feature.** Spec 004 (student UI remaining gaps) is shipped: one student shell on Character, Quests, Shop, Equipment, Adventures list, Progress, Powers, Clan, Profile, and Create character; unfinished placeholder controls removed; small-screen stack in `student_shell.css`.
+None. Spec 005 (audio meter targeting) is implemented. Pick the next product item before starting new work — the parked Adventures Phase 6 items below are optional, not an automatic queue.
 
 ---
 
 ## Next
 
-Stay on Adventures only if original roadmap Phase 6 is explicitly chosen.
-
-1. **Adventures optional later** — cross-teacher clone, public sharing, clan-shared progress, time-limited nodes, difficulty analytics, legacy-quest migration. Source: [Ideas/Adventures Quest Map System - Roadmap.md](../Ideas/Adventures%20Quest%20Map%20System%20-%20Roadmap.md) §17 Phase 6.
+1. **Adventures optional later** — cross-teacher clone, public sharing, clan-shared progress, time-limited nodes, difficulty analytics, legacy-quest migration. Source: [Ideas/Adventures Quest Map System - Roadmap.md](../Ideas/Adventures%20Quest%20Map%20System%20-%20Roadmap.md) §17 Phase 6. Only if Phase 6 is explicitly chosen.
 
 ---
 
@@ -50,7 +48,7 @@ Use this table instead of creating another tool.
 | System | Location | Role | Status |
 |--------|----------|------|--------|
 | **Now / Next (this file)** | `docs/now.md` | What to work on *now* | **Use this** |
-| **Speckit** | `specs/001-adventures-map-system/`, `specs/002-adventure-editor-enhancements/`, `specs/003-adventure-player-polish/`, `specs/004-student-ui-gaps/`, `.specify/` | Spec → plan → tasks for one feature | 001 complete (103/103). 002 complete including Phase 6 polish. 003 implemented (player polish, assignment targets, icons). **004 is shipped** (shared student chrome, honest controls, leftover pages wrapped). No next Speckit feature is queued. |
+| **Speckit** | `specs/001-adventures-map-system/`, `specs/002-adventure-editor-enhancements/`, `specs/003-adventure-player-polish/`, `specs/004-student-ui-gaps/`, `specs/005-audio-meter-targeting/`, `.specify/` | Spec → plan → tasks for one feature | 001–005 shipped. |
 | **Constitution** | `constitution.md` | Coding/architecture gates for Speckit plans | Active |
 | **Adventures roadmap** | `Ideas/Adventures Quest Map System - Roadmap.md` | Product vision and later phases | Draft; 001 implemented most of Phases 0–4 |
 | **BMAD brownfield docs** | `docs/index.md`, `docs/project-overview.md`, `docs/architecture.md`, … | Codebase snapshot for onboarding | Generated 2025-01-27; useful background, not a backlog |
@@ -67,7 +65,8 @@ Use this table instead of creating another tool.
 
 ## Shipped recently (so we do not re-plan them)
 
-- Student UI remaining gaps (spec 004): one shared student shell, leftover pages off Bootstrap `base.html`, unfinished placeholder controls removed, truthful stats/power icons, small-screen stack.
+- Audio meter targeting (spec 005): participant-scoped quiet-time sessions, server-derived ceil-halved rewards, optional HP (default off), per-character Progress descriptions.
+- Student UI remaining gaps (spec 004): one shared student shell, leftover pages off Bootstrap `base.html`, unfinished placeholder controls removed, truthful stats/power icons, small-screen stack. (No longer Current; see 005.)
 - Adventures map system (spec 001): models, teacher editor, student play, branching, assignment, rewards.
 - Adventure editor enhancements (spec 002): quiz question-set picker, in-editor settings, drag-to-reposition, Phase 6 polish.
 - Adventures player/editor polish (spec 003): travel animation, mini-map, keyboard/undo/zoom, clan and individual assignment, node icon library.

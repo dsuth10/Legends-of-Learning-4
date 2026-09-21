@@ -1,5 +1,5 @@
 /**
- * Volume meter: microphone RMS, sustained threshold breach -> penalty API, timer -> reward API.
+ * Volume meter: microphone RMS, session start/trigger/complete, quiet-time rewards.
  */
 (function (global) {
   'use strict';
@@ -16,28 +16,38 @@
     return m + ':' + (r < 10 ? '0' : '') + r;
   }
 
+  function sessionUrl(template, sessionId) {
+    return String(template).replace(/\/0(?=\/|$)/, '/' + sessionId);
+  }
+
   class VolumeMeter {
     constructor(config, container) {
       this.config = config || {};
       this.container = container;
       this.classId = config.classId;
-      this.penaltyUrl = config.penaltyUrl;
-      this.rewardUrl = config.rewardUrl;
+      this.targetsUrl = config.targetsUrl;
+      this.startUrl = config.startUrl;
+      this.triggerUrl = config.triggerUrl;
+      this.completeUrl = config.completeUrl;
+      this.abandonUrl = config.abandonUrl;
 
       this.threshold = typeof config.threshold === 'number' ? config.threshold : 0.35;
       this.breachDurationMs = (config.breach_duration_seconds || 5) * 1000;
       this.cooldownMs = (config.breach_cooldown_seconds || 2) * 1000;
-      this.damageAmount = config.damage_amount || 10;
       this.timerMinutes = config.timer_minutes || 15;
       this.baseXp = config.base_xp_reward || 0;
       this.baseGold = config.base_gold_reward || 0;
+      this.potentialXp = this.baseXp;
+      this.potentialGold = this.baseGold;
 
-      this.rewardMultiplier = 1;
+      this.sessionId = null;
       this.breachCount = 0;
       this.sessionRemainingMs = 0;
       this.sessionRunning = false;
       this.paused = false;
       this.completed = false;
+      this.pausedMs = 0;
+      this._pauseStarted = null;
 
       this._raf = null;
       this._audioCtx = null;
@@ -63,6 +73,7 @@
         '    <button type="button" class="btn btn-outline-light btn-lg vm-reset">Reset</button>' +
         '  </div>' +
         '</div>' +
+        '<div class="vm-picker-host"></div>' +
         '<p class="vm-mic-hint text-white-50 small mb-3">Allow microphone access when prompted. Processing stays in this browser.</p>' +
         '<div class="row g-4 align-items-stretch">' +
         '  <div class="col-lg-5">' +
@@ -84,7 +95,7 @@
         '        <div class="text-white-50 small">Potential reward (per character)</div>' +
         '        <div class="vm-reward-xp h5 mb-1"><span class="vm-xp-val">0</span> XP</div>' +
         '        <div class="vm-reward-gold h5 mb-1"><span class="vm-gold-val">0</span> Gold</div>' +
-        '        <div class="vm-multiplier small text-warning">Multiplier: 100%</div>' +
+        '        <div class="vm-multiplier small text-warning">Quiet-time tier: full reward</div>' +
         '      </div>' +
         '      <div class="vm-breach-display mt-3 small">Noise breaches: <strong class="vm-breach-count">0</strong></div>' +
         '      <div class="vm-status-msg mt-2 small text-info" role="status"></div>' +
@@ -106,6 +117,7 @@
       this.btnStart = el.querySelector('.vm-start');
       this.btnPause = el.querySelector('.vm-pause');
       this.btnReset = el.querySelector('.vm-reset');
+      this.pickerHost = el.querySelector('.vm-picker-host');
 
       this.elThreshold.style.bottom = this.threshold * 100 + '%';
 
@@ -114,7 +126,20 @@
       this.btnReset.addEventListener('click', () => this.resetSession());
 
       this._updateRewardDisplay();
-      this._setStatus('Ready. Press Start to begin.');
+      this._setStatus('Choose participants, then press Start.');
+      this._initPicker();
+    }
+
+    _initPicker() {
+      if (!global.VolumeMeterPicker || !this.targetsUrl) {
+        this._setStatus('Missing class or API URLs.');
+        this.btnStart.disabled = true;
+        return;
+      }
+      this.picker = new global.VolumeMeterPicker(this.pickerHost, { targetsUrl: this.targetsUrl });
+      this.picker.load().catch((err) => {
+        this._setStatus('Could not load participants: ' + err.message);
+      });
     }
 
     _setStatus(msg) {
@@ -122,12 +147,25 @@
     }
 
     _updateRewardDisplay() {
-      const xp = Math.floor(this.baseXp * this.rewardMultiplier);
-      const gold = Math.floor(this.baseGold * this.rewardMultiplier);
-      this.elXp.textContent = String(xp);
-      this.elGold.textContent = String(gold);
-      this.elMult.textContent =
-        'Multiplier: ' + Math.round(this.rewardMultiplier * 100) + '% (halves each breach)';
+      this.elXp.textContent = String(this.potentialXp);
+      this.elGold.textContent = String(this.potentialGold);
+      if (this.breachCount <= 0) {
+        this.elMult.textContent = 'Quiet-time tier: full reward';
+      } else {
+        this.elMult.textContent =
+          'Quiet-time tier after ' + this.breachCount + ' trigger' + (this.breachCount === 1 ? '' : 's');
+      }
+    }
+
+    _applyTier(data) {
+      if (!data) return;
+      if (typeof data.potential_xp === 'number') this.potentialXp = data.potential_xp;
+      if (typeof data.potential_gold === 'number') this.potentialGold = data.potential_gold;
+      if (typeof data.trigger_count === 'number') {
+        this.breachCount = data.trigger_count;
+        this.elBreaches.textContent = String(this.breachCount);
+      }
+      this._updateRewardDisplay();
     }
 
     async start() {
@@ -135,7 +173,7 @@
         this._setStatus('Press Reset to start a new session.');
         return;
       }
-      if (!this.classId || !this.penaltyUrl || !this.rewardUrl) {
+      if (!this.classId || !this.startUrl || !this.completeUrl || !this.triggerUrl) {
         this._setStatus('Missing class or API URLs.');
         return;
       }
@@ -147,6 +185,36 @@
         return;
       }
 
+      const selection = this.picker ? this.picker.getSelection() : { target_type: 'class' };
+      try {
+        const res = await fetch(this.startUrl, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(selection),
+        });
+        const body = await res.json().catch(function () {
+          return {};
+        });
+        if (!res.ok || !body.success) {
+          throw new Error((body && body.error) || 'Could not start session');
+        }
+        const session = body.data.session;
+        this.sessionId = session.id;
+        this.potentialXp = session.potential_xp;
+        this.potentialGold = session.potential_gold;
+        this.baseXp = session.base_xp;
+        this.baseGold = session.base_gold;
+        this.breachCount = session.trigger_count || 0;
+        this.sessionRemainingMs = (session.timer_seconds || this.timerMinutes * 60) * 1000;
+        this._updateRewardDisplay();
+        this.elBreaches.textContent = String(this.breachCount);
+      } catch (e) {
+        this.stopAudio();
+        this._setStatus(e.message);
+        return;
+      }
+
       this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const source = this._audioCtx.createMediaStreamSource(this._stream);
       this._analyser = this._audioCtx.createAnalyser();
@@ -154,13 +222,13 @@
       this._analyser.smoothingTimeConstant = 0.85;
       source.connect(this._analyser);
 
-      if (!this.sessionRunning) {
-        this.sessionRemainingMs = this.timerMinutes * 60 * 1000;
-        this.sessionRunning = true;
-      }
+      this.sessionRunning = true;
       this.paused = false;
+      this.pausedMs = 0;
+      this._pauseStarted = null;
       this.btnStart.disabled = true;
       this.btnPause.disabled = false;
+      if (this.picker) this.picker.setLocked(true);
       this._breachStart = null;
       this._lastFrame = performance.now();
       this._setStatus('Listening…');
@@ -175,12 +243,17 @@
       if (this.paused) {
         this.btnPause.textContent = 'Resume';
         this._breachStart = null;
+        this._pauseStarted = performance.now();
         if (this._raf) {
           cancelAnimationFrame(this._raf);
           this._raf = null;
         }
         this._setStatus('Paused');
       } else {
+        if (this._pauseStarted != null) {
+          this.pausedMs += performance.now() - this._pauseStarted;
+          this._pauseStarted = null;
+        }
         this.btnPause.textContent = 'Pause';
         this._lastFrame = performance.now();
         this._setStatus('Listening…');
@@ -206,14 +279,30 @@
       this._analyser = null;
     }
 
-    resetSession() {
+    async resetSession() {
+      if (this.sessionId && this.abandonUrl && !this.completed) {
+        try {
+          await fetch(sessionUrl(this.abandonUrl, this.sessionId), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
       this.stopAudio();
-      this.rewardMultiplier = 1;
+      this.sessionId = null;
+      this.potentialXp = this.config.base_xp_reward || 0;
+      this.potentialGold = this.config.base_gold_reward || 0;
+      this.baseXp = this.potentialXp;
+      this.baseGold = this.potentialGold;
       this.breachCount = 0;
       this.sessionRunning = false;
       this.paused = false;
       this.completed = false;
       this.sessionRemainingMs = 0;
+      this.pausedMs = 0;
+      this._pauseStarted = null;
       this._breachStart = null;
       this._cooldownUntil = 0;
       this._volumeEma = 0;
@@ -225,6 +314,7 @@
       this.elLevelPct.textContent = '0';
       this.elBreaches.textContent = '0';
       this.root.classList.remove('vm-flash-penalty', 'vm-flash-reward');
+      if (this.picker) this.picker.setLocked(false);
       this._updateRewardDisplay();
       this._setStatus('Ready. Press Start to begin.');
     }
@@ -236,29 +326,29 @@
       this.stopAudio();
       this.btnStart.disabled = true;
       this.btnPause.disabled = true;
-
-      const xp = Math.floor(this.baseXp * this.rewardMultiplier);
-      const gold = Math.floor(this.baseGold * this.rewardMultiplier);
+      if (this._pauseStarted != null) {
+        this.pausedMs += performance.now() - this._pauseStarted;
+        this._pauseStarted = null;
+      }
 
       try {
-        const res = await fetch(this.rewardUrl, {
+        const res = await fetch(sessionUrl(this.completeUrl, this.sessionId), {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            class_id: this.classId,
-            xp_amount: xp,
-            gold_amount: gold,
-            reward_multiplier: this.rewardMultiplier,
-          }),
+          body: JSON.stringify({ paused_ms: Math.round(this.pausedMs) }),
         });
         const data = await res.json().catch(function () {
           return {};
         });
-        if (!res.ok) {
-          throw new Error(data.error || 'Reward request failed');
+        if (!res.ok || !data.success) {
+          throw new Error((data && data.error) || 'Reward request failed');
         }
-        this._setStatus('Session complete. Rewarded ' + data.rewarded_count + ' character(s).');
+        const awarded = data.data || {};
+        this.potentialXp = awarded.xp_awarded_each;
+        this.potentialGold = awarded.gold_awarded_each;
+        this._updateRewardDisplay();
+        this._setStatus('Session complete. Rewarded ' + awarded.rewarded_count + ' character(s).');
       } catch (e) {
         this._setStatus('Timer ended but reward failed: ' + e.message);
         console.error(e);
@@ -268,34 +358,33 @@
       setTimeout(() => this.root.classList.remove('vm-flash-reward'), 2000);
     }
 
-    async _firePenalty() {
+    async _fireTrigger() {
       const self = this;
       try {
-        const res = await fetch(this.penaltyUrl, {
+        const res = await fetch(sessionUrl(this.triggerUrl, this.sessionId), {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            class_id: this.classId,
-            damage_amount: this.damageAmount,
-          }),
+          body: JSON.stringify({ level: this._volumeEma }),
         });
-        const data = await res.json().catch(function () {
+        const body = await res.json().catch(function () {
           return {};
         });
-        if (!res.ok) {
-          throw new Error(data.error || 'Penalty request failed');
+        if (!res.ok || !body.success) {
+          throw new Error((body && body.error) || 'Trigger request failed');
         }
-        self._setStatus('Penalty applied to ' + data.affected_count + ' character(s).');
+        self._applyTier(body.data);
+        const applied = body.data && body.data.hp_damage_applied;
+        self._setStatus(
+          applied
+            ? 'Noise trigger. HP applied to ' + (body.data.damaged_character_ids || []).length + ' character(s).'
+            : 'Noise trigger. Reward halved.'
+        );
       } catch (e) {
-        self._setStatus('Penalty failed: ' + e.message);
+        self._setStatus('Trigger failed: ' + e.message);
         console.error(e);
       }
 
-      this.rewardMultiplier *= 0.5;
-      this.breachCount += 1;
-      this.elBreaches.textContent = String(this.breachCount);
-      this._updateRewardDisplay();
       this._cooldownUntil = performance.now() + this.cooldownMs;
       this._breachStart = null;
       this.root.classList.add('vm-flash-penalty');
@@ -351,7 +440,7 @@
         if (this._breachStart == null) {
           this._breachStart = now;
         } else if (now - this._breachStart >= this.breachDurationMs) {
-          this._firePenalty();
+          this._fireTrigger();
         }
       } else {
         this._breachStart = null;

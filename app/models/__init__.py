@@ -32,6 +32,7 @@ def init_db(app):
     from app.models.shop import ShopPurchase
     from app.models.audit import AuditLog
     from app.models.classroom_tool import ClassroomToolConfig
+    from app.models.audio_meter import AudioMeterSession, AudioMeterSessionStatus
     from app.models.behavior import (
         ClassroomBehaviorSettings,
         BehaviorInfraction,

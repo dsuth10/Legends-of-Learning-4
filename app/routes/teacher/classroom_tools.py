@@ -7,6 +7,7 @@ from typing import Optional
 
 from flask import jsonify, render_template, request, url_for
 from flask_login import current_user, login_required
+from pydantic import ValidationError
 
 from app.models import db
 from app.models.audit import AuditLog, EventType
@@ -14,6 +15,19 @@ from app.models.character import Character
 from app.models.classroom import Classroom
 from app.models.classroom_tool import ClassroomToolConfig
 from app.models.student import Student
+from app.services.audio_meter import (
+    AudioMeterError,
+    CompleteSessionRequest,
+    StartSessionRequest,
+    TriggerRequest,
+    abandon_session,
+    complete_session,
+    get_owned_session,
+    list_targets,
+    record_trigger,
+    session_public_dict,
+    start_session,
+)
 
 from .blueprint import teacher_bp, teacher_required
 
@@ -29,6 +43,7 @@ DEFAULT_VOLUME_CONFIG = {
     'base_xp_reward': 50,
     'base_gold_reward': 25,
     'breach_cooldown_seconds': 2,
+    'hp_damage_enabled': False,
 }
 
 
@@ -113,6 +128,17 @@ def classroom_tools_display():
         'csrf_protected_urls': {
             'penalty': url_for('teacher.api_volume_penalty'),
             'reward': url_for('teacher.api_volume_reward'),
+            'targets': url_for('teacher.api_audio_meter_targets', class_id=class_id),
+            'start': url_for('teacher.api_audio_meter_start', class_id=class_id),
+            'complete': url_for(
+                'teacher.api_audio_meter_complete', class_id=class_id, session_id=0
+            ),
+            'trigger': url_for(
+                'teacher.api_audio_meter_trigger', class_id=class_id, session_id=0
+            ),
+            'abandon': url_for(
+                'teacher.api_audio_meter_abandon', class_id=class_id, session_id=0
+            ),
         },
     }
     return render_template(
@@ -158,6 +184,11 @@ def api_classroom_tools_config_save(class_id):
     merged['base_xp_reward'] = max(0, min(100_000, int(merged['base_xp_reward'])))
     merged['base_gold_reward'] = max(0, min(100_000, int(merged['base_gold_reward'])))
     merged['breach_cooldown_seconds'] = max(0, min(30, int(merged['breach_cooldown_seconds'])))
+    hp_flag = merged.get('hp_damage_enabled', False)
+    if isinstance(hp_flag, str):
+        merged['hp_damage_enabled'] = hp_flag.strip().lower() in ('1', 'true', 'yes', 'on')
+    else:
+        merged['hp_damage_enabled'] = bool(hp_flag)
 
     row = _get_or_create_volume_config_row(class_id)
     row.config_data = merged
@@ -266,3 +297,126 @@ def api_volume_reward():
         ip_address=request.remote_addr,
     )
     return jsonify({'success': True, 'rewarded_count': len(rewarded), 'character_ids': rewarded})
+
+
+def _audio_error(message, code, status):
+    return jsonify({'success': False, 'error': message, 'code': code}), status
+
+
+def _owned_classroom_or_error(class_id):
+    if not _teacher_owns_classroom(current_user.id, class_id):
+        return None, _audio_error('Permission denied', 'FORBIDDEN', 403)
+    classroom = Classroom.query.filter_by(id=class_id).first()
+    if classroom is None:
+        return None, _audio_error('Permission denied', 'FORBIDDEN', 403)
+    return classroom, None
+
+
+@teacher_bp.route('/api/classroom-tools/<int:class_id>/targets', methods=['GET'])
+@login_required
+@teacher_required
+def api_audio_meter_targets(class_id):
+    classroom, err = _owned_classroom_or_error(class_id)
+    if err:
+        return err
+    return jsonify({'success': True, 'data': list_targets(classroom)})
+
+
+@teacher_bp.route('/api/classroom-tools/<int:class_id>/audio-meter/sessions', methods=['POST'])
+@login_required
+@teacher_required
+def api_audio_meter_start(class_id):
+    classroom, err = _owned_classroom_or_error(class_id)
+    if err:
+        return err
+    try:
+        body = StartSessionRequest.model_validate(request.get_json() or {})
+    except ValidationError as exc:
+        return _audio_error(str(exc), 'VALIDATION_ERROR', 400)
+    row = _get_or_create_volume_config_row(class_id)
+    settings = _merge_volume_config(row.config_data)
+    try:
+        session, superseded, skipped = start_session(
+            classroom,
+            current_user.id,
+            body.target_type,
+            body.clan_ids,
+            body.student_ids,
+            settings,
+        )
+    except AudioMeterError as exc:
+        return _audio_error(exc.message, exc.code, exc.http_status)
+    return (
+        jsonify(
+            {
+                'success': True,
+                'data': {
+                    'session': session_public_dict(session, skipped),
+                    'superseded_session_id': superseded,
+                },
+            }
+        ),
+        201,
+    )
+
+
+@teacher_bp.route(
+    '/api/classroom-tools/<int:class_id>/audio-meter/sessions/<int:session_id>/trigger',
+    methods=['POST'],
+)
+@login_required
+@teacher_required
+def api_audio_meter_trigger(class_id, session_id):
+    _, err = _owned_classroom_or_error(class_id)
+    if err:
+        return err
+    try:
+        body = TriggerRequest.model_validate(request.get_json() or {})
+        session = get_owned_session(class_id, session_id)
+        data = record_trigger(session, level=body.level)
+    except ValidationError as exc:
+        return _audio_error(str(exc), 'VALIDATION_ERROR', 400)
+    except AudioMeterError as exc:
+        return _audio_error(exc.message, exc.code, exc.http_status)
+    data.pop('level', None)
+    return jsonify({'success': True, 'data': data})
+
+
+@teacher_bp.route(
+    '/api/classroom-tools/<int:class_id>/audio-meter/sessions/<int:session_id>/complete',
+    methods=['POST'],
+)
+@login_required
+@teacher_required
+def api_audio_meter_complete(class_id, session_id):
+    _, err = _owned_classroom_or_error(class_id)
+    if err:
+        return err
+    try:
+        body = CompleteSessionRequest.model_validate(request.get_json() or {})
+        session = get_owned_session(class_id, session_id)
+        data = complete_session(session, paused_ms=body.paused_ms)
+    except ValidationError as exc:
+        return _audio_error(str(exc), 'VALIDATION_ERROR', 400)
+    except AudioMeterError as exc:
+        return _audio_error(exc.message, exc.code, exc.http_status)
+    return jsonify({'success': True, 'data': data})
+
+
+@teacher_bp.route(
+    '/api/classroom-tools/<int:class_id>/audio-meter/sessions/<int:session_id>',
+    methods=['DELETE'],
+)
+@login_required
+@teacher_required
+def api_audio_meter_abandon(class_id, session_id):
+    _, err = _owned_classroom_or_error(class_id)
+    if err:
+        return err
+    try:
+        session = get_owned_session(class_id, session_id)
+        data = abandon_session(session)
+    except AudioMeterError as exc:
+        return _audio_error(exc.message, exc.code, exc.http_status)
+    return jsonify({'success': True, 'data': data})
+

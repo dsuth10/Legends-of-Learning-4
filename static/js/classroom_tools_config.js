@@ -15,6 +15,7 @@
     breach_duration_seconds: document.getElementById('ct-breach-seconds'),
     breach_cooldown_seconds: document.getElementById('ct-cooldown'),
     damage_amount: document.getElementById('ct-damage'),
+    hp_damage_enabled: document.getElementById('ct-hp-enabled'),
     timer_minutes: document.getElementById('ct-timer-min'),
     base_xp_reward: document.getElementById('ct-base-xp'),
     base_gold_reward: document.getElementById('ct-base-gold'),
@@ -31,6 +32,11 @@
   function thresholdAsFraction() {
     const v = parseInt(fields.threshold.value, 10);
     return Math.max(0.05, Math.min(0.95, v / 100));
+  }
+
+  function syncHpAmountEnabled() {
+    if (!fields.hp_damage_enabled || !fields.damage_amount) return;
+    fields.damage_amount.disabled = !fields.hp_damage_enabled.checked;
   }
 
   function updateThresholdUi() {
@@ -52,6 +58,7 @@
       breach_duration_seconds: parseInt(fields.breach_duration_seconds.value, 10) || 5,
       breach_cooldown_seconds: parseInt(fields.breach_cooldown_seconds.value, 10) || 0,
       damage_amount: parseInt(fields.damage_amount.value, 10) || 10,
+      hp_damage_enabled: !!(fields.hp_damage_enabled && fields.hp_damage_enabled.checked),
       timer_minutes: parseInt(fields.timer_minutes.value, 10) || 15,
       base_xp_reward: parseInt(fields.base_xp_reward.value, 10) || 0,
       base_gold_reward: parseInt(fields.base_gold_reward.value, 10) || 0,
@@ -65,6 +72,10 @@
     fields.breach_duration_seconds.value = String(cfg.breach_duration_seconds ?? 5);
     fields.breach_cooldown_seconds.value = String(cfg.breach_cooldown_seconds ?? 2);
     fields.damage_amount.value = String(cfg.damage_amount ?? 10);
+    if (fields.hp_damage_enabled) {
+      fields.hp_damage_enabled.checked = !!cfg.hp_damage_enabled;
+    }
+    syncHpAmountEnabled();
     fields.timer_minutes.value = String(cfg.timer_minutes ?? 15);
     fields.base_xp_reward.value = String(cfg.base_xp_reward ?? 50);
     fields.base_gold_reward.value = String(cfg.base_gold_reward ?? 25);
@@ -112,6 +123,9 @@
   });
 
   fields.threshold.addEventListener('input', updateThresholdUi);
+  if (fields.hp_damage_enabled) {
+    fields.hp_damage_enabled.addEventListener('change', syncHpAmountEnabled);
+  }
 
   select.addEventListener('change', function () {
     loadConfig();

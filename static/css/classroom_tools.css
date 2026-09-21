@@ -160,6 +160,60 @@
   }
 }
 
+.vm-picker {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+  margin: 0.75rem 0 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.vm-picker-legend {
+  float: none;
+  width: auto;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0 0.35rem;
+}
+
+.vm-picker-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.35rem 0;
+  font-size: 1rem;
+  color: #e2e8f0;
+}
+
+.vm-picker-option input {
+  margin-top: 0.3rem;
+  transform: scale(1.15);
+}
+
+.vm-picker-meta {
+  color: rgba(226, 232, 240, 0.65);
+  font-size: 0.9rem;
+}
+
+.vm-picker-heading {
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.95);
+  margin: 0.6rem 0 0.2rem;
+}
+
+.vm-picker-custom {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.5rem 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.vm-picker-disabled {
+  opacity: 0.55;
+}
+
 @keyframes vmRewardFlash {
   0%,
   100% {
