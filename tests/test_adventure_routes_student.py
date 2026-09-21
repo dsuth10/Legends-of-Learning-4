@@ -472,3 +472,138 @@ def test_student_state_query_budget(client, db_session, adventure_student_setup)
         f"Student state issued {counted['n']} SQL queries for {node_count} nodes; "
         "expected batched loading"
     )
+
+
+def test_clan_and_individual_assignment_visibility(client, db_session, adventure_teacher):
+    from app.models.clan import Clan
+    from app.models.classroom import Classroom
+    from tests.fixtures.adventure_factories import (
+        assign_to_character,
+        assign_to_clan,
+        build_linear_adventure,
+        create_student_character,
+    )
+
+    unique = uuid.uuid4().hex[:6]
+    classroom = Classroom(
+        name=f"Clan Class {unique}",
+        teacher_id=adventure_teacher.id,
+        join_code=f"CL{unique[:4]}",
+    )
+    db_session.add(classroom)
+    db_session.commit()
+
+    student_a, char_a = create_student_character(
+        classroom.id, name="Clan Hero", username_suffix=f"cha{unique}"
+    )
+    student_b, char_b = create_student_character(
+        classroom.id, name="Other Hero", username_suffix=f"chb{unique}"
+    )
+    clan = Clan(name=f"Oak {unique}", class_id=classroom.id)
+    db_session.add(clan)
+    db_session.flush()
+    char_a.clan_id = clan.id
+    db_session.commit()
+
+    adventure, nodes = build_linear_adventure(adventure_teacher)
+    from app.models.adventure import AdventureStatus
+
+    adventure.status = AdventureStatus.PUBLISHED.value
+    db_session.commit()
+    assign_to_clan(adventure, clan.id, adventure_teacher)
+
+    _login_student(client, student_a.user)
+    resp = _json(client, "GET", "/student/adventures/?format=json")
+    assert resp.status_code == 200
+    ids = [a["id"] for a in resp.get_json()["data"]["adventures"]]
+    assert adventure.id in ids
+
+    client.get("/auth/logout", follow_redirects=True)
+    _login_student(client, student_b.user)
+    resp = _json(client, "GET", "/student/adventures/?format=json")
+    ids = [a["id"] for a in resp.get_json()["data"]["adventures"]]
+    assert adventure.id not in ids
+
+    client.get("/auth/logout", follow_redirects=True)
+    assign_to_character(adventure, char_b.id, adventure_teacher)
+    _login_student(client, student_b.user)
+    resp = _json(client, "GET", "/student/adventures/?format=json")
+    ids = [a["id"] for a in resp.get_json()["data"]["adventures"]]
+    assert adventure.id in ids
+
+
+def test_class_assignment_still_visible(client, db_session, adventure_student_setup):
+    ctx = adventure_student_setup
+    _login_student(client, ctx["user"])
+    resp = _json(client, "GET", "/student/adventures/?format=json")
+    assert resp.status_code == 200
+    ids = [a["id"] for a in resp.get_json()["data"]["adventures"]]
+    assert ctx["adventure"].id in ids
+
+
+def test_continue_after_leaving_clan(client, db_session, adventure_teacher):
+    from app.models.adventure import AdventureStatus
+    from app.models.clan import Clan
+    from app.models.classroom import Classroom
+    from tests.fixtures.adventure_factories import (
+        assign_to_clan,
+        build_linear_adventure,
+        create_student_character,
+    )
+
+    unique = uuid.uuid4().hex[:6]
+    classroom = Classroom(
+        name=f"Leave Class {unique}",
+        teacher_id=adventure_teacher.id,
+        join_code=f"LV{unique[:4]}",
+    )
+    db_session.add(classroom)
+    db_session.commit()
+    starter, char_started = create_student_character(
+        classroom.id, name="Started Hero", username_suffix=f"st{unique}"
+    )
+    never, char_never = create_student_character(
+        classroom.id, name="Never Hero", username_suffix=f"nv{unique}"
+    )
+    clan = Clan(name=f"Leave Clan {unique}", class_id=classroom.id)
+    db_session.add(clan)
+    db_session.flush()
+    char_started.clan_id = clan.id
+    char_never.clan_id = clan.id
+    db_session.commit()
+
+    adventure, _nodes = build_linear_adventure(adventure_teacher)
+    adventure.status = AdventureStatus.PUBLISHED.value
+    db_session.commit()
+    assign_to_clan(adventure, clan.id, adventure_teacher)
+
+    _login_student(client, starter.user)
+    aid = adventure.id
+    resp = _json(client, "POST", f"/student/adventures/{aid}/nodes/start/start")
+    assert resp.status_code == 200, resp.get_json()
+    resp = _json(client, "POST", f"/student/adventures/{aid}/nodes/start/complete")
+    assert resp.status_code == 200, resp.get_json()
+
+    char_started.clan_id = None
+    char_never.clan_id = None
+    db_session.commit()
+
+    resp = _json(client, "GET", f"/student/adventures/{aid}/state")
+    assert resp.status_code == 200
+
+    client.get("/auth/logout", follow_redirects=True)
+    _login_student(client, never.user)
+    resp = _json(client, "GET", f"/student/adventures/{aid}/state")
+    assert resp.status_code == 403
+
+
+def test_student_state_echoes_icon_url(client, db_session, adventure_student_setup):
+    ctx = adventure_student_setup
+    battle = next(n for n in ctx["nodes"] if n.node_type == NodeType.BATTLE.value)
+    battle.icon_url = "castle"
+    db_session.commit()
+    _login_student(client, ctx["user"])
+    resp = _json(client, "GET", f"/student/adventures/{ctx['adventure'].id}/state")
+    assert resp.status_code == 200
+    row = next(n for n in resp.get_json()["data"]["nodes"] if n["id"] == battle.id)
+    assert row["icon_url"] == "castle"

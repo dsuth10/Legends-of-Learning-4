@@ -1,86 +1,137 @@
-{% extends "teacher/base_dashboard.html" %}
-{% block dashboard_content %}
-<div class="container-fluid py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Assign: {{ adventure.title }}</h1>
-    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('adventures_teacher.read_adventure', adventure_id=adventure.id) }}">Back to editor</a>
-  </div>
-
-  <form id="assignment-form" class="row g-2 align-items-end mb-4">
-    <div class="col-md-4">
-      <label class="form-label" for="classroom_id">Classroom</label>
-      <select class="form-select" id="classroom_id" name="classroom_id" required>
-        {% for c in classes %}
-        {% if c.id not in assigned_class_ids %}
-        <option value="{{ c.id }}">{{ c.name }}</option>
-        {% endif %}
-        {% endfor %}
-      </select>
-      {% if assigned_class_ids and assigned_class_ids|length == classes|length %}
-      <div class="form-text text-muted">All of your classes already have an active assignment.</div>
-      {% endif %}
-    </div>
-    <div class="col-auto">
-      <button type="submit" class="btn btn-primary" {% if assigned_class_ids and assigned_class_ids|length == classes|length %}disabled{% endif %}>Assign to class</button>
-    </div>
-  </form>
-
-  <h2 class="h6">Active class assignments ({{ assignments|length }})</h2>
-  {% if assignments %}
-  <ul class="list-group mb-3">
-    {% for a in assignments %}
-    <li class="list-group-item">
-      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-        <div>
-          <strong>{{ classroom_names.get(a.classroom_id, 'Class #' ~ a.classroom_id) }}</strong>
-          <span class="text-muted ms-2">version {{ a.adventure_version }}</span>
-          {% if a.starts_at or a.ends_at %}
-          <div class="small text-muted mt-1">
-            {% if a.starts_at %}Starts {{ a.starts_at }}{% endif %}
-            {% if a.ends_at %}{% if a.starts_at %} · {% endif %}Ends {{ a.ends_at }}{% endif %}
-          </div>
-          {% endif %}
-        </div>
-        <div class="btn-group btn-group-sm">
-          <a class="btn btn-outline-primary" href="{{ url_for('adventures_teacher.adventure_progress', adventure_id=adventure.id, classroom_id=a.classroom_id) }}">View progress</a>
-          <button type="button" class="btn btn-outline-danger btn-deactivate" data-id="{{ a.id }}">Deactivate</button>
-        </div>
-      </div>
-    </li>
-    {% endfor %}
-  </ul>
-  <p class="small text-muted mb-0">Assign the same adventure to additional classes anytime. Each class keeps its own student roster and progress.</p>
-  {% else %}
-  <p class="text-muted">No active assignments yet. Choose a class above to assign this adventure.</p>
-  {% endif %}
-</div>
-<script>
-  (function () {
-    const aid = {{ adventure.id }};
-    const form = document.getElementById('assignment-form');
-    if (!form) return;
-    form.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const classroom_id = parseInt(document.getElementById('classroom_id').value, 10);
-      const resp = await fetch(`/teacher/adventures/${aid}/assignments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classroom_id }),
-      });
-      const body = await resp.json();
-      if (!body.success) {
-        alert((body.errors && body.errors[0] && body.errors[0].message) || 'Assignment failed');
-        return;
-      }
-      location.reload();
-    });
-    document.querySelectorAll('.btn-deactivate').forEach(function (btn) {
-      btn.addEventListener('click', async function () {
-        if (!window.confirm('Deactivate this class assignment? Students can no longer start new nodes.')) return;
-        await fetch(`/teacher/adventures/${aid}/assignments/${btn.dataset.id}`, { method: 'DELETE' });
-        location.reload();
-      });
-    });
-  })();
-</script>
-{% endblock %}
+{% extends "teacher/base_dashboard.html" %}
+{% block dashboard_content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Assign: {{ adventure.title }}</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('adventures_teacher.read_adventure', adventure_id=adventure.id) }}">Back to editor</a>
+  </div>
+
+  <form id="assignment-form" class="row g-2 align-items-end mb-4">
+    <div class="col-md-3">
+      <label class="form-label" for="target_type">Assign to</label>
+      <select class="form-select" id="target_type" name="target_type">
+        <option value="classroom">Class</option>
+        <option value="clan">Clan</option>
+        <option value="character">Student</option>
+      </select>
+    </div>
+    <div class="col-md-5" id="target-select-wrap">
+      <label class="form-label" for="target_id">Target</label>
+      <select class="form-select" id="target_id" name="target_id" required></select>
+      <div class="form-text" id="target-help"></div>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary" id="assign-submit">Assign</button>
+    </div>
+  </form>
+  <div id="assign-warning" class="alert alert-warning d-none" role="status"></div>
+
+  <h2 class="h6">Active assignments ({{ assignments|length }})</h2>
+  {% if assignments %}
+  <ul class="list-group mb-3">
+    {% for a in assignments %}
+    {% set view = assignment_views[loop.index0] if assignment_views is defined else none %}
+    <li class="list-group-item">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <span class="badge bg-secondary text-uppercase">{{ view.target_type if view else 'classroom' }}</span>
+          <strong class="ms-1">{{ view.target_label if view else classroom_names.get(a.classroom_id, 'Class #' ~ a.classroom_id) }}</strong>
+          <span class="text-muted ms-2">version {{ a.adventure_version }}</span>
+          {% if a.starts_at or a.ends_at %}
+          <div class="small text-muted mt-1">
+            {% if a.starts_at %}Starts {{ a.starts_at }}{% endif %}
+            {% if a.ends_at %}{% if a.starts_at %} · {% endif %}Ends {{ a.ends_at }}{% endif %}
+          </div>
+          {% endif %}
+        </div>
+        <div class="btn-group btn-group-sm">
+          <a class="btn btn-outline-primary" href="{{ view.progress_url if view else url_for('adventures_teacher.adventure_progress', adventure_id=adventure.id, classroom_id=a.classroom_id) }}">View progress</a>
+          <button type="button" class="btn btn-outline-danger btn-deactivate" data-id="{{ a.id }}">Deactivate</button>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="small text-muted mb-0">Assign the same adventure to additional classes, clans, or students anytime. Progress is tracked per character.</p>
+  {% else %}
+  <p class="text-muted">No active assignments yet. Choose a class, clan, or student above.</p>
+  {% endif %}
+</div>
+<script>
+  (function () {
+    const aid = {{ adventure.id }};
+    const form = document.getElementById('assignment-form');
+    const typeEl = document.getElementById('target_type');
+    const targetEl = document.getElementById('target_id');
+    const helpEl = document.getElementById('target-help');
+    const warnEl = document.getElementById('assign-warning');
+    let targets = { classrooms: [], clans: [], characters: [] };
+
+    function fillSelect() {
+      const type = typeEl.value;
+      const rows = type === 'clan' ? targets.clans : type === 'character' ? targets.characters : targets.classrooms;
+      targetEl.innerHTML = '';
+      rows.forEach(function (row) {
+        const opt = document.createElement('option');
+        opt.value = row.id;
+        opt.disabled = !!row.already_assigned;
+        if (type === 'clan') {
+          opt.textContent = row.name + ' (' + row.class_name + ', ' + row.member_count + ' members)' + (row.already_assigned ? ' — assigned' : '');
+        } else if (type === 'character') {
+          opt.textContent = row.name + ' — ' + row.student_name + ' (' + row.class_name + ')' + (row.already_assigned ? ' — assigned' : '');
+        } else {
+          opt.textContent = row.name + (row.already_assigned ? ' — assigned' : '');
+        }
+        targetEl.appendChild(opt);
+      });
+      const available = rows.filter(function (r) { return !r.already_assigned; });
+      helpEl.textContent = available.length ? '' : 'All targets of this type already have an active assignment.';
+      document.getElementById('assign-submit').disabled = available.length === 0;
+    }
+
+    fetch('/teacher/adventures/' + aid + '/assignment-targets')
+      .then(function (res) { return res.json(); })
+      .then(function (body) {
+        if (body.success) targets = body.data;
+        fillSelect();
+      });
+
+    typeEl.addEventListener('change', fillSelect);
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const type = typeEl.value;
+      const id = parseInt(targetEl.value, 10);
+      const payload = {};
+      if (type === 'clan') payload.clan_id = id;
+      else if (type === 'character') payload.character_id = id;
+      else payload.classroom_id = id;
+      const resp = await fetch('/teacher/adventures/' + aid + '/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = await resp.json();
+      if (!body.success) {
+        alert((body.errors && body.errors[0] && body.errors[0].message) || 'Assignment failed');
+        return;
+      }
+      const warnings = (body.data && body.data.warnings) || [];
+      if (warnings.length) {
+        warnEl.textContent = warnings.join(' ');
+        warnEl.classList.remove('d-none');
+        window.setTimeout(function () { location.reload(); }, 1200);
+        return;
+      }
+      location.reload();
+    });
+    document.querySelectorAll('.btn-deactivate').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        if (!window.confirm('Deactivate this assignment? Students can no longer start new nodes from it.')) return;
+        await fetch('/teacher/adventures/' + aid + '/assignments/' + btn.dataset.id, { method: 'DELETE' });
+        location.reload();
+      });
+    });
+  })();
+</script>
+{% endblock %}

@@ -252,7 +252,10 @@ def _active_assignments_for_character(character) -> List[AdventureAssignment]:
 
 def student_is_assigned(character, adventure_id: int) -> bool:
 
-    return any(a.adventure_id == adventure_id for a in _active_assignments_for_character(character))
+    if any(a.adventure_id == adventure_id for a in _active_assignments_for_character(character)):
+        return True
+    from app.services.adventure_assignment import started_assignment_still_active
+    return started_assignment_still_active(character, adventure_id) is not None
 
 
 
@@ -262,11 +265,13 @@ def require_student_assignment(character, adventure_id: int) -> AdventureAssignm
 
     matches = [a for a in _active_assignments_for_character(character) if a.adventure_id == adventure_id]
 
-    if not matches:
-
-        raise AuthorizationError("NOT_ASSIGNED", "This adventure is not assigned to you.")
-
-    return pick_assignment_for_character(character, matches)
+    if matches:
+        return pick_assignment_for_character(character, matches)
+    from app.services.adventure_assignment import started_assignment_still_active
+    fallback = started_assignment_still_active(character, adventure_id)
+    if fallback:
+        return fallback
+    raise AuthorizationError("NOT_ASSIGNED", "This adventure is not assigned to you.")
 
 
 
@@ -1580,6 +1585,7 @@ def _resolve_roster_characters(
     adventure: Adventure,
     *,
     classroom_id: Optional[int] = None,
+    assignment_id: Optional[int] = None,
 ) -> List[Tuple["Character", "Student"]]:
     """Return (character, student) pairs from active assignments."""
     from app.models.character import Character
@@ -1589,7 +1595,9 @@ def _resolve_roster_characters(
         adventure_id=adventure.id,
         is_active=True,
     )
-    if classroom_id is not None:
+    if assignment_id is not None:
+        query = query.filter_by(id=assignment_id)
+    elif classroom_id is not None:
         query = query.filter_by(classroom_id=classroom_id)
     assignments = query.all()
 
@@ -1627,10 +1635,32 @@ def aggregate_adventure_progress_roster(
     teacher: User,
     *,
     classroom_id: Optional[int] = None,
+    assignment_id: Optional[int] = None,
 ) -> dict:
     """Build per-student progress roster without per-student N+1 queries."""
     require_teacher_edit(teacher, adventure)
-    if classroom_id is not None:
+    if assignment_id is not None:
+        assigned = AdventureAssignment.query.filter_by(
+            id=assignment_id,
+            adventure_id=adventure.id,
+        ).first()
+        if not assigned:
+            raise AuthorizationError(
+                "NOT_FOUND", "Assignment not found for this adventure."
+            )
+        if assigned.classroom_id:
+            require_teacher_classroom(teacher, assigned.classroom_id)
+        elif assigned.clan_id:
+            from app.models.clan import Clan
+            clan = db.session.get(Clan, assigned.clan_id)
+            if clan:
+                require_teacher_classroom(teacher, clan.class_id)
+        elif assigned.character_id:
+            from app.models.character import Character
+            character = db.session.get(Character, assigned.character_id)
+            if character and character.student and character.student.class_id:
+                require_teacher_classroom(teacher, character.student.class_id)
+    elif classroom_id is not None:
         require_teacher_classroom(teacher, classroom_id)
         assigned = AdventureAssignment.query.filter_by(
             adventure_id=adventure.id,
@@ -1642,7 +1672,9 @@ def aggregate_adventure_progress_roster(
                 "NOT_FOUND", "Adventure is not assigned to this classroom."
             )
 
-    roster = _resolve_roster_characters(adventure, classroom_id=classroom_id)
+    roster = _resolve_roster_characters(
+        adventure, classroom_id=classroom_id, assignment_id=assignment_id
+    )
     char_ids = [char.id for char, _ in roster]
     empty_summary = {
         "total_students": 0,

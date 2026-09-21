@@ -11,11 +11,11 @@
 
   {% if assignments|length > 1 %}
   <div class="alert alert-info py-2 small mb-3">
-    This adventure is assigned to {{ assignments|length }} classes.
+    This adventure has {{ assignments|length }} active assignments.
     {% if selected_classroom_name %}
     Showing roster for <strong>{{ selected_classroom_name }}</strong> only.
     {% else %}
-    Showing combined roster across all assigned classes — pick a class to scope the view.
+    Showing combined roster across all assigned targets — pick one to scope the view.
     {% endif %}
   </div>
   {% endif %}
@@ -23,12 +23,14 @@
   <div class="card mb-4">
     <div class="card-body">
       <form method="GET" action="{{ url_for('adventures_teacher.adventure_progress', adventure_id=adventure.id) }}" class="row g-2 align-items-end">
-        <div class="col-md-4">
-          <label class="form-label" for="classroom_id">Class scope</label>
-          <select class="form-select" id="classroom_id" name="classroom_id" onchange="this.form.submit()">
-            <option value="">All assigned classes ({{ assignments|length }})</option>
-            {% for c in classes %}
-            <option value="{{ c.id }}" {% if selected_classroom_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+        <div class="col-md-6">
+          <label class="form-label" for="assignment_filter">Assignment scope</label>
+          <select class="form-select" id="assignment_filter" name="assignment_id" onchange="this.form.submit()">
+            <option value="">All assigned targets ({{ assignments|length }})</option>
+            {% for view in assignment_views %}
+            <option value="{{ view.id }}" {% if selected_assignment_id == view.id %}selected{% endif %}>
+              {{ view.target_label }} ({{ view.target_type }})
+            </option>
             {% endfor %}
           </select>
         </div>
@@ -107,7 +109,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="text-muted">No students in scope. Assign this adventure to a class first.</td></tr>
+        <tr><td colspan="7" class="text-muted">No students in scope. Assign this adventure to a class, clan, or student first.</td></tr>
         {% endfor %}
       </tbody>
     </table>

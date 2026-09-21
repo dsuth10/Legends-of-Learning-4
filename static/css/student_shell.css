@@ -1,0 +1,82 @@
+/* Student shared chrome
+ *
+ * Small-screen rules (US4 / T043–T045):
+ * - Below ~768px, stack stats/destination column above main content
+ * - Clan strip stays horizontally scrollable
+ * - Destination links remain in tab order; clan tabs are not focusable
+ */
+
+.student-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.student-shell-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.student-shell-sidebar {
+    width: 20rem;
+    flex-shrink: 0;
+}
+
+.student-shell-main {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.student-clan-strip {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.student-clan-tab {
+    flex: 1 0 auto;
+}
+
+.student-destinations a[aria-current="page"] {
+    box-shadow: 0 0 0 2px #4f46e5;
+}
+
+.student-identity-link[aria-current="page"] {
+    font-weight: 700;
+    color: #111827;
+    text-decoration: underline;
+}
+
+@media (max-width: 767px) {
+    .student-shell-body {
+        flex-direction: column;
+        overflow: auto;
+    }
+
+    .student-shell-sidebar {
+        width: 100%;
+        height: auto;
+        max-height: none;
+        border-right-width: 0;
+        border-bottom: 1px solid rgba(17, 24, 39, 0.12);
+    }
+
+    .student-shell-main {
+        min-height: 70vh;
+        overflow: auto;
+    }
+
+    .student-clan-strip {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    .student-clan-tab {
+        min-width: 10.5rem;
+    }
+}

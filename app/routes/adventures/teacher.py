@@ -10,7 +10,6 @@ from flask import (
     jsonify,
     render_template,
     request,
-    url_for,
 )
 from flask_login import current_user, login_required
 from pydantic import ValidationError
@@ -57,16 +56,22 @@ from app.services.adventure_graph import (
     aggregate_adventure_progress_roster,
     clone_adventure,
     count_in_progress_students,
-    create_classroom_assignment,
     force_complete_adventure,
-    list_active_classroom_assignments,
-    require_teacher_classroom,
     require_teacher_edit,
     require_teacher_read,
-    teacher_can_read_adventure,
     teacher_owns_adventure,
     validate_for_publish,
 )
+from app.services.adventure_assignment import (
+    assignment_progress_url,
+    assignment_target_label,
+    assignment_target_type,
+    create_adventure_assignment,
+    get_assignment_for_adventure,
+    list_active_assignments,
+    list_assignment_targets,
+)
+from app.services.adventure_icons import catalog_payload, normalize_icon_url
 from flask import Blueprint
 
 adventures_teacher_bp = Blueprint(
@@ -162,23 +167,58 @@ def _get_adventure(adventure_id: int) -> Optional[Adventure]:
     return db.session.get(Adventure, adventure_id)
 
 
-def _enriched_assignment_dict(assignment: AdventureAssignment) -> dict:
-    from app.models.classroom import Classroom
+def _teacher_profile_for_user(user):
+    from app.models.teacher import Teacher
 
-    classroom_name = None
-    progress_url = None
-    if assignment.classroom_id:
-        classroom = db.session.get(Classroom, assignment.classroom_id)
-        classroom_name = classroom.name if classroom else None
-        progress_url = url_for(
-            "adventures_teacher.adventure_progress",
-            adventure_id=assignment.adventure_id,
-            classroom_id=assignment.classroom_id,
-        )
+    return Teacher.query.filter_by(user_id=user.id).first()
+
+
+def _question_set_options_for_user(user) -> list:
+    from app.models.education import QuestionSet
+
+    profile = _teacher_profile_for_user(user)
+    if not profile:
+        return []
+    sets = (
+        QuestionSet.query.filter_by(teacher_id=profile.id, is_active=True)
+        .order_by(QuestionSet.title)
+        .all()
+    )
+    return [
+        {
+            "id": s.id,
+            "title": s.title,
+            "question_count": s.questions.count(),
+        }
+        for s in sets
+    ]
+
+
+def _validate_question_set_for_user(user, question_set_id: Optional[int]) -> Optional[str]:
+    if question_set_id is None:
+        return None
+    from app.models.education import QuestionSet
+
+    profile = _teacher_profile_for_user(user)
+    if not profile:
+        return "Question set not found or not available to you."
+    qs = QuestionSet.query.filter_by(
+        id=question_set_id,
+        teacher_id=profile.id,
+        is_active=True,
+    ).first()
+    if not qs:
+        return "Question set not found or not available to you."
+    return None
+
+
+def _enriched_assignment_dict(assignment: AdventureAssignment) -> dict:
     return assignment_dict(
         assignment,
-        classroom_name=classroom_name,
-        progress_url=progress_url,
+        classroom_name=assignment_target_label(assignment) if assignment.classroom_id else None,
+        progress_url=assignment_progress_url(assignment),
+        target_type=assignment_target_type(assignment),
+        target_label=assignment_target_label(assignment),
     )
 
 
@@ -245,6 +285,20 @@ def adventures_list_page():
     )
 
 
+@adventures_teacher_bp.route("/question-sets", methods=["GET"])
+@login_required
+@teacher_required
+def list_question_sets():
+    return _json_ok({"question_sets": _question_set_options_for_user(current_user)})
+
+
+@adventures_teacher_bp.route("/node-icons", methods=["GET"])
+@login_required
+@teacher_required
+def list_node_icons():
+    return _json_ok(catalog_payload())
+
+
 @adventures_teacher_bp.route("/", methods=["POST"])
 @login_required
 @teacher_required
@@ -294,13 +348,27 @@ def read_adventure(adventure_id: int):
 
     monsters = Monster.query.order_by(Monster.name).all()
     monster_options = [{"id": m.id, "name": m.name} for m in monsters]
+    can_edit = teacher_owns_adventure(current_user, adventure)
+    question_set_options = _question_set_options_for_user(current_user) if can_edit else []
+    adventure_settings = {
+        "title": adventure.title,
+        "description": adventure.description or "",
+        "theme": adventure.theme,
+        "end_semantics": adventure.end_semantics,
+        "is_public": adventure.is_public,
+        "background_image_url": adventure.background_image_url,
+        "status": adventure.status,
+    }
 
     return render_template(
         "teacher/adventure_editor.html",
         adventure=adventure,
         in_progress_count=in_progress_count,
-        can_edit=teacher_owns_adventure(current_user, adventure),
+        can_edit=can_edit,
         monster_options=monster_options,
+        question_set_options=question_set_options,
+        adventure_settings=adventure_settings,
+        icon_catalog=catalog_payload()["icons"],
         active_page="adventures",
     )
 
@@ -457,6 +525,10 @@ def create_node(adventure_id: int):
     if AdventureNode.query.filter_by(adventure_id=adventure.id, slug=payload.slug).first():
         return _json_err("CONFLICT", f"Slug '{payload.slug}' already exists.", 409)
 
+    qs_err = _validate_question_set_for_user(current_user, payload.question_set_id)
+    if qs_err:
+        return _json_err("VALIDATION_ERROR", qs_err, 400)
+
     node = AdventureNode(
         adventure_id=adventure.id,
         slug=payload.slug,
@@ -524,6 +596,13 @@ def update_node(adventure_id: int, node_id: int):
     data = payload.model_dump(exclude_unset=True)
     if "node_type" in data and data["node_type"] is not None:
         data["node_type"] = data["node_type"].value
+    if "icon_url" in data:
+        data["icon_url"] = normalize_icon_url(data["icon_url"])
+
+    if "question_set_id" in data:
+        qs_err = _validate_question_set_for_user(current_user, data["question_set_id"])
+        if qs_err:
+            return _json_err("VALIDATION_ERROR", qs_err, 400)
 
     for key, value in data.items():
         setattr(node, key, value)
@@ -831,28 +910,24 @@ def create_assignment(adventure_id: int):
     except ValidationError as exc:
         return _json_err("VALIDATION_ERROR", str(exc.errors()))
 
-    if payload.classroom_id:
-        require_teacher_classroom(current_user, payload.classroom_id)
-        try:
-            assignment = create_classroom_assignment(
-                adventure,
-                current_user,
-                classroom_id=payload.classroom_id,
-                starts_at=payload.starts_at,
-                ends_at=payload.ends_at,
-            )
-        except AssignmentError as exc:
-            return _json_err(exc.code, exc.message, _status_for_code(exc.code))
-        return _json_ok({"assignment": _enriched_assignment_dict(assignment)}, status=201)
-
-    if payload.clan_id or payload.character_id:
-        return _json_err(
-            "VALIDATION_ERROR",
-            "Clan and individual assignments are not yet supported.",
-            400,
+    try:
+        assignment, warnings = create_adventure_assignment(
+            adventure,
+            current_user,
+            classroom_id=payload.classroom_id,
+            clan_id=payload.clan_id,
+            character_id=payload.character_id,
+            starts_at=payload.starts_at,
+            ends_at=payload.ends_at,
         )
-
-    return _json_err("VALIDATION_ERROR", "classroom_id is required.", 400)
+    except AssignmentError as exc:
+        return _json_err(exc.code, exc.message, _status_for_code(exc.code))
+    except AuthorizationError as exc:
+        return _json_err(exc.code, exc.message, _status_for_code(exc.code))
+    return _json_ok(
+        {"assignment": _enriched_assignment_dict(assignment), "warnings": warnings},
+        status=201,
+    )
 
 
 @adventures_teacher_bp.route(
@@ -926,12 +1001,12 @@ def assignments_page(adventure_id: int):
 
     from app.models.classroom import Classroom
 
-    assignments = list_active_classroom_assignments(adventure)
+    assignments = list_active_assignments(adventure)
+    assignment_views = [_enriched_assignment_dict(a) for a in assignments]
     classroom_names = {
-        c.id: c.name
-        for c in Classroom.query.filter(
-            Classroom.id.in_([a.classroom_id for a in assignments if a.classroom_id])
-        ).all()
+        a.classroom_id: a_view["target_label"]
+        for a, a_view in zip(assignments, assignment_views)
+        if a.classroom_id
     }
     assigned_class_ids = {a.classroom_id for a in assignments if a.classroom_id}
     classes = Classroom.query.filter_by(teacher_id=current_user.id, is_active=True).all()
@@ -939,23 +1014,32 @@ def assignments_page(adventure_id: int):
     if request.accept_mimetypes.best == "application/json" or request.args.get(
         "format"
     ) == "json":
-        return _json_ok(
-            {
-                "assignments": [
-                    _enriched_assignment_dict(a) for a in assignments
-                ],
-            }
-        )
+        return _json_ok({"assignments": assignment_views})
 
     return render_template(
         "teacher/adventure_assignments.html",
         adventure=adventure,
         assignments=assignments,
+        assignment_views=assignment_views,
         classroom_names=classroom_names,
         assigned_class_ids=assigned_class_ids,
         classes=classes,
         active_page="adventures",
     )
+
+
+@adventures_teacher_bp.route("/<int:adventure_id>/assignment-targets", methods=["GET"])
+@login_required
+@teacher_required
+def assignment_targets(adventure_id: int):
+    adventure = _get_adventure(adventure_id)
+    if not adventure:
+        return _json_err("NOT_FOUND", "Adventure not found.", 404)
+    try:
+        require_teacher_edit(current_user, adventure)
+    except AuthorizationError as exc:
+        return _json_err(exc.code, exc.message, _status_for_code(exc.code))
+    return _json_ok(list_assignment_targets(current_user, adventure))
 
 
 @adventures_teacher_bp.route("/<int:adventure_id>/background", methods=["POST"])
@@ -1010,9 +1094,13 @@ def adventure_progress(adventure_id: int):
         return _json_err(exc.code, exc.message, _status_for_code(exc.code))
 
     classroom_id = request.args.get("classroom_id", type=int)
+    assignment_id = request.args.get("assignment_id", type=int)
     try:
         roster = aggregate_adventure_progress_roster(
-            adventure, current_user, classroom_id=classroom_id
+            adventure,
+            current_user,
+            classroom_id=classroom_id,
+            assignment_id=assignment_id,
         )
     except AuthorizationError as exc:
         return _json_err(exc.code, exc.message, _status_for_code(exc.code))
@@ -1022,28 +1110,30 @@ def adventure_progress(adventure_id: int):
     ) == "json":
         return _json_ok(roster)
 
-    from app.models.classroom import Classroom
-
-    assignments = list_active_classroom_assignments(adventure)
-    assigned_class_ids = {a.classroom_id for a in assignments if a.classroom_id}
-    classes = Classroom.query.filter(
-        Classroom.id.in_(assigned_class_ids),
-        Classroom.teacher_id == current_user.id,
-    ).all()
-    classroom_names = {c.id: c.name for c in classes}
-    selected_classroom_name = (
-        classroom_names.get(classroom_id) if classroom_id else None
-    )
+    assignments = list_active_assignments(adventure)
+    assignment_views = [_enriched_assignment_dict(a) for a in assignments]
+    selected_assignment = None
+    selected_label = None
+    if assignment_id:
+        selected_assignment = get_assignment_for_adventure(adventure, assignment_id)
+        selected_label = (
+            assignment_target_label(selected_assignment) if selected_assignment else None
+        )
+    elif classroom_id:
+        selected_label = next(
+            (v["target_label"] for v in assignment_views if v.get("classroom_id") == classroom_id),
+            None,
+        )
 
     return render_template(
         "teacher/adventure_progress.html",
         adventure=adventure,
         roster=roster,
-        classes=classes,
         assignments=assignments,
-        classroom_names=classroom_names,
+        assignment_views=assignment_views,
         selected_classroom_id=classroom_id,
-        selected_classroom_name=selected_classroom_name,
+        selected_assignment_id=assignment_id,
+        selected_classroom_name=selected_label,
         active_page="adventures",
     )
 

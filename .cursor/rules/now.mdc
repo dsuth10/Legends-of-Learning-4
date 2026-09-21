@@ -1,0 +1,11 @@
+---
+description: Product direction lives in docs/now.md. Read it before choosing or inventing the next task.
+alwaysApply: true
+---
+
+# Now / Next
+
+- For "what should we work on next", "what's the current direction", or starting a new feature, read [docs/now.md](mdc:docs/now.md) first.
+- Treat that file as the product-direction source of truth. Speckit specs under `specs/` are the implementation source for the *active* feature named there.
+- Do not create a new roadmap, backlog, or planning tool. Update `docs/now.md` when the current item ships or the next item changes.
+- Ignore stale backlogs unless `docs/now.md` points at them: `PROJECT_ANALYSIS_AND_RECOMMENDATIONS.md`, `docs/prd.md`, `.taskmaster/`, and `.planning_docs/`.

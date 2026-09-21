@@ -32,6 +32,10 @@ Then open `http://127.0.0.1:5000` or `http://localhost:5000` in your browser.
 - **If you see "Connection refused"**: Make sure the server is actually running in a terminal window and you see "Running on http://127.0.0.1:5000" in the output
 - **After database changes**: Always run `alembic upgrade head` to ensure your database schema is up to date
 
+## Current work
+
+See [docs/now.md](docs/now.md) for the active feature and the next implementation task.
+
 ## Features
 
 ### 👨‍🏫 Teacher Dashboard

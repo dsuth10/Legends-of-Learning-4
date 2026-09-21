@@ -1,6 +1,7 @@
 {% extends "teacher/base_dashboard.html" %}
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/adventure_editor.css') }}">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 {% endblock %}
 {% block dashboard_content %}
 <div class="container-fluid py-3" id="adventure-editor"
@@ -9,7 +10,8 @@
      data-adventure-id="{{ adventure.id }}"
      data-can-edit="{{ 'true' if can_edit else 'false' }}"
      data-is-public="{{ 'true' if adventure.is_public else 'false' }}"
-     data-adventure-status="{{ adventure.status }}">
+     data-adventure-status="{{ adventure.status }}"
+     data-icon-catalog='{{ icon_catalog | tojson }}'>
   <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
     <div>
       <h1 class="h4 mb-0" id="adventure-editor-title">{{ adventure.title }}</h1>
@@ -21,6 +23,9 @@
     </div>
     <div class="btn-group" role="toolbar" aria-label="Adventure editor actions">
       {% if can_edit %}
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-adventure-settings"
+              data-bs-toggle="modal" data-bs-target="#adventure-settings-modal"
+              aria-label="Edit adventure settings">Settings</button>
       <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-save-graph" aria-label="Refresh map from server">Refresh</button>
       <button type="button" class="btn btn-success btn-sm" id="btn-publish" aria-label="Publish adventure for student play">Publish</button>
       <a class="btn btn-outline-primary btn-sm" href="{{ url_for('adventures_teacher.assignments_page', adventure_id=adventure.id) }}" aria-label="Assign adventure to classes">Assign</a>
@@ -33,12 +38,14 @@
   {% if can_edit %}
   <div class="alert alert-light border py-2 mb-2" id="editor-help">
     <strong>Build your map:</strong>
-    1) Pick a node type below & click the map to place it &nbsp;→&nbsp;
-    2) Turn on <em>Connect</em> and click two nodes to link them &nbsp;→&nbsp;
-    3) <em>Publish</em> when validation passes &nbsp;→&nbsp;
-    4) Click <em>Assign</em> to give it to a class.
+    1) Place a <em>Start</em>, then use <em>Select</em> to click a node (edit or delete) &nbsp;→&nbsp;
+    2) Pick a type and click the map to place more nodes &nbsp;→&nbsp;
+    3) Turn on <em>Connect</em> and click two nodes to link them &nbsp;→&nbsp;
+    4) <em>Publish</em>, then <em>Assign</em> to a class.
   </div>
   <div class="btn-toolbar mb-2 flex-wrap gap-1" id="node-toolbar" role="toolbar" aria-label="Node placement tools">
+    <button type="button" class="btn btn-sm btn-outline-dark me-2" id="btn-select-mode"
+            aria-pressed="false" title="Select and move nodes">Select</button>
     <div class="btn-group btn-group-sm me-2">
       <button type="button" class="btn btn-outline-warning active" data-node-type="start">Start</button>
       <button type="button" class="btn btn-outline-primary" data-node-type="story">Story</button>
@@ -80,13 +87,15 @@
   <div class="row g-3">
     <div class="col-lg-9">
       <div class="editor-canvas-wrap" role="region" aria-label="Adventure map canvas">
-        <div id="canvas-empty-hint" class="canvas-empty-hint">
-          <p class="mb-1"><strong>Your map is empty.</strong></p>
-          <p class="mb-0 small">Select <em>Start</em> above, then click here to place your first node.</p>
+        <div id="editor-zoom-inner" class="editor-zoom-inner">
+          <div id="canvas-empty-hint" class="canvas-empty-hint">
+            <p class="mb-1"><strong>Your map is empty.</strong></p>
+            <p class="mb-0 small">Select <em>Start</em> above, then click here to place your first node.</p>
+          </div>
+          <svg id="adventure-canvas" class="adventure-canvas" width="{{ adventure.width }}" height="{{ adventure.height }}"
+               tabindex="0"
+               aria-label="Adventure map editor canvas. Tab to nodes, Enter to inspect, plus and minus to zoom."></svg>
         </div>
-        <svg id="adventure-canvas" class="adventure-canvas" width="{{ adventure.width }}" height="{{ adventure.height }}"
-             tabindex="0"
-             aria-label="Adventure map editor canvas"></svg>
       </div>
     </div>
     <div class="col-lg-3">
@@ -100,6 +109,68 @@
     </div>
   </div>
 </div>
+
+{% if can_edit %}
+<div class="modal fade" id="adventure-settings-modal" tabindex="-1"
+     aria-labelledby="adventure-settings-title" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="adventure-settings-title">Adventure settings</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label" for="settings-title">Title</label>
+          <input type="text" class="form-control" id="settings-title" maxlength="128" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="settings-description">Description</label>
+          <textarea class="form-control" id="settings-description" rows="3"></textarea>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label" for="settings-theme">Theme</label>
+            <select class="form-select" id="settings-theme">
+              <option value="fantasy">Fantasy</option>
+              <option value="sci-fi">Sci-fi</option>
+              <option value="historical">Historical</option>
+              <option value="modern">Modern</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="settings-end-semantics">Completion rule</label>
+            <select class="form-select" id="settings-end-semantics">
+              <option value="all">All end nodes required</option>
+              <option value="any">Any end node completes</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" role="switch" id="settings-is-public"
+                 aria-describedby="settings-share-help">
+          <label class="form-check-label" for="settings-is-public">Share with other teachers</label>
+          <div id="settings-share-help" class="form-text">Draft adventures must be published before sharing.</div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label" for="settings-background-file">Background image</label>
+          <input type="file" class="form-control" id="settings-background-file"
+                 accept="image/png,image/jpeg,image/webp">
+          <div id="settings-background-preview-wrap" class="editor-preview-wrap d-none">
+            <img id="settings-background-preview" class="editor-preview" alt="Background preview">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-settings-save">Save settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/adventure_editor_commands.js') }}"></script>
 <script src="{{ url_for('static', filename='js/adventure_editor.js') }}"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -107,7 +178,9 @@
       AdventureEditor.init({
         adventureId: {{ adventure.id }},
         canEdit: {{ 'true' if can_edit else 'false' }},
-        monsters: {{ monster_options | tojson }}
+        monsters: {{ monster_options | tojson }},
+        questionSets: {{ question_set_options | tojson }},
+        adventureSettings: {{ adventure_settings | tojson }}
       });
     }
   });

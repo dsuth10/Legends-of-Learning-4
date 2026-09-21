@@ -10,6 +10,13 @@
   background-size: 24px 24px;
 }
 
+.editor-zoom-inner {
+  transform-origin: 0 0;
+  position: relative;
+  display: inline-block;
+  min-width: 100%;
+}
+
 .canvas-empty-hint {
   position: absolute;
   top: 50%;
@@ -30,7 +37,8 @@
   font-weight: 600;
 }
 
-#btn-connect-mode.active {
+#btn-connect-mode.active,
+#btn-select-mode.active {
   background: #212529;
   color: #fff;
 }
@@ -96,10 +104,125 @@
   font-size: 11px;
 }
 
+.adventure-canvas .map-node.node-draggable {
+  cursor: grab;
+}
+
+.adventure-canvas .map-node.node-draggable.node-dragging {
+  cursor: grabbing;
+}
+
+.adventure-canvas .map-node.node-draggable.node-dragging .node-circle {
+  stroke: #fbbf24;
+  stroke-width: 3;
+}
+
+.adventure-canvas .map-node.node-drag-disabled {
+  cursor: pointer;
+}
+
 #map-inspector {
   background: #f8fafc;
   border: 1px solid #dee2e6;
   border-radius: 0.375rem;
   padding: 1rem;
   min-height: 200px;
+}
+
+.editor-status {
+  margin-bottom: 0.5rem;
+}
+
+.editor-status.d-none {
+  display: none !important;
+}
+
+#editor-validation.alert-danger {
+  border-color: #f5c2c7;
+}
+
+.editor-preview-wrap {
+  margin-top: 0.5rem;
+}
+
+.editor-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  background: #f8fafc;
+}
+
+.editor-canvas-wrap.has-custom-background {
+  background-position: center, 0 0;
+  background-repeat: no-repeat, repeat;
+}
+
+#adventure-settings-modal .modal-body {
+  padding-top: 0.5rem;
+}
+
+#adventure-settings-modal .form-text {
+  font-size: 0.8125rem;
+}
+
+.adventure-canvas .map-node:focus {
+  outline: none;
+}
+
+.adventure-canvas .map-node:focus .node-circle,
+.adventure-canvas .map-node.node-selected .node-circle {
+  stroke: #fbbf24;
+  stroke-width: 4;
+}
+
+.adventure-canvas .node-icon {
+  font-size: 16px;
+  fill: #f8fafc;
+  pointer-events: none;
+}
+
+.node-icon-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.4rem, 1fr));
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.node-icon-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  background: #fff;
+  cursor: pointer;
+  padding: 0;
+}
+
+.node-icon-option.is-selected {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.25);
+}
+
+.node-icon-option .material-icons {
+  font-size: 1.25rem;
+}
+
+@media (max-width: 991.98px) {
+  #adventure-editor .row.g-3 {
+    flex-direction: column;
+  }
+
+  #map-inspector {
+    min-height: auto;
+  }
+
+  .editor-canvas-wrap {
+    max-height: 50vh;
+  }
 }
