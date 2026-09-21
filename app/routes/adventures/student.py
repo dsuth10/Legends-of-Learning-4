@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from flask import jsonify, render_template, request
+from app.services.student_chrome import student_chrome_context
 from flask_login import current_user, login_required
 from pydantic import ValidationError
 
@@ -141,11 +142,40 @@ def list_adventures():
             }
         )
 
+    from app.services.adventure_assignment import started_assignment_still_active
+    extras = CharacterAdventureProgress.query.filter_by(character_id=character.id).all()
+    for progress in extras:
+        if progress.adventure_id in seen:
+            continue
+        fallback = started_assignment_still_active(character, progress.adventure_id)
+        if not fallback:
+            continue
+        seen.add(progress.adventure_id)
+        adventure = fallback.adventure
+        assignment_rows.append(
+            {
+                "id": adventure.id,
+                "title": adventure.title,
+                "background_image_url": adventure.background_image_url,
+                "theme": adventure.theme,
+                "node_count": adventure.nodes.count(),
+                "edge_count": adventure.edges.count(),
+                "my_progress": adventure_progress_summary(
+                    adventure, progress, character=character
+                ),
+                "assignment": {
+                    **assignment_dict(fallback),
+                    "window_status": assignment_window_status(fallback),
+                },
+            }
+        )
+
     if request.accept_mimetypes.best == "application/json" or request.args.get("format") == "json":
         return _json_ok({"adventures": assignment_rows})
 
     return render_template(
         "student/adventures_list.html",
+        **student_chrome_context(current_user),
         adventures=assignment_rows,
         active_page="adventures",
     )

@@ -74,6 +74,7 @@
             scrollbar-width: none;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/student_shell.css') }}">
     
     {% block extra_head %}{% endblock %}
 </head>
@@ -99,7 +100,24 @@
         {% endif %}
     {% endwith %}
     
-    {# Main layout #}
+    {# Shared student chrome: header, stats/destinations, main #}
+    <div class="student-shell flex-1 min-h-0">
+        {% block shell_header %}
+            {% include "student/_student_header.html" %}
+        {% endblock %}
+        <div class="student-shell-body">
+            {% block shell_sidebar %}
+            <aside class="student-shell-sidebar z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-y-auto custom-scrollbar shadow-2xl">
+                {% include "student/_student_sidebar.html" %}
+                {% block sidebar_content %}{% endblock %}
+            </aside>
+            {% endblock %}
+            <div class="student-shell-main">
+                {% block shell_main %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
     {% block content %}{% endblock %}
     
     {# Scripts #}

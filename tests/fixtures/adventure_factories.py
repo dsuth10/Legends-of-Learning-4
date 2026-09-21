@@ -294,6 +294,47 @@ def assign_to_classroom(
 
 
 
+def assign_to_clan(
+    adventure: Adventure,
+    clan_id: int,
+    teacher: User,
+    *,
+    version: Optional[int] = None,
+) -> AdventureAssignment:
+    assignment = AdventureAssignment(
+        adventure_id=adventure.id,
+        adventure_version=version if version is not None else adventure.version,
+        clan_id=clan_id,
+        assigned_by_user_id=teacher.id,
+        is_active=True,
+    )
+    db.session.add(assignment)
+    db.session.commit()
+    return assignment
+
+
+def assign_to_character(
+    adventure: Adventure,
+    character_id: int,
+    teacher: User,
+    *,
+    version: Optional[int] = None,
+) -> AdventureAssignment:
+    assignment = AdventureAssignment(
+        adventure_id=adventure.id,
+        adventure_version=version if version is not None else adventure.version,
+        character_id=character_id,
+        assigned_by_user_id=teacher.id,
+        is_active=True,
+    )
+    db.session.add(assignment)
+    db.session.commit()
+    return assignment
+
+
+
+
+
 def seed_node_progress(
 
     character,
@@ -683,5 +724,57 @@ def apply_published_graph_edit(adventure: Adventure, start_node: AdventureNode, 
     adventure.version += 1
     db.session.commit()
     return adventure.version
+
+
+def ensure_teacher_profile(user: User) -> "Teacher":
+    """Return the legacy Teacher row for a User, creating one if needed."""
+    from app.models.teacher import Teacher
+
+    profile = Teacher.query.filter_by(user_id=user.id).first()
+    if profile is None:
+        profile = Teacher(user_id=user.id)
+        db.session.add(profile)
+        db.session.flush()
+    return profile
+
+
+def create_question_set(
+    teacher_profile: "Teacher",
+    *,
+    title: str = "Test Question Set",
+    is_active: bool = True,
+    questions: Optional[List[dict]] = None,
+) -> "QuestionSet":
+    """Create a question set owned by the given legacy Teacher profile."""
+    from app.models.education import Question, QuestionSet
+
+    qset = QuestionSet(
+        title=title,
+        teacher_id=teacher_profile.id,
+        is_active=is_active,
+    )
+    db.session.add(qset)
+    db.session.flush()
+
+    default_questions = [
+        {
+            "text": "1+1?",
+            "options": ["1", "2", "3"],
+            "correct_answer": "2",
+            "difficulty": 1,
+        }
+    ]
+    for q in questions if questions is not None else default_questions:
+        db.session.add(
+            Question(
+                set_id=qset.id,
+                text=q["text"],
+                options=q.get("options", []),
+                correct_answer=q["correct_answer"],
+                difficulty=q.get("difficulty", 1),
+            )
+        )
+    db.session.flush()
+    return qset
 
 

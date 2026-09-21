@@ -2,190 +2,78 @@
 
 {% block title %}Character{% endblock %}
 
-{% block content %}
-<div class="h-screen flex flex-col overflow-hidden">
-    {# Include shared header and clan bar #}
-    {% include "student/_student_header.html" %}
-    
-    {# Main content area #}
-    <div class="flex-1 flex overflow-hidden relative">
-        {% if fallen_self %}
-        <div class="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[min(90vw,28rem)] rounded-xl bg-red-900/95 text-white px-4 py-3 shadow-xl border border-red-400/50 text-center text-sm">
-          <strong>Fallen in battle</strong> — you are at 0 HP. Teammates can use <em>Revive</em> or <em>Cheat Death</em> from Powers before the teacher rolls the Cursed Die.
-          {% if fallen_self.rescue_deadline %}
-          <div class="text-xs mt-1 opacity-90">Rescue window (approx.): {{ fallen_self.rescue_deadline }}</div>
-          {% endif %}
-        </div>
-        {% elif clan_fallen and clan_fallen|length > 0 %}
-        <div class="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[min(90vw,28rem)] rounded-xl bg-amber-900/95 text-amber-50 px-4 py-3 shadow-xl border border-amber-400/50 text-center text-sm">
-          <strong>Teammate needs help:</strong>
-          {% for f in clan_fallen %}
-            <span class="font-semibold">{{ f.character_name or 'Ally' }}</span>{% if not loop.last %}, {% endif %}
-          {% endfor %}
-          — open <a class="underline font-semibold text-white" href="{{ url_for('student.powers') }}">Powers</a> and use Revive or Cheat Death on them.
-        </div>
-        {% endif %}
-        {# Background image #}
-        <div class="absolute inset-0 z-0">
-            <img alt="Fantasy Landscape Background" class="w-full h-full object-cover" 
-                 src="{{ url_for('static', filename='images/Backgrounds/Core Level Backgrounds/Level 1.png') or 'https://via.placeholder.com/1920x1080?text=Background' }}">
-            <div class="absolute inset-0 bg-white/30 dark:bg-black/40"></div>
-        </div>
-        
-        {# Sidebar with character stats and powers #}
-        <aside class="w-80 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-y-auto custom-scrollbar shadow-2xl">
-            {% if main_character %}
-                {# Character header #}
-                <div class="p-6 text-center">
-                    <h1 class="font-display text-4xl font-bold text-gray-800 dark:text-gray-100 leading-tight">
-                        {% set name_parts = main_character.name.split(' ') %}
-                        {{ name_parts[0] }}<br/>{{ name_parts[1] if name_parts|length > 1 else '' }}
-                    </h1>
-                    <p class="mt-2 text-gray-500 dark:text-gray-400 font-light text-lg">Level {{ main_character.level }} {{ main_character.character_class }}</p>
-                </div>
-                
-                {# Stats bars #}
-                <div class="px-4 space-y-3 mb-6">
-                    {# HP #}
-                    <div class="flex items-center">
-                        <span class="w-8 text-lg font-bold text-gray-600 dark:text-gray-300">HP</span>
-                        {% set max_hp = main_character.total_health %}
-                        {% set hp_percent = (main_character.health / max_hp * 100) if max_hp > 0 else 0 %}
-                        <div class="flex-1 h-8 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
-                            <div class="absolute left-0 top-0 bottom-0 bg-hp-red" style="width: {{ hp_percent }}%"></div>
-                            <div class="absolute left-1 z-10 w-8 h-6 bg-hp-red rounded-full flex items-center justify-center text-white text-xs font-bold shadow">{{ main_character.health }}</div>
-                            <span class="ml-auto mr-2 text-xs text-gray-500 dark:text-gray-400 z-10">{{ max_hp }}</span>
-                        </div>
+{% block sidebar_content %}
+    {% if main_character %}
+        <div class="px-4 grid grid-cols-3 gap-y-6 gap-x-2 mb-8">
+            {% for ability in equipped_abilities[:6] %}
+                <div class="flex flex-col items-center">
+                    <div class="w-14 h-14 rounded-full border-2 border-gray-400 dark:border-gray-600 overflow-hidden shadow-md bg-gray-800 flex items-center justify-center text-white">
+                        <span class="material-icons text-2xl" aria-hidden="true">{{ power_icon_for_ability(ability) }}</span>
                     </div>
-                    
-                    {# Power (resource for using powers) #}
-                    <div class="flex items-center">
-                        <span class="w-8 text-lg font-bold text-gray-600 dark:text-gray-300 uppercase" title="Spend Power to activate powers; regenerates over time">pwr</span>
-                        {% set max_pwr = main_character.max_power %}
-                        {% set pwr_percent = (main_character.power / max_pwr * 100) if max_pwr > 0 else 0 %}
-                        <div class="flex-1 h-8 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
-                            <div class="absolute left-0 top-0 bottom-0 bg-ap-blue" style="width: {{ pwr_percent }}%"></div>
-                            <div class="absolute left-1 z-10 w-8 h-6 bg-ap-blue rounded-full flex items-center justify-center text-white text-xs font-bold shadow">{{ main_character.power }}</div>
-                            <span class="ml-auto mr-2 text-xs text-gray-500 dark:text-gray-400 z-10">{{ max_pwr }}</span>
-                        </div>
+                    <span class="text-xs mt-2 text-center text-gray-600 dark:text-gray-400">{{ ability.name }}</span>
+                </div>
+            {% endfor %}
+            {% if equipped_abilities|length < 6 %}
+                {% for i in range(6 - equipped_abilities|length) %}
+                    <div class="flex flex-col items-center">
+                        <div class="w-14 h-14 rounded-full border-2 border-gray-400 dark:border-gray-600 overflow-hidden shadow-md bg-gray-800 opacity-50"></div>
+                        <span class="text-xs mt-2 text-center text-gray-400 dark:text-gray-500">Empty</span>
                     </div>
-                    {# Power Points (learn new powers) #}
-                    <div class="flex items-center px-1">
-                        <span class="w-8 text-xs font-bold text-purple-600 dark:text-purple-400">PP</span>
-                        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ main_character.power_points }} <span class="text-gray-400 font-normal">unspent</span></span>
-                    </div>
-                    
-                    {# XP #}
-                    <div class="flex items-center">
-                        <span class="w-8 text-lg font-bold text-gray-600 dark:text-gray-300">XP</span>
-                        {% set next_level_xp = (main_character.level * 1000) %}
-                        {% set xp_percent = (main_character.experience / next_level_xp * 100) if next_level_xp > 0 else 0 %}
-                        {% if xp_percent > 100 %}{% set xp_percent = 100 %}{% endif %}
-                        <div class="flex-1 h-8 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center justify-between px-3">
-                            <div class="absolute left-0 top-0 bottom-0 bg-xp-yellow" style="width: {{ xp_percent }}%"></div>
-                            <span class="relative z-10 text-xs font-bold text-white drop-shadow-md">{{ "{:,}".format(main_character.experience) }}</span>
-                            <span class="relative z-10 text-xs text-white/80 drop-shadow-md">{{ "{:,}".format(next_level_xp) }}</span>
-                        </div>
-                    </div>
-                    
-                    {# GP #}
-                    <div class="flex items-center">
-                        <span class="w-8 text-lg font-bold text-gray-600 dark:text-gray-300">GP</span>
-                        <div class="flex-1 h-8 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-3">
-                            <div class="absolute left-0 top-0 bottom-0 bg-gp-gold" style="width: 85%"></div>
-                            <span class="relative z-10 text-xs font-bold text-white drop-shadow-md">{{ "{:,}".format(main_character.gold) }}</span>
-                        </div>
-                    </div>
-                </div>
-                
-                {# Navigation buttons #}
-                <div class="px-4 grid grid-cols-2 gap-3 mb-8">
-                    <a href="{{ url_for('student.quests') }}" class="w-full py-2 rounded-full bg-hp-red text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors font-bold text-sm tracking-wide">Quests</a>
-                    <a href="{{ url_for('adventures_student.list_adventures') }}" class="w-full py-2 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-colors font-bold text-sm tracking-wide">Adventures</a>
-                    <a href="{{ url_for('student.shop') }}" class="w-full py-2 rounded-full bg-xp-yellow text-white flex items-center justify-center shadow-lg hover:bg-yellow-600 transition-colors font-bold text-sm tracking-wide">Shop</a>
-                    <a href="{{ url_for('student.progress') }}" class="w-full py-2 rounded-full bg-gp-gold text-white flex items-center justify-center shadow-lg hover:bg-yellow-700 transition-colors font-bold text-sm tracking-wide">Progress</a>
-                    <a href="{{ url_for('student.character') }}" class="w-full py-2 rounded-full bg-gray-800 dark:bg-gray-600 text-white flex items-center justify-center shadow-lg hover:bg-black transition-colors font-bold text-sm tracking-wide">Character</a>
-                </div>
-                
-                {# Powers grid #}
-                <div class="px-4 grid grid-cols-3 gap-y-6 gap-x-2 mb-8">
-                    {% for ability in equipped_abilities[:6] %}
-                        <div class="flex flex-col items-center group cursor-pointer">
-                            <div class="w-14 h-14 rounded-full border-2 border-gray-400 dark:border-gray-600 overflow-hidden shadow-md group-hover:border-primary transition-colors bg-gray-800">
-                                <div class="w-full h-full flex items-center justify-center text-white text-2xl" title="{{ ability.name }}">⚡</div>
-                            </div>
-                            <span class="text-xs mt-2 text-center text-gray-600 dark:text-gray-400 group-hover:text-primary">{{ ability.name }}</span>
-                        </div>
-                    {% endfor %}
-                    {% if equipped_abilities|length < 6 %}
-                        {# Empty slots #}
-                        {% for i in range(6 - equipped_abilities|length) %}
-                            <div class="flex flex-col items-center group">
-                                <div class="w-14 h-14 rounded-full border-2 border-gray-400 dark:border-gray-600 overflow-hidden shadow-md bg-gray-800 opacity-50"></div>
-                                <span class="text-xs mt-2 text-center text-gray-400 dark:text-gray-500">Empty</span>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                </div>
-                
-                {# Powers & shop #}
-                <div class="mt-auto p-4 space-y-2">
-                    <a href="{{ url_for('student.powers') }}" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-full shadow-lg uppercase tracking-wider text-sm transition-transform hover:scale-105 block text-center">
-                        Powers
-                    </a>
-                    <a href="{{ url_for('student.shop') }}" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full shadow uppercase tracking-wider text-xs transition-transform hover:scale-105 block text-center">
-                        Shop
-                    </a>
-                </div>
-            {% else %}
-                {# No character message #}
-                <div class="p-6 text-center">
-                    <p class="text-gray-500 dark:text-gray-400">No character created yet.</p>
-                    <a href="{{ url_for('student.character_create') }}" class="mt-4 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full">Create Character</a>
-                </div>
+                {% endfor %}
             {% endif %}
-        </aside>
-        
-        {# Main character display #}
-        <main class="flex-1 relative z-10 flex items-center justify-center pointer-events-none">
-            <div class="relative w-full h-full max-w-4xl mx-auto flex items-end justify-center pb-12 pointer-events-auto">
-                <div class="absolute bottom-20 w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] animate-pulse"></div>
-                <img alt="{{ main_character.name if main_character else 'Character' }}" 
-                     class="h-[85%] object-contain drop-shadow-2xl relative z-10 mask-image-gradient" 
-                     src="{{ main_character.avatar_url if main_character else '/static/avatars/default.png' }}">
-                
-                {# Party members (if in clan) #}
-                {% if main_character and main_character.clan %}
-                    {% set all_members = main_character.clan.members.all() %}
-                    {% set party_member_count = 0 %}
-                    {% for member in all_members %}
-                        {% if member.id != main_character.id and party_member_count < 3 %}
-                            {% if party_member_count == 0 %}
-                                <div class="absolute bottom-4 right-8 flex space-x-[-20px] scale-75 origin-bottom-right opacity-90 hover:opacity-100 transition-opacity cursor-pointer">
-                            {% endif %}
-                            <img alt="Party Member {{ party_member_count + 1 }}" class="w-24 h-32 object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg" 
-                                 style="transform: rotate({{ [-5, 5, -2][party_member_count] }}deg);"
-                                 src="{{ member.avatar_url or '/static/avatars/default.png' }}">
-                            {% set party_member_count = party_member_count + 1 %}
-                        {% endif %}
-                    {% endfor %}
-                    {% if party_member_count > 0 %}
-                        </div>
-                    {% endif %}
-                {% endif %}
-            </div>
-        </main>
-    </div>
-</div>
-
+        </div>
+        <div class="mt-auto p-4 space-y-2">
+            <a href="{{ url_for('student.powers') }}" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-full shadow-lg uppercase tracking-wider text-sm transition-transform hover:scale-105 block text-center">
+                Manage Powers
+            </a>
+        </div>
+    {% else %}
+        <div class="p-6 text-center">
+            <p class="text-gray-500 dark:text-gray-400">No character created yet.</p>
+            <a href="{{ url_for('student.character_create') }}" class="mt-4 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full">Create Character</a>
+        </div>
+    {% endif %}
 {% endblock %}
 
-{% block scripts %}
-{{ super() }}
-<script>
-    // Add pulse animation class
-    document.addEventListener('DOMContentLoaded', function() {
-        // Any page-specific JS here
-    });
-</script>
+{% block shell_main %}
+<div class="relative h-full overflow-hidden">
+    {% if fallen_self %}
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[min(90vw,28rem)] rounded-xl bg-red-900/95 text-white px-4 py-3 shadow-xl border border-red-400/50 text-center text-sm">
+      <strong>Fallen in battle</strong> — you are at 0 HP. Teammates can use <em>Revive</em> or <em>Cheat Death</em> from Powers before the teacher rolls the Cursed Die.
+      {% if fallen_self.rescue_deadline %}
+      <div class="text-xs mt-1 opacity-90">Rescue window (approx.): {{ fallen_self.rescue_deadline }}</div>
+      {% endif %}
+    </div>
+    {% elif clan_fallen and clan_fallen|length > 0 %}
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[min(90vw,28rem)] rounded-xl bg-amber-900/95 text-amber-50 px-4 py-3 shadow-xl border border-amber-400/50 text-center text-sm">
+      <strong>Teammate needs help:</strong>
+      {% for f in clan_fallen %}
+        <span class="font-semibold">{{ f.character_name or 'Ally' }}</span>{% if not loop.last %}, {% endif %}
+      {% endfor %}
+      — open <a class="underline font-semibold text-white" href="{{ url_for('student.powers') }}">Powers</a> and use Revive or Cheat Death on them.
+    </div>
+    {% endif %}
+    <div class="absolute inset-0 z-0">
+        <img alt="Fantasy Landscape Background" class="w-full h-full object-cover"
+             src="{{ url_for('static', filename='images/Backgrounds/Core Level Backgrounds/Level 1.png') }}">
+        <div class="absolute inset-0 bg-white/30 dark:bg-black/40"></div>
+    </div>
+    <main class="relative z-10 h-full flex items-center justify-center">
+        <div class="relative w-full h-full max-w-4xl mx-auto flex items-end justify-center pb-12">
+            <div class="absolute bottom-20 w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] animate-pulse"></div>
+            <img alt="{{ main_character.name if main_character else 'Character' }}"
+                 class="h-[85%] object-contain drop-shadow-2xl relative z-10 mask-image-gradient"
+                 src="{{ main_character.avatar_url if main_character else '/static/avatars/default.png' }}">
+            {% if party_members %}
+                <div class="absolute bottom-4 right-8 flex space-x-[-20px] scale-75 origin-bottom-right opacity-90" data-student-chrome="party">
+                    {% for member in party_members %}
+                        <img alt="{{ member.name }}" class="w-24 h-32 object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg"
+                             style="transform: rotate({{ [-5, 5, -2][loop.index0] }}deg);"
+                             src="{{ member.avatar_url or '/static/avatars/default.png' }}">
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
 {% endblock %}

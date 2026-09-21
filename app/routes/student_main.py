@@ -11,6 +11,7 @@ from app.models.quest import Quest, QuestLog, QuestStatus, RewardType
 from app.models.audit import AuditLog, EventType
 from app.models.achievement_badge import AchievementBadge
 from app.models.shop_config import ShopItemOverride
+from app.services.student_chrome import student_chrome_context
 from datetime import datetime, timedelta
 from collections import defaultdict
 from sqlalchemy import or_
@@ -20,6 +21,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 student_bp = Blueprint('student', __name__, url_prefix='/student')
+
+
+def _chrome(**extra):
+    ctx = student_chrome_context(current_user)
+    ctx.update(extra)
+    return ctx
 
 @student_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -39,7 +46,7 @@ def profile():
             db.session.commit()
             flash('Profile updated.', 'success')
             return redirect(url_for('student.profile'))
-        return render_template('student/profile.html', student=current_user)
+        return render_template('student/profile.html', **_chrome())
     except Exception as e:
         logger.error(f"Error loading profile page: {str(e)}", exc_info=True)
         flash('An error occurred while loading your profile. Please try again.', 'danger')
@@ -224,7 +231,12 @@ def quests():
         now = int(time.time())
         logger.info(f"Rendering quests_new.html template for user {current_user.id} with {len(assigned_quests)} quests")
         logger.debug(f"Quest data: assigned_quests={len(assigned_quests)}, equipped_abilities={len(equipped_abilities)}, ability_targets={len(ability_targets)}")
-        return render_template('student/quests_new.html', student=current_user, student_profile=student_profile, assigned_quests=assigned_quests, equipped_abilities=equipped_abilities, ability_targets=ability_targets, main_character=main_char, now=now)
+        return render_template('student/quests_new.html', **_chrome(
+            assigned_quests=assigned_quests,
+            equipped_abilities=equipped_abilities,
+            ability_targets=ability_targets,
+            now=now,
+        ))
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
@@ -308,7 +320,7 @@ def complete_quest(quest_id):
 @login_required
 @student_required
 def clan():
-    return render_template('student/clan.html', student=current_user)
+    return render_template('student/clan.html', **_chrome())
 
 @student_bp.route('/character')
 @login_required
@@ -390,16 +402,14 @@ def character():
             # Access teacher relationship to ensure it's loaded
             _ = student_profile.classroom.teacher
         
-        return render_template('student/character_new.html', 
-                             student=current_user, 
-                             main_character=main_character, 
-                             equipped_abilities=equipped_abilities, 
-                             now=now, 
-                             ability_targets=ability_targets, 
-                             active_status_effects=active_status_effects, 
-                             student_profile=student_profile,
-                             fallen_self=fallen_self,
-                             clan_fallen=clan_fallen)
+        return render_template('student/character_new.html', **_chrome(
+            equipped_abilities=equipped_abilities,
+            now=now,
+            ability_targets=ability_targets,
+            active_status_effects=active_status_effects,
+            fallen_self=fallen_self,
+            clan_fallen=clan_fallen,
+        ))
     except Exception as e:
         logger.error(f"Error loading character page: {str(e)}", exc_info=True)
         flash('An error occurred while loading your character. Please try again.', 'danger')
@@ -485,12 +495,12 @@ def powers():
 
     return render_template(
         'student/powers.html',
-        student=current_user,
-        main_character=main_character,
-        powers_by_tier=powers_by_tier,
-        clan_targets=clan_targets,
-        fallen_self=fallen_self,
-        clan_fallen=clan_fallen,
+        **_chrome(
+            powers_by_tier=powers_by_tier,
+            clan_targets=clan_targets,
+            fallen_self=fallen_self,
+            clan_fallen=clan_fallen,
+        ),
     )
 
 
@@ -722,7 +732,7 @@ def shop():
                 'can_buy': can_buy,
             })
         
-        return render_template('student/shop_new.html', student=current_user, student_profile=student_profile, main_character=main_character, items=items_list, total_spent=total_spent)
+        return render_template('student/shop_new.html', **_chrome(items=items_list, total_spent=total_spent))
     except Exception as e:
         logger.error(f"Error loading shop page: {str(e)}", exc_info=True)
         flash('An error occurred while loading the shop. Please try again.', 'danger')
@@ -742,15 +752,15 @@ def progress():
     if not main_character:
         return render_template(
             'student/progress.html',
-            student=current_user,
-            main_character=None,
-            summary_stats={},
-            xp_chart_data={'dates': [], 'xp': []},
-            level_chart_data={'dates': [], 'levels': []},
-            gold_chart_data={'dates': [], 'earned': [], 'spent': []},
-            quest_stats={},
-            badges=[],
-            recent_activities=[]
+            **_chrome(
+                summary_stats={},
+                xp_chart_data={'dates': [], 'xp': []},
+                level_chart_data={'dates': [], 'levels': []},
+                gold_chart_data={'dates': [], 'earned': [], 'spent': []},
+                quest_stats={},
+                badges=[],
+                recent_activities=[],
+            ),
         )
     
     # Get date range (last 90 days)
@@ -969,15 +979,15 @@ def progress():
     
     return render_template(
         'student/progress.html',
-        student=current_user,
-        main_character=main_character,
-        summary_stats=summary_stats,
-        xp_chart_data=xp_chart_data,
-        level_chart_data=level_chart_data,
-        gold_chart_data=gold_chart_data,
-        quest_stats=quest_stats,
-        badges=badges,
-        recent_activities=activity_feed
+        **_chrome(
+            summary_stats=summary_stats,
+            xp_chart_data=xp_chart_data,
+            level_chart_data=level_chart_data,
+            gold_chart_data=gold_chart_data,
+            quest_stats=quest_stats,
+            badges=badges,
+            recent_activities=activity_feed,
+        ),
     )
 
 @student_bp.route('/character/create', methods=['GET', 'POST'])
@@ -1006,7 +1016,7 @@ def character_create():
         # Basic validation
         if not name or not character_class or not gender:
             flash('Please fill out all required fields.', 'danger')
-            return render_template('student/character_create.html', student=current_user, form=request.form)
+            return render_template('student/character_create.html', **_chrome(form=request.form))
         # Set base stats based on class
         base_stats = CLASS_BASE_STATS.get(character_class, CLASS_BASE_STATS["Warrior"])
         if not student_profile:
@@ -1047,7 +1057,15 @@ def character_create():
         '/static/avatars/druid_m.png',
         '/static/avatars/druid_f.png',
     ]
-    return render_template('student/character_create.html', student=current_user, class_options=class_options, gender_options=gender_options, avatar_options=avatar_options, form={})
+    return render_template(
+        'student/character_create.html',
+        **_chrome(
+            class_options=class_options,
+            gender_options=gender_options,
+            avatar_options=avatar_options,
+            form={},
+        ),
+    )
 
 @student_bp.route('/character/gain_xp', methods=['POST'])
 @login_required
@@ -1178,12 +1196,11 @@ def equipment():
         
         return render_template(
             'student/equipment_new.html',
-            student=current_user,
-            student_profile=student_profile,
-            main_character=main_character,
-            inventory_items=inventory_items,
-            equipped_items=equipped_items,
-            stat_changes=stat_changes
+            **_chrome(
+                inventory_items=inventory_items,
+                equipped_items=equipped_items,
+                stat_changes=stat_changes,
+            ),
         )
     except Exception as e:
         logger.error(f"Error loading equipment page: {str(e)}", exc_info=True)

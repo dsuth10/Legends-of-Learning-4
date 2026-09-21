@@ -1,39 +1,35 @@
-{# Shared header and clan bar for student pages #}
+{# Shared identity bar and clan/classroom strip #}
 
-{# Top bar with clan member names #}
-<div class="h-8 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 text-xs text-gray-500 dark:text-gray-400">
-    <div class="flex items-center space-x-3 flex-1 overflow-x-auto no-scrollbar">
-        {% if main_character and main_character.clan %}
-            {# Get all clan members and display current student first, then others #}
-            {% set clan_members = main_character.clan.members.filter_by(is_active=True).all() %}
-            
-            {# First, show current student #}
-            <span class="whitespace-nowrap font-semibold text-gray-800 dark:text-gray-200">{{ main_character.name }}</span>
-            
-            {# Then show other clan members #}
-            {% for char in clan_members %}
-                {% if char.id != main_character.id %}
-                    <span class="whitespace-nowrap">, {{ char.name }}</span>
-                {% endif %}
-            {% endfor %}
-        {% elif main_character %}
-            {# No clan, just show current student #}
-            <span class="font-semibold text-gray-800 dark:text-gray-200">{{ main_character.name }}</span>
+<div class="h-8 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 text-xs text-gray-500 dark:text-gray-400" data-student-chrome="identity">
+    <div class="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
+        {% if class_name %}
+            <span class="whitespace-nowrap font-semibold text-gray-800 dark:text-gray-200 truncate">{{ class_name }}</span>
+        {% elif student %}
+            <span class="whitespace-nowrap font-semibold text-gray-800 dark:text-gray-200 truncate">{{ student.get_display_name() if student.get_display_name is defined else student.username }}</span>
         {% else %}
-            <span>No Character</span>
+            <span>Student</span>
+        {% endif %}
+        {% if clan_name %}
+            <span class="text-gray-400" aria-hidden="true">·</span>
+            <a href="{{ url_for('student.clan') }}" class="whitespace-nowrap truncate hover:underline text-gray-700 dark:text-gray-200">{{ clan_name }}</a>
+        {% endif %}
+        {% if current_endpoint == 'student.character_create' %}
+            <span class="ml-2 font-semibold text-primary" aria-current="page">Create character</span>
         {% endif %}
     </div>
     <div class="flex items-center space-x-3 flex-shrink-0 ml-4">
-        <a href="{{ url_for('adventures_student.list_adventures') }}"
-           class="text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:underline"
-           title="Adventures">Adventures</a>
-        <span class="material-icons text-base cursor-pointer hover:text-gray-800 dark:hover:text-white">article</span>
+        <a href="{{ url_for('student.clan') }}"
+           class="student-identity-link text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:underline"
+           {% if current_endpoint == 'student.clan' %}aria-current="page"{% endif %}>Clan</a>
+        <a href="{{ url_for('student.profile') }}"
+           class="student-identity-link text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:underline"
+           {% if current_endpoint == 'student.profile' %}aria-current="page"{% endif %}>Profile</a>
         {% if student_profile and student_profile.classroom and student_profile.classroom.teacher %}
             {% set teacher = student_profile.classroom.teacher %}
-            <img alt="Teacher Avatar" class="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-600" 
+            <img alt="Teacher Avatar" class="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-600"
                  src="{{ teacher.avatar_url or '/static/avatars/default.png' }}">
         {% endif %}
-        <a href="{{ url_for('auth.logout') }}" 
+        <a href="{{ url_for('auth.logout') }}"
            class="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors"
            title="Logout"
            aria-label="Logout">
@@ -42,96 +38,41 @@
     </div>
 </div>
 
-{# Clan bar with student tabs #}
-<div class="h-16 bg-gray-100 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700 flex items-stretch shadow-md z-20 relative">
-    {% if student_profile and student_profile.classroom %}
-        {% set classroom = student_profile.classroom %}
+<div class="h-16 bg-gray-100 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700 flex items-stretch shadow-md z-20 relative" data-student-chrome="strip" role="group" aria-label="Classroom or clan members">
+    {% if class_name or clan_name %}
         <div class="w-64 flex-shrink-0 flex items-center px-4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-            {% if main_character and main_character.clan %}
-                <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white mr-3 shadow-lg bg-gradient-to-br from-purple-500 to-indigo-700">
+            {% if clan_name %}
+                <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white mr-3 shadow-lg bg-gradient-to-br from-purple-500 to-indigo-700" aria-hidden="true">
                     <span class="material-icons">pets</span>
                 </div>
-                <span class="font-display font-bold text-lg text-gray-800 dark:text-white italic">{{ main_character.clan.name }}</span>
+                <a href="{{ url_for('student.clan') }}" class="font-display font-bold text-lg text-gray-800 dark:text-white italic truncate hover:underline">{{ clan_name }}</a>
             {% else %}
-                <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white mr-3 shadow-lg">
+                <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white mr-3 shadow-lg" aria-hidden="true">
                     <span class="material-icons">group</span>
                 </div>
-                <span class="font-display font-bold text-lg text-gray-800 dark:text-white italic">{{ classroom.name or classroom.class_name }}</span>
-            {% endif %}
-        </div>
-        <div class="flex-1 flex overflow-x-auto no-scrollbar">
-            {% if main_character and main_character.clan %}
-                {# Show only clan members, with current student first #}
-                {% set clan_members = main_character.clan.members.filter_by(is_active=True).all() %}
-                
-                {# First, show current student #}
-                {% if main_character %}
-                    <div class="flex-1 min-w-[180px] max-w-[250px] border-r border-gray-300 dark:border-gray-700 p-2 flex flex-col justify-center items-center bg-white dark:bg-gray-700 shadow-inner cursor-default relative">
-                        <div class="absolute top-0 left-0 w-full h-1 bg-primary"></div>
-                        <span class="text-sm font-bold mb-1 truncate text-gray-900 dark:text-white">{{ main_character.name }}</span>
-                        <div class="w-full flex space-x-1">
-                            {# HP Bar #}
-                            {% set hp_percent = (main_character.health / main_character.max_health * 100) if main_character.max_health > 0 else 0 %}
-                            <div class="flex-1 h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative overflow-hidden flex items-center px-1">
-                                <div class="absolute left-0 top-0 bottom-0 bg-hp-red" style="width: {{ hp_percent }}%"></div>
-                                <span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">{{ main_character.health }}</span>
-                            </div>
-                            {# PP Bar #}
-                            {% set pp_max = main_character.total_power %}
-                            {% set pp_percent = (main_character.power / pp_max * 100) if pp_max > 0 else 0 %}
-                            <div class="flex-1 h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative overflow-hidden flex items-center px-1">
-                                <div class="absolute left-0 top-0 bottom-0 bg-ap-blue" style="width: {{ pp_percent }}%"></div>
-                                <span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">{{ main_character.power }}</span>
-                            </div>
-                        </div>
-                    </div>
-                {% endif %}
-                
-                {# Then show other clan members #}
-                {% for char in clan_members %}
-                    {% if char.id != main_character.id %}
-                        <div class="flex-1 min-w-[180px] max-w-[250px] border-r border-gray-300 dark:border-gray-700 p-2 flex flex-col justify-center items-center bg-gray-200 dark:bg-gray-800 opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
-                            <span class="text-sm font-semibold mb-1 truncate text-gray-900 dark:text-white">{{ char.name }}</span>
-                            <div class="w-full flex space-x-1">
-                                {# HP Bar #}
-                                {% set hp_percent = (char.health / char.max_health * 100) if char.max_health > 0 else 0 %}
-                                <div class="flex-1 h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative overflow-hidden flex items-center px-1">
-                                    <div class="absolute left-0 top-0 bottom-0 bg-hp-red" style="width: {{ hp_percent }}%"></div>
-                                    <span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">{{ char.health }}</span>
-                                </div>
-                                {# PP Bar #}
-                                {% set pp_max = char.total_power %}
-                                {% set pp_percent = (char.power / pp_max * 100) if pp_max > 0 else 0 %}
-                                <div class="flex-1 h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative overflow-hidden flex items-center px-1">
-                                    <div class="absolute left-0 top-0 bottom-0 bg-ap-blue" style="width: {{ pp_percent }}%"></div>
-                                    <span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">{{ char.power }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                {% endfor %}
-            {% elif main_character %}
-                {# No clan, show only current student #}
-                <div class="flex-1 min-w-[180px] max-w-[250px] border-r border-gray-300 dark:border-gray-700 p-2 flex flex-col justify-center items-center bg-white dark:bg-gray-700 shadow-inner cursor-default relative">
-                    <div class="absolute top-0 left-0 w-full h-1 bg-primary"></div>
-                    <span class="text-sm font-bold mb-1 truncate text-gray-900 dark:text-white">{{ main_character.name }}</span>
-                    <div class="w-full flex space-x-1">
-                        {# HP Bar #}
-                        {% set hp_percent = (main_character.health / main_character.max_health * 100) if main_character.max_health > 0 else 0 %}
-                        <div class="flex-1 h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative overflow-hidden flex items-center px-1">
-                            <div class="absolute left-0 top-0 bottom-0 bg-hp-red" style="width: {{ hp_percent }}%"></div>
-                            <span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">{{ main_character.health }}</span>
-                        </div>
-                        {# PP Bar #}
-                        {% set pp_max = main_character.total_power %}
-                        {% set pp_percent = (main_character.power / pp_max * 100) if pp_max > 0 else 0 %}
-                        <div class="flex-1 h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative overflow-hidden flex items-center px-1">
-                            <div class="absolute left-0 top-0 bottom-0 bg-ap-blue" style="width: {{ pp_percent }}%"></div>
-                            <span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">{{ main_character.power }}</span>
-                        </div>
-                    </div>
-                </div>
+                <span class="font-display font-bold text-lg text-gray-800 dark:text-white italic truncate">{{ class_name }}</span>
             {% endif %}
         </div>
     {% endif %}
+    <div class="student-clan-strip flex-1 flex no-scrollbar">
+        {% for member in clan_members %}
+            <div class="student-clan-tab min-w-[180px] max-w-[250px] border-r border-gray-300 dark:border-gray-700 p-2 flex flex-col justify-center items-center {% if member.is_current %}bg-white dark:bg-gray-700 shadow-inner relative{% else %}bg-gray-200 dark:bg-gray-800 opacity-70{% endif %}"
+                 data-clan-tab="{% if member.is_current %}current{% else %}mate{% endif %}">
+                {% if member.is_current %}
+                    <div class="absolute top-0 left-0 w-full h-1 bg-primary"></div>
+                {% endif %}
+                <span class="text-sm {% if member.is_current %}font-bold{% else %}font-semibold{% endif %} mb-1 truncate text-gray-900 dark:text-white">{{ member.name }}</span>
+                <div class="w-full flex space-x-1">
+                    <div class="flex-1 h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative overflow-hidden flex items-center px-1">
+                        <div class="absolute left-0 top-0 bottom-0 bg-hp-red" style="width: {{ member.hp_percent }}%"></div>
+                        <span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">{{ member.hp_current }}</span>
+                    </div>
+                    <div class="flex-1 h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative overflow-hidden flex items-center px-1">
+                        <div class="absolute left-0 top-0 bottom-0 bg-ap-blue" style="width: {{ member.power_percent }}%"></div>
+                        <span class="relative z-10 text-[10px] font-bold text-white pl-1 drop-shadow-md">{{ member.power_current }}</span>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
 </div>

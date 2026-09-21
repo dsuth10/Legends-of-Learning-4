@@ -2,9 +2,22 @@
  * Student Adventures map player.
  *
  * Accessibility: unlocked/available nodes are focusable; Enter/Space opens the detail panel.
+ * Locked nodes are not activatable. Travel and mini-map live in adventure_player_map.js.
  */
 (function () {
   "use strict";
+
+  var DEFAULT_ICONS = {
+    start: "flag",
+    story: "auto_stories",
+    battle: "swords",
+    quiz: "quiz",
+    choice: "alt_route",
+    reward: "redeem",
+    milestone: "emoji_events",
+    boss: "cruelty_free",
+    end: "sports_score",
+  };
 
   async function api(method, url, body) {
     const opts = { method, headers: { "Content-Type": "application/json" } };
@@ -15,6 +28,13 @@
 
   function statusClass(status) {
     return "node-status-" + (status || "locked");
+  }
+
+  function iconLigature(node) {
+    var value = node.icon_url;
+    if (value && value.charAt(0) === "/") return null;
+    if (value) return value;
+    return DEFAULT_ICONS[node.node_type] || "flag";
   }
 
   function edgeClass(edge, progressByNode) {
@@ -60,28 +80,47 @@
       if (node.is_optional) cls += " node-optional";
       g.setAttribute("class", cls);
       g.setAttribute("data-slug", node.slug);
-      g.setAttribute("role", "button");
-      var focusable = prog.status === "available" || prog.status === "in_progress" || prog.status === "completed";
-      g.setAttribute("tabindex", focusable ? "0" : "-1");
-      g.setAttribute("aria-label", node.title + ", status " + prog.status);
+      g.setAttribute("data-node-id", node.id);
       g.setAttribute("transform", "translate(" + node.x + "," + node.y + ")");
+      var focusable = prog.status === "available" || prog.status === "in_progress" || prog.status === "completed";
+      g.setAttribute("aria-label", node.title + ", " + node.node_type + ", " + prog.status);
+      if (focusable) {
+        g.setAttribute("role", "button");
+        g.setAttribute("tabindex", "0");
+        g.addEventListener("click", function () {
+          if (window.AdventurePlayerMap && AdventurePlayerMap.interrupt) {
+            AdventurePlayerMap.interrupt();
+          }
+          window.AdventurePlayer.showNode(node.slug);
+        });
+        g.addEventListener("keydown", function (evt) {
+          if (evt.key === "Enter" || evt.key === " ") {
+            evt.preventDefault();
+            if (window.AdventurePlayerMap && AdventurePlayerMap.interrupt) {
+              AdventurePlayerMap.interrupt();
+            }
+            window.AdventurePlayer.showNode(node.slug);
+          }
+        });
+      } else {
+        g.setAttribute("tabindex", "-1");
+        g.setAttribute("aria-disabled", "true");
+      }
       var circle = document.createElementNS(ns, "circle");
       circle.setAttribute("r", 28);
+      var icon = document.createElementNS(ns, "text");
+      icon.setAttribute("class", "material-icons node-icon");
+      icon.setAttribute("text-anchor", "middle");
+      icon.setAttribute("dominant-baseline", "central");
+      icon.setAttribute("y", "2");
+      icon.textContent = iconLigature(node);
       var label = document.createElementNS(ns, "text");
       label.setAttribute("y", 44);
       label.setAttribute("text-anchor", "middle");
       label.textContent = node.title;
       g.appendChild(circle);
+      g.appendChild(icon);
       g.appendChild(label);
-      g.addEventListener("click", function () {
-        window.AdventurePlayer.showNode(node.slug);
-      });
-      g.addEventListener("keydown", function (evt) {
-        if (evt.key === "Enter" || evt.key === " ") {
-          evt.preventDefault();
-          window.AdventurePlayer.showNode(node.slug);
-        }
-      });
       svg.appendChild(g);
     });
   }
@@ -115,6 +154,8 @@
     }
 
     panel.innerHTML = html;
+    panel.setAttribute("tabindex", "-1");
+    panel.focus();
 
     panel.querySelectorAll(".choice-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -128,7 +169,12 @@
             );
           })
           .then(function (body) {
-            if (body.success) window.AdventurePlayer.refresh();
+            if (body.success) {
+              window.AdventurePlayer.refresh({
+                fromNodeId: node.id,
+                nextUnlocked: (body.data && body.data.next_unlocked) || [],
+              });
+            }
           });
       });
     });
@@ -140,8 +186,17 @@
       api("POST", "/student/adventures/" + adventureId + "/nodes/" + node.slug + "/" + action)
         .then(function (body) {
           if (body.success) {
-            if (body.data.redirect_url) window.location.href = body.data.redirect_url;
-            window.AdventurePlayer.refresh();
+            if (body.data && body.data.redirect_url) {
+              window.location.href = body.data.redirect_url;
+              return;
+            }
+            var travel = action === "complete"
+              ? {
+                fromNodeId: node.id,
+                nextUnlocked: (body.data && body.data.next_unlocked) || [],
+              }
+              : null;
+            window.AdventurePlayer.refresh(travel);
           }
         });
     });
@@ -153,10 +208,21 @@
 
     init: function (opts) {
       this._adventureId = opts.adventureId;
+      if (window.AdventurePlayerMap && AdventurePlayerMap.init) {
+        AdventurePlayerMap.init({ adventureId: this._adventureId });
+      }
+      document.addEventListener("keydown", function (evt) {
+        if (evt.key !== "Escape") return;
+        var panel = document.getElementById("node-detail-panel");
+        if (!panel || !panel.contains(document.activeElement)) return;
+        evt.preventDefault();
+        var svg = document.getElementById("adventure-map");
+        if (svg) svg.focus();
+      });
       this.refresh();
     },
 
-    refresh: function () {
+    refresh: function (travelOpts) {
       var self = this;
       var svg = document.getElementById("adventure-map");
       api("GET", "/student/adventures/" + this._adventureId + "/state").then(function (body) {
@@ -166,6 +232,9 @@
           svg.setAttribute("width", body.data.adventure.width);
           svg.setAttribute("height", body.data.adventure.height);
           renderMap(svg, body.data);
+        }
+        if (window.AdventurePlayerMap && AdventurePlayerMap.refresh) {
+          AdventurePlayerMap.refresh(body.data, travelOpts || null);
         }
       });
     },

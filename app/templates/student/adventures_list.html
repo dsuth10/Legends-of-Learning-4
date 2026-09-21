@@ -1,9 +1,10 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-  {% include "student/_student_header.html" %}
-  <main class="p-6 max-w-3xl mx-auto">
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">My Adventures</h1>
+{% extends "student/base_student.html" %}
+{% block title %}Adventures{% endblock %}
+{% block shell_main %}
+<div class="h-full overflow-y-auto p-6">
+  <div class="max-w-3xl mx-auto">
+    <h1 class="font-display text-2xl font-bold text-gray-900 dark:text-white mb-4">My Adventures</h1>
+    {% if adventures %}
     <ul id="student-adventures-list" class="space-y-3">
       {% for a in adventures %}
       <li>
@@ -15,6 +16,9 @@
       </li>
       {% endfor %}
     </ul>
-  </main>
+    {% else %}
+    <p class="text-gray-600 dark:text-gray-300">No adventures are assigned yet.</p>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

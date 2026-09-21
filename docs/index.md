@@ -26,9 +26,10 @@
 
 ## Existing Documentation
 
+- [Now / Next](./now.md) - **Current direction and next task** (start here for planning)
 - [README.md](../README.md) - Project README with quick start
 - [spec.md](../spec.md) - Project specification
-- [PROJECT_ANALYSIS_AND_RECOMMENDATIONS.md](../PROJECT_ANALYSIS_AND_RECOMMENDATIONS.md) - Feature analysis and recommendations
+- [PROJECT_ANALYSIS_AND_RECOMMENDATIONS.md](../PROJECT_ANALYSIS_AND_RECOMMENDATIONS.md) - Historical feature analysis (stale; see now.md)
 - [docs/equipment_data_system.md](./equipment_data_system.md) - Equipment data system documentation
 
 ## Getting Started
@@ -45,7 +46,7 @@
 1. Review [API Contracts](./api-contracts.md) for existing endpoints
 2. Check [Data Models](./data-models.md) for database schema
 3. Follow patterns in [Architecture](./architecture.md)
-4. See [PROJECT_ANALYSIS_AND_RECOMMENDATIONS.md](../PROJECT_ANALYSIS_AND_RECOMMENDATIONS.md) for prioritized features
+4. See [Now / Next](./now.md) for the current feature and next task
 
 ### For Brownfield PRD Creation
 
@@ -81,7 +82,7 @@ Legends-of-Learning-4/
 
 ## Next Steps
 
-- **For Planning:** Review [PROJECT_ANALYSIS_AND_RECOMMENDATIONS.md](../PROJECT_ANALYSIS_AND_RECOMMENDATIONS.md) for feature priorities
+- **For Planning:** Read [Now / Next](./now.md), then the active Speckit feature it names
 - **For Development:** Follow [Development Guide](./development-guide.md)
 - **For Architecture Changes:** See [Architecture](./architecture.md) for design patterns
 

@@ -2,163 +2,79 @@
 
 {% block title %}Equipment{% endblock %}
 
-{% block content %}
-<div class="h-screen flex flex-col overflow-hidden">
-    {# Include shared header and clan bar #}
-    {% include "student/_student_header.html" %}
-    
-    {# Main content area #}
-    <div class="flex-1 flex overflow-hidden relative">
-        {# Background image #}
+{% block sidebar_content %}
+    {% if main_character %}
+        <div class="px-4 flex-1 flex flex-col">
+            <div class="flex items-center justify-between mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                <h3 class="font-display font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">backpack</span>
+                    Inventory
+                </h3>
+                <span class="text-xs text-gray-400" id="inventory-count">{{ inventory_items|length }}/20</span>
+            </div>
+            <div class="grid grid-cols-4 gap-2 mb-4">
+                {% for inv_item in inventory_items %}
+                    {% set eq = inv_item.equipment %}
+                    {% set rarity_map = {1: ('common', '#9ca3af'), 2: ('rare', '#3b82f6'), 3: ('epic', '#a855f7'), 4: ('legendary', '#eab308'), 5: ('legendary', '#eab308')} %}
+                    {% set rarity_info = rarity_map.get(eq.rarity if eq else 1, ('common', '#9ca3af')) %}
+                    {% set rarity_color = rarity_info[1] %}
+                    <div class="inventory-item aspect-square bg-gray-100 dark:bg-gray-800 border rounded-md flex items-center justify-center cursor-pointer hover:border-primary group relative"
+                         style="border-color: {{ rarity_color }};"
+                         data-inventory-id="{{ inv_item.id }}"
+                         data-slot="{{ eq.slot if eq else '' }}"
+                         title="{{ eq.name if eq else 'Item' }}">
+                        {% if eq and eq.image_url %}
+                            <img class="w-10 h-10 object-contain drop-shadow-md group-hover:scale-110 transition-transform" src="{{ eq.image_url }}" alt="{{ eq.name }}">
+                        {% else %}
+                            <span class="material-symbols-outlined text-3xl text-gray-400">category</span>
+                        {% endif %}
+                        {% if inv_item.quantity and inv_item.quantity > 1 %}
+                            <span class="absolute bottom-0 right-0.5 text-[9px] font-bold text-white bg-gray-900/80 px-1 rounded-sm">x{{ inv_item.quantity }}</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                {% set empty_slots = 20 - (inventory_items|length) %}
+                {% for i in range(empty_slots) %}
+                    <div class="aspect-square bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 border-dashed rounded-md"></div>
+                {% endfor %}
+            </div>
+            <div class="mt-auto p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-xs">
+                <p class="font-bold text-gray-500 uppercase tracking-wide mb-2">Stat Changes</p>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-gray-600 dark:text-gray-400">Attack</span>
+                    <span class="text-gray-800 dark:text-white font-mono font-bold" id="stat-attack">+{{ stat_changes.attack }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 dark:text-gray-400">Defense</span>
+                    <span class="text-gray-800 dark:text-white font-mono font-bold" id="stat-defense">+{{ stat_changes.defense }}</span>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="p-6 text-center">
+            <p class="text-gray-500 dark:text-gray-400">No character created yet.</p>
+            <a href="{{ url_for('student.character_create') }}" class="mt-4 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full">Create Character</a>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block shell_main %}
+<div class="relative h-full overflow-hidden">
         <div class="absolute inset-0 z-0">
-            <img alt="Fantasy Landscape Background" class="w-full h-full object-cover" 
-                 src="{{ url_for('static', filename='images/quest_maps/quest_map.png') or 'https://via.placeholder.com/1920x1080?text=Background' }}">
+            <img alt="Fantasy Landscape Background" class="w-full h-full object-cover"
+                 src="{{ url_for('static', filename='images/quest_maps/quest_map.png') }}">
             <div class="absolute inset-0 bg-white/30 dark:bg-black/50"></div>
         </div>
-        
-        {# Sidebar with character stats and inventory #}
-        <aside class="w-80 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-r border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-y-auto custom-scrollbar shadow-2xl">
-            {% if main_character %}
-                {# Character header #}
-                <div class="p-6 text-center">
-                    <h1 class="font-display text-3xl font-bold text-gray-800 dark:text-gray-100 leading-tight">
-                        {% set name_parts = main_character.name.split(' ') %}
-                        {{ name_parts[0] }}{% if name_parts|length > 1 %}<br/>{{ name_parts[1] }}{% endif %}
-                    </h1>
-                    <p class="mt-1 text-gray-500 dark:text-gray-400 font-light text-base">Level {{ main_character.level }} {{ main_character.character_class }}</p>
-                </div>
-                
-                {# Stats bars #}
-                <div class="px-4 space-y-2 mb-6 text-sm">
-                    {# HP #}
-                    <div class="flex items-center">
-                        <span class="w-6 font-bold text-gray-600 dark:text-gray-300">HP</span>
-                        {% set max_hp = main_character.total_health %}
-                        {% set hp_percent = (main_character.health / max_hp * 100) if max_hp > 0 else 0 %}
-                        <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
-                            <div class="absolute left-0 top-0 bottom-0 bg-hp-red" style="width: {{ hp_percent }}%"></div>
-                            <span class="ml-auto mr-2 text-[10px] text-gray-500 dark:text-gray-400 z-10">{{ main_character.health }}/{{ max_hp }}</span>
-                        </div>
-                    </div>
-                    
-                    {# PP #}
-                    <div class="flex items-center">
-                        <span class="w-6 font-bold text-gray-600 dark:text-gray-300 uppercase">pp</span>
-                        {% set max_pp = main_character.total_power %}
-                        {% set pp_percent = (main_character.power / max_pp * 100) if max_pp > 0 else 0 %}
-                        <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center">
-                            <div class="absolute left-0 top-0 bottom-0 bg-ap-blue" style="width: {{ pp_percent }}%"></div>
-                            <span class="ml-auto mr-2 text-[10px] text-gray-500 dark:text-gray-400 z-10">{{ main_character.power }}/{{ max_pp }}</span>
-                        </div>
-                    </div>
-                    
-                    {# GP #}
-                    <div class="flex items-center">
-                        <span class="w-6 font-bold text-gray-600 dark:text-gray-300">GP</span>
-                        <div class="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden flex items-center px-2">
-                            <div class="absolute left-0 top-0 bottom-0 bg-gp-gold" style="width: 85%"></div>
-                            <span class="relative z-10 text-[10px] font-bold text-white drop-shadow-md">{{ "{:,}".format(main_character.gold) }}</span>
-                        </div>
-                    </div>
-                </div>
-                
-                {# Navigation buttons #}
-                <div class="px-4 grid grid-cols-2 gap-2 mb-6">
-                    {% set current_route = request.endpoint %}
-                    <a href="{{ url_for('student.quests') }}" 
-                       class="w-full py-1.5 rounded-lg {{ 'bg-gray-200 dark:bg-gray-700' if current_route != 'student.quests' else 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' }} text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-xs">
-                        Quests
-                    </a>
-                    <a href="{{ url_for('student.shop') }}" 
-                       class="w-full py-1.5 rounded-lg {{ 'bg-gray-200 dark:bg-gray-700' if current_route != 'student.shop' else 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' }} text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-xs">
-                        Shop
-                    </a>
-                    <a href="{{ url_for('student.progress') }}" 
-                       class="w-full py-1.5 rounded-lg {{ 'bg-gray-200 dark:bg-gray-700' if current_route != 'student.progress' else 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' }} text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-xs">
-                        Progress
-                    </a>
-                    <a href="{{ url_for('student.equipment') }}" 
-                       class="w-full py-1.5 rounded-lg {{ 'bg-primary text-white shadow-lg shadow-indigo-500/30 ring-2 ring-primary ring-offset-1 dark:ring-offset-gray-900' if current_route == 'student.equipment' else 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow hover:bg-gray-300 dark:hover:bg-gray-600' }} transition-colors font-bold text-xs">
-                        Equipment
-                    </a>
-                </div>
-                
-                {# Inventory section #}
-                <div class="px-4 flex-1 flex flex-col">
-                    <div class="flex items-center justify-between mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
-                        <h3 class="font-display font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-lg">backpack</span>
-                            Inventory
-                        </h3>
-                        <span class="text-xs text-gray-400" id="inventory-count">{{ inventory_items|length }}/20</span>
-                    </div>
-                    
-                    {# Inventory grid #}
-                    <div class="grid grid-cols-4 gap-2 mb-4">
-                        {% for inv_item in inventory_items %}
-                            {% set eq = inv_item.equipment %}
-                            {% set rarity_map = {1: ('common', '#9ca3af'), 2: ('rare', '#3b82f6'), 3: ('epic', '#a855f7'), 4: ('legendary', '#eab308'), 5: ('legendary', '#eab308')} %}
-                            {% set rarity_info = rarity_map.get(eq.rarity if eq else 1, ('common', '#9ca3af')) %}
-                            {% set rarity_name = rarity_info[0] %}
-                            {% set rarity_color = rarity_info[1] %}
-                            <div class="inventory-item aspect-square bg-gray-100 dark:bg-gray-800 border rounded-md flex items-center justify-center cursor-move hover:border-primary group relative" 
-                                 style="border-color: {{ rarity_color }};"
-                                 data-inventory-id="{{ inv_item.id }}"
-                                 data-slot="{{ eq.slot if eq else '' }}"
-                                 title="{{ eq.name if eq else 'Item' }}">
-                                {% if eq and eq.image_url %}
-                                    <img class="w-10 h-10 object-contain drop-shadow-md group-hover:scale-110 transition-transform" src="{{ eq.image_url }}" alt="{{ eq.name }}">
-                                {% else %}
-                                    <span class="material-symbols-outlined text-3xl text-gray-400">category</span>
-                                {% endif %}
-                                {% if inv_item.quantity and inv_item.quantity > 1 %}
-                                    <span class="absolute bottom-0 right-0.5 text-[9px] font-bold text-white bg-gray-900/80 px-1 rounded-sm">x{{ inv_item.quantity }}</span>
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-                        {# Empty slots #}
-                        {% set empty_slots = 20 - (inventory_items|length) %}
-                        {% for i in range(empty_slots) %}
-                            <div class="aspect-square bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 border-dashed rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"></div>
-                        {% endfor %}
-                    </div>
-                    
-                    {# Stat Changes Panel #}
-                    <div class="mt-auto p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-xs">
-                        <p class="font-bold text-gray-500 uppercase tracking-wide mb-2">Stat Changes</p>
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-gray-600 dark:text-gray-400">Attack</span>
-                            <span class="text-gray-800 dark:text-white font-mono font-bold" id="stat-attack">+{{ stat_changes.attack }}</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600 dark:text-gray-400">Defense</span>
-                            <span class="text-gray-800 dark:text-white font-mono font-bold" id="stat-defense">+{{ stat_changes.defense }}</span>
-                        </div>
-                    </div>
-                </div>
-            {% else %}
-                {# No character message #}
-                <div class="p-6 text-center">
-                    <p class="text-gray-500 dark:text-gray-400">No character created yet.</p>
-                    <a href="{{ url_for('student.character_create') }}" class="mt-4 inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full">Create Character</a>
-                </div>
-            {% endif %}
-        </aside>
-        
-        {# Main content area with character model and equipment slots #}
-        <main class="flex-1 relative z-10 flex flex-col items-center justify-center p-8 overflow-hidden">
+        <div class="relative z-10 h-full flex flex-col items-center justify-center p-8 overflow-hidden">
             <div class="relative w-full h-full max-w-5xl mx-auto flex items-center justify-center">
                 {# Background glow effect #}
                 <div class="absolute bottom-0 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px] animate-pulse pointer-events-none"></div>
                 
                 {# Character model #}
                 <div class="relative h-[85%] z-10 flex items-center justify-center group">
-                    <img alt="{{ main_character.name if main_character else 'Character' }}" 
-                         class="h-full w-auto object-contain drop-shadow-2xl mask-image-gradient" 
+                    <img alt="{{ main_character.name if main_character else 'Character' }}"
+                         class="h-full w-auto object-contain drop-shadow-2xl mask-image-gradient"
                          src="{{ main_character.avatar_url if main_character else '/static/avatars/default.png' }}">
-                    <div class="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-xs py-1 px-3 rounded-full backdrop-blur-md border border-white/10 pointer-events-none">
-                        Click to Rotate
-                    </div>
                 </div>
                 
                 {# Weapon slot (left side) #}
@@ -296,18 +212,8 @@
                     </div>
                 </div>
                 
-                {# Action buttons #}
-                <div class="absolute bottom-8 flex space-x-4">
-                    <button class="bg-gray-900/80 hover:bg-black text-white px-6 py-2 rounded-full backdrop-blur-md border border-gray-600 shadow-lg text-sm font-bold flex items-center gap-2 transition-transform hover:scale-105" disabled>
-                        <span class="material-symbols-outlined text-sm">autorenew</span> Auto Equip
-                    </button>
-                    <button class="bg-primary hover:bg-indigo-600 text-white px-6 py-2 rounded-full shadow-lg shadow-indigo-500/50 text-sm font-bold flex items-center gap-2 transition-transform hover:scale-105" disabled>
-                        <span class="material-symbols-outlined text-sm">save</span> Save Loadout
-                    </button>
-                </div>
             </div>
-        </main>
-    </div>
+        </div>
 </div>
 
 {% endblock %}

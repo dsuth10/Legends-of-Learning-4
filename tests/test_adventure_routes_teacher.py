@@ -160,6 +160,46 @@ def test_teacher_node_and_edge_crud_linear(client, db_session, teacher_user):
     assert resp.status_code == 200
 
 
+def test_editor_page_includes_select_tool(client, db_session, teacher_user):
+    _login_teacher(client, teacher_user)
+    adventure = create_adventure(teacher_user, title="Select tool")
+    db_session.commit()
+
+    resp = client.get(f"/teacher/adventures/{adventure.id}")
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert 'id="btn-select-mode"' in html
+    assert "Click a node to select it" in html or "Select" in html
+
+
+def test_teacher_can_delete_node(client, db_session, teacher_user):
+    _login_teacher(client, teacher_user)
+    adventure = create_adventure(teacher_user, title="Delete node")
+    db_session.commit()
+    aid = adventure.id
+
+    resp = _json(
+        client,
+        "POST",
+        f"/teacher/adventures/{aid}/nodes",
+        {
+            "slug": "start",
+            "title": "Start",
+            "node_type": "start",
+            "x": 40,
+            "y": 40,
+            "is_start": True,
+        },
+    )
+    assert resp.status_code == 201
+    start_id = resp.get_json()["data"]["node"]["id"]
+
+    resp = _json(client, "DELETE", f"/teacher/adventures/{aid}/nodes/{start_id}")
+    assert resp.status_code == 200
+    graph = _json(client, "GET", f"/teacher/adventures/{aid}/graph").get_json()["data"]
+    assert graph["nodes"] == []
+
+
 def test_publish_validation_and_assignment(
     client, db_session, teacher_user, teacher_classroom
 ):
@@ -737,3 +777,474 @@ def test_teacher_progress_query_budget(client, db_session, teacher_user):
         f"Progress roster appears O(n): 5-student roster used {small_count['n']} queries, "
         f"60-student roster used {large_count['n']}"
     )
+
+
+def test_list_question_sets_filters_active_by_teacher(client, db_session, teacher_user):
+    from app.models.user import User, UserRole
+    from tests.fixtures.adventure_factories import (
+        create_question_set,
+        ensure_teacher_profile,
+    )
+
+    profile_a = ensure_teacher_profile(teacher_user)
+    active = create_question_set(profile_a, title="Active Fractions", is_active=True)
+    create_question_set(profile_a, title="Inactive Set", is_active=False)
+
+    other = User(
+        username=f"adv_other_{uuid.uuid4().hex[:8]}",
+        email=f"adv_other_{uuid.uuid4().hex[:8]}@test.com",
+        role=UserRole.TEACHER,
+    )
+    other.set_password(TEACHER_PASSWORD)
+    db_session.add(other)
+    db_session.flush()
+    profile_b = ensure_teacher_profile(other)
+    create_question_set(profile_b, title="Other Teacher Set")
+    db_session.commit()
+
+    _login_teacher(client, teacher_user)
+    resp = _json(client, "GET", "/teacher/adventures/question-sets")
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["success"] is True
+    sets = body["data"]["question_sets"]
+    assert len(sets) == 1
+    assert sets[0]["id"] == active.id
+    assert sets[0]["title"] == "Active Fractions"
+    assert sets[0]["question_count"] == 1
+
+
+def test_quiz_node_question_set_save_clear_reload(client, db_session, teacher_user):
+    from tests.fixtures.adventure_factories import (
+        add_node,
+        create_adventure,
+        create_question_set,
+        ensure_teacher_profile,
+    )
+
+    profile = ensure_teacher_profile(teacher_user)
+    qset = create_question_set(profile, title="Math Quiz")
+    adventure = create_adventure(teacher_user, title="Quiz Adventure")
+    quiz = add_node(adventure, "quiz1", NodeType.QUIZ, x=100, y=50)
+    db_session.commit()
+
+    _login_teacher(client, teacher_user)
+    aid = adventure.id
+
+    resp = _json(
+        client,
+        "PATCH",
+        f"/teacher/adventures/{aid}/nodes/{quiz.id}",
+        {"question_set_id": qset.id},
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["data"]["node"]["question_set_id"] == qset.id
+
+    resp = _json(client, "GET", f"/teacher/adventures/{aid}/graph")
+    assert resp.status_code == 200
+    nodes = resp.get_json()["data"]["nodes"]
+    quiz_row = next(n for n in nodes if n["id"] == quiz.id)
+    assert quiz_row["question_set_id"] == qset.id
+
+    resp = _json(
+        client,
+        "PATCH",
+        f"/teacher/adventures/{aid}/nodes/{quiz.id}",
+        {"question_set_id": None},
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["data"]["node"]["question_set_id"] is None
+
+    resp = _json(client, "GET", f"/teacher/adventures/{aid}/graph")
+    quiz_row = next(n for n in resp.get_json()["data"]["nodes"] if n["id"] == quiz.id)
+    assert quiz_row["question_set_id"] is None
+
+
+def test_question_set_id_rejects_foreign_and_inactive(
+    client, db_session, teacher_user
+):
+    from app.models.user import User, UserRole
+    from tests.fixtures.adventure_factories import (
+        add_node,
+        create_adventure,
+        create_question_set,
+        ensure_teacher_profile,
+    )
+
+    profile = ensure_teacher_profile(teacher_user)
+    inactive = create_question_set(profile, title="Inactive", is_active=False)
+
+    other = User(
+        username=f"adv_foreign_{uuid.uuid4().hex[:8]}",
+        email=f"adv_foreign_{uuid.uuid4().hex[:8]}@test.com",
+        role=UserRole.TEACHER,
+    )
+    other.set_password(TEACHER_PASSWORD)
+    db_session.add(other)
+    db_session.flush()
+    foreign = create_question_set(ensure_teacher_profile(other), title="Foreign Set")
+
+    adventure = create_adventure(teacher_user, title="Validation Adventure")
+    quiz = add_node(adventure, "quiz1", NodeType.QUIZ)
+    db_session.commit()
+    aid = adventure.id
+
+    _login_teacher(client, teacher_user)
+
+    resp = _json(
+        client,
+        "POST",
+        f"/teacher/adventures/{aid}/nodes",
+        {
+            "slug": "quiz-new",
+            "title": "Quiz",
+            "node_type": "quiz",
+            "x": 50,
+            "y": 50,
+            "question_set_id": foreign.id,
+        },
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["success"] is False
+
+    resp = _json(
+        client,
+        "PATCH",
+        f"/teacher/adventures/{aid}/nodes/{quiz.id}",
+        {"question_set_id": inactive.id},
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["success"] is False
+
+    resp = _json(
+        client,
+        "PATCH",
+        f"/teacher/adventures/{aid}/nodes/{quiz.id}",
+        {"question_set_id": foreign.id},
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["success"] is False
+
+
+def test_patch_adventure_metadata_preserves_omitted_fields(client, db_session, teacher_user):
+    adventure = create_adventure(teacher_user, title="Original Title")
+    adventure.description = "Keep this description"
+    adventure.theme = "fantasy"
+    adventure.end_semantics = "all"
+    db_session.commit()
+
+    _login_teacher(client, teacher_user)
+    resp = _json(
+        client,
+        "PATCH",
+        f"/teacher/adventures/{adventure.id}",
+        {"title": "Updated Title", "theme": "sci-fi"},
+    )
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["success"] is True
+    adv = body["data"]["adventure"]
+    assert adv["title"] == "Updated Title"
+    assert adv["theme"] == "sci-fi"
+    assert adv["description"] == "Keep this description"
+    assert adv["end_semantics"] == "all"
+
+
+def test_patch_adventure_invalid_metadata_and_draft_sharing(client, db_session, teacher_user):
+    adventure = create_adventure(teacher_user, title="Draft Adventure")
+    db_session.commit()
+
+    _login_teacher(client, teacher_user)
+    aid = adventure.id
+
+    resp = _json(client, "PATCH", f"/teacher/adventures/{aid}", {"title": ""})
+    assert resp.status_code == 400
+    assert resp.get_json()["success"] is False
+
+    resp = _json(client, "PATCH", f"/teacher/adventures/{aid}", {"end_semantics": "maybe"})
+    assert resp.status_code == 400
+    assert resp.get_json()["success"] is False
+
+    resp = _json(client, "PATCH", f"/teacher/adventures/{aid}", {"is_public": True})
+    assert resp.status_code == 400
+    err = resp.get_json()
+    assert err["success"] is False
+    err_text = " ".join(
+        (e.get("message") or "") for e in (err.get("errors") or [])
+    ).lower()
+    assert "draft" in err_text or "publish" in err_text
+
+
+def test_background_upload_valid_and_invalid(client, db_session, teacher_user):
+    import io
+
+    adventure = create_adventure(teacher_user, title="Background Test")
+    db_session.commit()
+
+    _login_teacher(client, teacher_user)
+    aid = adventure.id
+
+    resp = client.post(
+        f"/teacher/adventures/{aid}/background",
+        data={"file": (io.BytesIO(b"not an image"), "notes.txt", "text/plain")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["success"] is False
+
+    png_data = b"\x89PNG\r\n\x1a\n" + (b"\x00" * 200)
+    resp = client.post(
+        f"/teacher/adventures/{aid}/background",
+        data={"file": (io.BytesIO(png_data), "map.png", "image/png")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["success"] is True
+    assert body["data"]["background_image_url"].startswith(
+        f"/static/images/adventure_backgrounds/{aid}/"
+    )
+
+    db_session.refresh(adventure)
+    assert adventure.background_image_url == body["data"]["background_image_url"]
+
+
+def test_node_coordinate_update_persistence(client, db_session, teacher_user):
+    adventure = create_adventure(teacher_user, title="Drag Adventure")
+    node = add_node(adventure, "story1", NodeType.STORY, x=100, y=200)
+    db_session.commit()
+
+    _login_teacher(client, teacher_user)
+    aid = adventure.id
+
+    resp = _json(
+        client,
+        "PATCH",
+        f"/teacher/adventures/{aid}/nodes/{node.id}",
+        {"x": 350, "y": 425},
+    )
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["success"] is True
+    assert body["data"]["node"]["x"] == 350
+    assert body["data"]["node"]["y"] == 425
+
+    resp = _json(client, "GET", f"/teacher/adventures/{aid}/graph")
+    assert resp.status_code == 200
+    nodes = resp.get_json()["data"]["nodes"]
+    node_row = next(n for n in nodes if n["id"] == node.id)
+    assert node_row["x"] == 350
+    assert node_row["y"] == 425
+
+
+def test_published_node_coordinate_update_bumps_version(
+    client, db_session, teacher_user
+):
+    adventure = create_adventure(
+        teacher_user,
+        title="Published Drag Adventure",
+        status=AdventureStatus.PUBLISHED,
+    )
+    node = add_node(adventure, "start", NodeType.START, x=50, y=50)
+    db_session.commit()
+    version_before = adventure.version
+
+    _login_teacher(client, teacher_user)
+    resp = _json(
+        client,
+        "PATCH",
+        f"/teacher/adventures/{adventure.id}/nodes/{node.id}",
+        {"x": 120, "y": 180},
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["success"] is True
+
+    db_session.refresh(adventure)
+    assert adventure.version == version_before + 1
+
+
+def _make_clan(db_session, classroom, name):
+    from app.models.clan import Clan
+
+    clan = Clan(name=name, class_id=classroom.id)
+    db_session.add(clan)
+    db_session.commit()
+    return clan
+
+
+def test_teacher_assign_clan_and_character(
+    client, db_session, teacher_user, teacher_classroom
+):
+    from tests.fixtures.adventure_factories import create_student_character
+
+    unique = uuid.uuid4().hex[:6]
+    clan = _make_clan(db_session, teacher_classroom, f"Team Oak {unique}")
+    student, character = create_student_character(
+        teacher_classroom.id, name="Ada the Druid", username_suffix=f"ada{unique}"
+    )
+    character.clan_id = clan.id
+    db_session.commit()
+
+    _login_teacher(client, teacher_user)
+    adventure, _nodes = build_linear_adventure(teacher_user)
+    adventure.status = AdventureStatus.PUBLISHED.value
+    db_session.commit()
+    aid = adventure.id
+
+    resp = _json(client, "POST", f"/teacher/adventures/{aid}/assignments", {"clan_id": clan.id})
+    assert resp.status_code == 201, resp.get_json()
+    data = resp.get_json()["data"]
+    assert data["assignment"]["target_type"] == "clan"
+    assert data["assignment"]["clan_id"] == clan.id
+    assert "Oak" in data["assignment"]["target_label"]
+    assert data["assignment"]["progress_url"].endswith(f"assignment_id={data['assignment']['id']}")
+    assert data["warnings"] == []
+
+    resp = _json(
+        client,
+        "POST",
+        f"/teacher/adventures/{aid}/assignments",
+        {"character_id": character.id},
+    )
+    assert resp.status_code == 201, resp.get_json()
+    char_data = resp.get_json()["data"]["assignment"]
+    assert char_data["target_type"] == "character"
+    assert char_data["character_id"] == character.id
+
+    resp = _json(client, "GET", f"/teacher/adventures/{aid}/assignments?format=json")
+    assert resp.status_code == 200
+    types = {a["target_type"] for a in resp.get_json()["data"]["assignments"]}
+    assert "clan" in types
+    assert "character" in types
+
+    resp = _json(
+        client,
+        "GET",
+        f"/teacher/adventures/{aid}/progress?format=json&assignment_id={data['assignment']['id']}",
+    )
+    assert resp.status_code == 200
+    names = [s["name"] for s in resp.get_json()["data"]["students"]]
+    assert "Ada the Druid" in names
+
+
+def test_teacher_assign_duplicate_and_foreign_targets(
+    client, db_session, teacher_user, teacher_classroom
+):
+    from app.models.user import User, UserRole
+    from tests.fixtures.adventure_factories import create_student_character
+
+    unique = uuid.uuid4().hex[:6]
+    clan = _make_clan(db_session, teacher_classroom, f"Wolves {unique}")
+    _login_teacher(client, teacher_user)
+    adventure, _nodes = build_linear_adventure(teacher_user)
+    adventure.status = AdventureStatus.PUBLISHED.value
+    db_session.commit()
+    aid = adventure.id
+
+    resp = _json(client, "POST", f"/teacher/adventures/{aid}/assignments", {"clan_id": clan.id})
+    assert resp.status_code == 201
+    resp = _json(client, "POST", f"/teacher/adventures/{aid}/assignments", {"clan_id": clan.id})
+    assert resp.status_code == 409
+
+    other = User(
+        username=f"other_t_{unique}",
+        email=f"other_t_{unique}@test.com",
+        role=UserRole.TEACHER,
+    )
+    other.set_password(TEACHER_PASSWORD)
+    db_session.add(other)
+    db_session.commit()
+    other_class = Classroom(
+        name=f"Other Class {unique}",
+        teacher_id=other.id,
+        join_code=f"OT{unique[:4]}",
+    )
+    db_session.add(other_class)
+    db_session.commit()
+    foreign_clan = _make_clan(db_session, other_class, f"Foreign {unique}")
+    _, foreign_char = create_student_character(
+        other_class.id, name="Foreign Hero", username_suffix=f"fh{unique}"
+    )
+    db_session.commit()
+
+    resp = _json(
+        client, "POST", f"/teacher/adventures/{aid}/assignments", {"clan_id": foreign_clan.id}
+    )
+    assert resp.status_code == 403
+    resp = _json(
+        client,
+        "POST",
+        f"/teacher/adventures/{aid}/assignments",
+        {"character_id": foreign_char.id},
+    )
+    assert resp.status_code == 403
+
+
+def test_teacher_assign_empty_clan_warns(
+    client, db_session, teacher_user, teacher_classroom
+):
+    unique = uuid.uuid4().hex[:6]
+    clan = _make_clan(db_session, teacher_classroom, f"Empty Wolves {unique}")
+    _login_teacher(client, teacher_user)
+    adventure, _nodes = build_linear_adventure(teacher_user)
+    adventure.status = AdventureStatus.PUBLISHED.value
+    db_session.commit()
+
+    resp = _json(
+        client,
+        "POST",
+        f"/teacher/adventures/{adventure.id}/assignments",
+        {"clan_id": clan.id},
+    )
+    assert resp.status_code == 201
+    warnings = resp.get_json()["data"]["warnings"]
+    assert warnings
+    assert "no members" in warnings[0].lower()
+
+
+def test_node_icon_catalog_has_one_default_per_type(client, db_session, teacher_user):
+    from app.models.adventure import NodeType
+
+    _login_teacher(client, teacher_user)
+    resp = _json(client, "GET", "/teacher/adventures/node-icons")
+    assert resp.status_code == 200
+    icons = resp.get_json()["data"]["icons"]
+    defaults = []
+    for icon in icons:
+        defaults.extend(icon.get("default_for") or [])
+    assert sorted(defaults) == sorted(item.value for item in NodeType)
+    assert len(defaults) == len(set(defaults))
+
+
+def test_node_icon_save_and_clear(client, db_session, teacher_user):
+    _login_teacher(client, teacher_user)
+    adventure, nodes = build_linear_adventure(teacher_user)
+    battle = next(n for n in nodes if n.node_type == NodeType.BATTLE.value)
+    aid = adventure.id
+
+    resp = _json(
+        client,
+        "PATCH",
+        f"/teacher/adventures/{aid}/nodes/{battle.id}",
+        {"icon_url": "castle"},
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["data"]["node"]["icon_url"] == "castle"
+
+    resp = _json(
+        client,
+        "PATCH",
+        f"/teacher/adventures/{aid}/nodes/{battle.id}",
+        {"icon_url": None},
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["data"]["node"]["icon_url"] is None
+
+    resp = _json(
+        client,
+        "PATCH",
+        f"/teacher/adventures/{aid}/nodes/{battle.id}",
+        {"icon_url": ""},
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["data"]["node"]["icon_url"] is None

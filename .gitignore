@@ -22,6 +22,7 @@ wheels/
 
 # Virtual Environment
 venv/
+.venv/
 env/
 .env
 
@@ -102,6 +103,8 @@ yarn-debug.log*
 yarn-error.log*
 dev-debug.log
 # OS specific
+Thumbs.db
+*.tmp
 
 # Added by Claude Task Master
 .idea

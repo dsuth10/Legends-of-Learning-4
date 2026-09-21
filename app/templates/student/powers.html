@@ -2,8 +2,8 @@
 
 {% block title %}Powers{% endblock %}
 
-{% block content %}
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+{% block shell_main %}
+<div class="h-full overflow-y-auto py-8 px-4">
   <div class="max-w-5xl mx-auto">
     <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
       <div>
@@ -100,7 +100,10 @@
     {% endfor %}
   </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
+{{ super() }}
 <script>
 document.querySelectorAll('.learn-btn').forEach(function(btn) {
   btn.addEventListener('click', async function() {

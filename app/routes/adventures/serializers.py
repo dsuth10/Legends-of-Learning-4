@@ -129,6 +129,8 @@ def assignment_dict(
     *,
     classroom_name: Optional[str] = None,
     progress_url: Optional[str] = None,
+    target_type: Optional[str] = None,
+    target_label: Optional[str] = None,
 ) -> dict:
     data = {
         "id": assignment.id,
@@ -146,6 +148,10 @@ def assignment_dict(
         data["classroom_name"] = classroom_name
     if progress_url is not None:
         data["progress_url"] = progress_url
+    if target_type is not None:
+        data["target_type"] = target_type
+    if target_label is not None:
+        data["target_label"] = target_label
     return data
 
 
