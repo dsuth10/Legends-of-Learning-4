@@ -97,16 +97,30 @@ def background_url(self):
 1. **Phase 4 hygiene**: Renamed clan icons (clan_01..10), compressed clan+app icons, removed duplicates
 2. **Phase 3**: Added quest-giver avatars, quest type badges, reward chips to `static/images/quests/`
 3. **Phase 1+2 assets**: Node icons, adventure backgrounds, equipment tier 2-3, Level 2/3 backdrops, full character portrait set
-4. **Asset wiring**: Connected all art assets to Flask templates and models
+4. **Asset wiring** (371f27b): Connected all art assets to Flask templates and models
+5. **Documentation** (6703c7c): Added comprehensive wiring summary
+6. **Equipment seeding** (20f62af): Added all tier 2/3 equipment to EQUIPMENT_DATA + sync command
 
 ## Result
 
 ✅ **All art assets are now live in the application**
 - Character portraits display with level-appropriate backdrops
-- Equipment icons work across all tiers
+- Equipment icons work across all tiers **[UPDATED: All tier 2/3 items now seeded]**
 - Clan icons auto-populate in teacher/student UIs
 - Adventure and quest assets ready for teacher use
 - No orphan files remain unused
+
+### Critical Gap Closed (2026-09-22)
+**Equipment Seeding**: Added 32 missing tier 2/3 equipment items to `EQUIPMENT_DATA`:
+- **Warrior**: 5 tier-2 items (ring, shield, plate, axe, sword) + 3 tier-3 items (shield, plate, sword)
+- **Sorcerer**: 5 tier-2 items (book, ring, cloak, staff, wand) + 3 tier-3 items (book, cloak, staff)
+- **Druid**: 5 tier-2 items (bracers, pendant, cloak, flail, staff) + 3 tier-3 items (pendant, cloak, staff)
+
+**Total**: 43 equipment items (11 tier-1, 23 tier-2, 9 tier-3)
+
+**Sync Command**: Created `flask sync-equipment` to add new items to existing databases without requiring a full reseed.
+
+**Verification**: Every equipment PNG under `static/images/equipment/{warrior,sorcerer,druid}/` now has a matching EQUIPMENT_DATA entry.
 
 ## Next Steps (if needed)
 
