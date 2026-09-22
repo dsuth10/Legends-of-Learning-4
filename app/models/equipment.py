@@ -133,6 +133,6 @@ class Inventory(Base):
         return f'<Inventory {self.equipment.name} ({status})>'
 
 # Default image filenames for test items
-TEST_ARMOR_IMAGE = '/static/images/test_armor.png'
-TEST_RING_IMAGE = '/static/images/test_ring.png'
-TEST_SWORD_IMAGE = '/static/images/test_sword.png' 
+TEST_ARMOR_IMAGE = '/static/images/equipment/warrior/warrior_1_armor_plate.png'
+TEST_RING_IMAGE = '/static/images/equipment/warrior/warrior_1_accessory_ring.png'
+TEST_SWORD_IMAGE = '/static/images/equipment/warrior/warrior_1_weapon_sword.png' 
