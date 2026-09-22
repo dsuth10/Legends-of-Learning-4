@@ -121,6 +121,55 @@
   pointer-events: none;
 }
 
+.adventure-map .node-icon-image,
+.adventure-map .node-status-image {
+  pointer-events: none;
+}
+
+.adventure-rewards {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.adventure-rewards-heading {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.adventure-reward-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #475569;
+  border-radius: 0.5rem;
+  background: rgba(30, 41, 59, 0.85);
+  color: #f8fafc;
+}
+
+.adventure-reward-chip img {
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+}
+
+.adventure-reward-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.adventure-reward-condition {
+  margin-left: auto;
+  color: #cbd5e1;
+  font-size: 0.72rem;
+}
+
 .adventure-overview {
   position: absolute;
   top: 0.75rem;

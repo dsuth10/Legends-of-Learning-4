@@ -33,12 +33,53 @@
     var found = iconCatalog().find(function (icon) {
       return (icon.default_for || []).indexOf(nodeType) >= 0;
     });
-    return (found && found.ligature) || DEFAULT_ICONS[nodeType] || "flag";
+    return (found && (found.image_url || found.ligature)) || DEFAULT_ICONS[nodeType] || "flag";
   }
 
   function resolveNodeIcon(node) {
-    if (node && node.icon_url && node.icon_url.charAt(0) !== "/") return node.icon_url;
+    if (node && node.icon_url) {
+      if (isImageIcon(node.icon_url)) return node.icon_url;
+      if (/^(https?:|data:|\/\/)/i.test(node.icon_url) || /\.(png|jpe?g|webp|svg)(?:[?#].*)?$/i.test(node.icon_url)) {
+        return DEFAULT_ICONS[node.node_type] || "flag";
+      }
+      return node.icon_url;
+    }
     return defaultIconFor(node && node.node_type);
+  }
+
+  function isImageIcon(value) {
+    return !!value && /^\/static\/.+\.(png|jpe?g|webp|svg)(?:[?#].*)?$/i.test(value);
+  }
+
+  function appendNodeIcon(g, value, ns, radius, fallbackLigature) {
+    if (isImageIcon(value)) {
+      var image = document.createElementNS(ns, "image");
+      image.setAttribute("class", "node-icon-image");
+      image.setAttribute("x", -radius * 0.58);
+      image.setAttribute("y", -radius * 0.58);
+      image.setAttribute("width", radius * 1.16);
+      image.setAttribute("height", radius * 1.16);
+      image.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      image.setAttribute("href", value);
+      image.addEventListener("error", function () {
+        var fallback = document.createElementNS(ns, "text");
+        fallback.setAttribute("class", "material-icons node-icon");
+        fallback.setAttribute("text-anchor", "middle");
+        fallback.setAttribute("dominant-baseline", "central");
+        fallback.setAttribute("y", "2");
+        fallback.textContent = fallbackLigature || "flag";
+        g.replaceChild(fallback, image);
+      });
+      g.appendChild(image);
+      return;
+    }
+    var icon = document.createElementNS(ns, "text");
+    icon.setAttribute("class", "material-icons node-icon");
+    icon.setAttribute("text-anchor", "middle");
+    icon.setAttribute("dominant-baseline", "central");
+    icon.setAttribute("y", "2");
+    icon.textContent = value || DEFAULT_ICONS.start;
+    g.appendChild(icon);
   }
 
   function recordCommand(entry) {
@@ -560,19 +601,13 @@
       var circle = document.createElementNS(ns, "circle");
       circle.setAttribute("r", 24);
       circle.setAttribute("class", "node-circle");
-      var icon = document.createElementNS(ns, "text");
-      icon.setAttribute("class", "material-icons node-icon");
-      icon.setAttribute("text-anchor", "middle");
-      icon.setAttribute("dominant-baseline", "central");
-      icon.setAttribute("y", "2");
-      icon.textContent = resolveNodeIcon(node);
       var label = document.createElementNS(ns, "text");
       label.setAttribute("y", 40);
       label.setAttribute("text-anchor", "middle");
       label.setAttribute("class", "node-label");
       label.textContent = node.slug;
       g.appendChild(circle);
-      g.appendChild(icon);
+      appendNodeIcon(g, resolveNodeIcon(node), ns, 24, DEFAULT_ICONS[node.node_type]);
       g.appendChild(label);
       attachNodePointerHandlers(g, node, svg, data, handlers);
       svg.appendChild(g);
@@ -719,8 +754,9 @@
     if (stored) {
       html += "Stored: <strong>" + stored + "</strong>";
       if (stored !== typeDefault) html += " · type default: " + typeDefault;
-      if (catalog.every(function (i) { return i.ligature !== stored; }) && stored.charAt(0) !== "/") {
-        html += " (not in library; map uses type default)";
+      if (catalog.every(function (i) { return i.ligature !== stored && i.image_url !== stored; }) &&
+          stored.charAt(0) !== "/" && !/^https?:\/\//i.test(stored) && !/^data:image\//i.test(stored)) {
+        html += " (custom icon value)";
       }
     } else {
       html += "Using type default: <strong>" + typeDefault + "</strong>";
@@ -728,11 +764,14 @@
     html += "</p>";
     html += "<div class=\"node-icon-picker\" id=\"node-icon-picker\" role=\"listbox\" aria-label=\"Icon library\">";
     catalog.forEach(function (icon) {
-      var isSel = icon.ligature === selected;
+      var iconValue = icon.image_url || icon.ligature;
+      var isSel = iconValue === selected || icon.ligature === selected;
       html += "<button type=\"button\" class=\"node-icon-option" + (isSel ? " is-selected" : "") + "\" " +
-        "data-ligature=\"" + icon.ligature + "\" title=\"" + icon.label + "\" role=\"option\" " +
+        "data-ligature=\"" + icon.ligature + "\" data-icon-value=\"" + iconValue + "\" title=\"" + icon.label + "\" role=\"option\" " +
         "aria-selected=\"" + (isSel ? "true" : "false") + "\">" +
-        "<span class=\"material-icons\" aria-hidden=\"true\">" + icon.ligature + "</span></button>";
+        (icon.image_url
+          ? "<img class=\"node-icon-option-image\" src=\"" + icon.image_url + "\" alt=\"\" aria-hidden=\"true\">"
+          : "<span class=\"material-icons\" aria-hidden=\"true\">" + icon.ligature + "</span>") + "</button>";
     });
     html += "</div>";
     html += "<button type=\"button\" class=\"btn btn-outline-secondary btn-sm w-100 mb-2\" id=\"node-icon-clear\">Clear override (use type default)</button>";
@@ -769,7 +808,7 @@
     var iconHidden = document.getElementById("node-icon-url");
     document.querySelectorAll("#node-icon-picker .node-icon-option").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        var lig = btn.getAttribute("data-ligature");
+        var lig = btn.getAttribute("data-icon-value") || btn.getAttribute("data-ligature");
         if (iconHidden) iconHidden.value = lig;
         document.querySelectorAll("#node-icon-picker .node-icon-option").forEach(function (b) {
           b.classList.toggle("is-selected", b === btn);
@@ -782,7 +821,9 @@
       clearBtn.addEventListener("click", function () {
         if (iconHidden) iconHidden.value = "";
         document.querySelectorAll("#node-icon-picker .node-icon-option").forEach(function (b) {
-          b.classList.toggle("is-selected", b.getAttribute("data-ligature") === defaultIconFor(node.node_type));
+          var selected = b.getAttribute("data-icon-value") === defaultIconFor(node.node_type);
+          b.classList.toggle("is-selected", selected);
+          b.setAttribute("aria-selected", selected ? "true" : "false");
         });
       });
     }
@@ -1086,6 +1127,20 @@
         }
       }
 
+      function setBackgroundPresetValue(url) {
+        var preset = document.getElementById("settings-background-preset");
+        if (!preset) return;
+        var value = url || "";
+        var option = Array.prototype.find.call(preset.options, function (item) { return item.value === value; });
+        if (!option && value) {
+          option = document.createElement("option");
+          option.value = value;
+          option.textContent = "Uploaded background";
+          preset.appendChild(option);
+        }
+        preset.value = value;
+      }
+
       function syncSettingsFormFromBaseline() {
         if (!settingsBaseline) return;
         var titleEl = document.getElementById("settings-title");
@@ -1093,6 +1148,7 @@
         var themeEl = document.getElementById("settings-theme");
         var endEl = document.getElementById("settings-end-semantics");
         var shareEl = document.getElementById("settings-is-public");
+        setBackgroundPresetValue(settingsBaseline.background_image_url);
         if (titleEl) titleEl.value = settingsBaseline.title || "";
         if (descEl) descEl.value = settingsBaseline.description || "";
         if (themeEl) themeEl.value = settingsBaseline.theme || "fantasy";
@@ -1125,6 +1181,7 @@
           theme: (document.getElementById("settings-theme") || {}).value,
           end_semantics: (document.getElementById("settings-end-semantics") || {}).value,
           is_public: !!(document.getElementById("settings-is-public") || {}).checked,
+          background_image_url: (document.getElementById("settings-background-preset") || {}).value || null,
         };
       }
 
@@ -1135,6 +1192,7 @@
         if (current.theme !== baseline.theme) payload.theme = current.theme;
         if (current.end_semantics !== baseline.end_semantics) payload.end_semantics = current.end_semantics;
         if (current.is_public !== baseline.is_public) payload.is_public = current.is_public;
+        if (current.background_image_url !== baseline.background_image_url) payload.background_image_url = current.background_image_url;
         return payload;
       }
 
@@ -1158,11 +1216,19 @@
         });
 
         var bgInput = document.getElementById("settings-background-file");
+        var bgPreset = document.getElementById("settings-background-preset");
+        if (bgPreset) {
+          bgPreset.addEventListener("change", function () {
+            clearPendingBackgroundPreview();
+            updateSettingsBackgroundPreview(bgPreset.value || null);
+          });
+        }
         if (bgInput) {
           bgInput.addEventListener("change", function (evt) {
             var file = evt.target.files && evt.target.files[0];
             if (!file) return;
             pendingBackgroundFile = file;
+            setBackgroundPresetValue(settingsBaseline && settingsBaseline.background_image_url);
             if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
             pendingPreviewUrl = URL.createObjectURL(file);
             updateSettingsBackgroundPreview(pendingPreviewUrl);
@@ -1191,6 +1257,7 @@
                 var uploadedUrl = uploadBody.data.background_image_url;
                 applyCanvasBackground(uploadedUrl);
                 settingsBaseline.background_image_url = uploadedUrl;
+                setBackgroundPresetValue(uploadedUrl);
                 updateAdventureInState({ background_image_url: uploadedUrl });
                 clearPendingBackgroundPreview();
               }
@@ -1232,6 +1299,7 @@
                   background_image_url: patchBody.data.adventure.background_image_url || null,
                   status: patchBody.data.adventure.status || settingsBaseline.status,
                 };
+                setBackgroundPresetValue(settingsBaseline.background_image_url);
               }
               showEditorSuccess("Settings saved.");
               modal.hide();

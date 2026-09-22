@@ -1,3 +1,9 @@
+# Historical handoff — superseded by the 23 September audit
+
+Use the [current art and integration worklist](Ideas/ART_ASSET_WORKLIST.md). PR #3 is already merged. The source has 43 equipment entries and matching files (18/16/9 by filename tier), but duplicate cloak names, existing database paths and active-page wiring still need attention. The completion claims and counts below are preserved as historical context, not current acceptance evidence.
+
+---
+
 # Art Asset Wiring Summary - PR #3
 
 ## Overview

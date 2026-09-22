@@ -41,6 +41,7 @@ class Equipment(Base):
     is_tradeable = db.Column(db.Boolean, default=True, nullable=False)
     cost = db.Column(db.Integer, default=0, nullable=False)  # Cost in gold to purchase
     image_url = db.Column(db.String(256), nullable=True)
+    catalogue_key = db.Column(db.String(128), nullable=True, unique=True)
     class_restriction = db.Column(db.String(32), nullable=True)
     
     def __init__(self, name, type, slot, cost=0, **kwargs):

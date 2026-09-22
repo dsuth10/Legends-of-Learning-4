@@ -26,7 +26,7 @@
                     {% endfor %}
                 </select>
                 <p class="text-xs text-gray-500 mt-1">
-                    Warrior: High health/defense. Sorcerer: High magic. Druid: Balanced/support.
+                    Warrior: high health and defence. Sorcerer: high magic. Druid: balanced support.
                 </p>
             </div>
             <div>
@@ -39,18 +39,77 @@
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-semibold mb-2">Avatar</label>
-                <div class="flex flex-wrap gap-3">
-                    {% for avatar in avatar_options %}
-                    <label class="cursor-pointer">
-                        <input class="sr-only peer" type="radio" name="avatar_url" id="avatar_{{ loop.index }}" value="{{ avatar }}" {% if form.avatar_url == avatar %}checked{% endif %} required>
-                        <img src="{{ avatar }}" alt="Avatar {{ loop.index }}" class="w-16 h-16 rounded-lg border-2 border-transparent peer-checked:border-primary">
+                <label for="portrait_gender" class="block text-sm font-semibold mb-1">Portrait appearance</label>
+                <select class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800" id="portrait_gender" name="portrait_gender" required>
+                    <option value="">Choose an appearance</option>
+                    <option value="male" {% if form.portrait_gender == 'male' or (not form.portrait_gender and form.gender|lower == 'male') %}selected{% endif %}>Masculine style</option>
+                    <option value="female" {% if form.portrait_gender == 'female' or (not form.portrait_gender and form.gender|lower == 'female') %}selected{% endif %}>Feminine style</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Choose the artwork separately from the gender option above. Gender “Other” does not select artwork for you.</p>
+            </div>
+            <fieldset>
+                <legend class="block text-sm font-semibold mb-2">Choose a portrait</legend>
+                <div class="grid grid-cols-3 gap-3">
+                    {% for option in portrait_options %}
+                    <label class="cursor-pointer rounded-lg border-2 border-gray-200 dark:border-gray-700 p-2 text-center has-[:checked]:border-green-600 focus-within:ring-2 focus-within:ring-green-600">
+                        <input class="sr-only" type="radio" name="portrait_option" value="{{ option }}" {% if form.portrait_option|string == option|string or (not form.portrait_option and option == 1) %}checked{% endif %} required>
+                        <img class="portrait-choice-preview mx-auto h-28 w-28 object-contain" data-option="{{ option }}" src="" alt="Portrait option {{ option }}">
+                        <span class="block mt-1 text-sm font-semibold">Option {{ option }}</span>
                     </label>
                     {% endfor %}
                 </div>
-            </div>
+                <input type="hidden" id="avatar_url" name="avatar_url" value="{{ form.avatar_url or '' }}">
+            </fieldset>
             <button type="submit" class="rounded-full bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 shadow">Create Character</button>
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(() => {
+    const classSelect = document.getElementById('character_class');
+    const genderSelect = document.getElementById('gender');
+    const appearanceSelect = document.getElementById('portrait_gender');
+    const avatarUrl = document.getElementById('avatar_url');
+    const options = document.querySelectorAll('input[name="portrait_option"]');
+    const previews = document.querySelectorAll('.portrait-choice-preview');
+
+    function refreshPortraitChoices() {
+        const characterClass = (classSelect.value || '').toLowerCase();
+        const appearance = appearanceSelect.value;
+        const selectedOption = document.querySelector('input[name="portrait_option"]:checked');
+        const selectedNumber = selectedOption ? selectedOption.value : '1';
+        previews.forEach((image) => {
+            const number = image.dataset.option;
+            if (characterClass && appearance) {
+                const file = `${number}_${characterClass}_${appearance}_level1.png`;
+                image.src = `/static/images/characters/${characterClass}/${appearance}/level1/${file}`;
+                image.alt = `${characterClass} ${appearance} appearance, option ${number}`;
+            } else {
+                image.removeAttribute('src');
+                image.alt = `Portrait option ${number}; choose a class and appearance to preview`;
+            }
+        });
+        if (characterClass && appearance) {
+            const file = `${selectedNumber}_${characterClass}_${appearance}_level1.png`;
+            avatarUrl.value = `/static/images/characters/${characterClass}/${appearance}/level1/${file}`;
+        } else {
+            avatarUrl.value = '';
+        }
+    }
+
+    genderSelect.addEventListener('change', () => {
+        if (!appearanceSelect.value && genderSelect.value.toLowerCase() !== 'other') {
+            appearanceSelect.value = genderSelect.value.toLowerCase();
+        }
+        refreshPortraitChoices();
+    });
+    [classSelect, appearanceSelect].forEach((control) => control.addEventListener('change', refreshPortraitChoices));
+    options.forEach((option) => option.addEventListener('change', refreshPortraitChoices));
+    refreshPortraitChoices();
+})();
+</script>
 {% endblock %}

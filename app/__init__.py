@@ -135,7 +135,14 @@ def create_app(config=None):
     with app.app_context():
         inspector = inspect(db.engine)
         if inspector.has_table(Equipment.__tablename__):
-            if Equipment.query.count() == 0:
+            equipment_columns = {column['name'] for column in inspector.get_columns(Equipment.__tablename__)}
+            # Keep app startup safe while Alembic is about to add newer nullable
+            # catalogue columns to an existing database. count(Equipment.id)
+            # emits only that column, whereas query.count() selects the whole model.
+            equipment_count = db.session.query(db.func.count(Equipment.id)).scalar()
+            # Do not seed through the ORM until migrations have added every mapped
+            # column. This lets `flask db upgrade` initialise an older/empty DB.
+            if equipment_count == 0 and 'catalogue_key' in equipment_columns:
                 for item in EQUIPMENT_DATA:
                     type_value = item['type'].value if hasattr(item['type'], 'value') else item['type']
                     slot_value = item['slot'].value if hasattr(item['slot'], 'value') else item['slot']
@@ -152,6 +159,7 @@ def create_app(config=None):
                         rarity=item['rarity'],
                         image_url=item['image_url'],
                         class_restriction=item.get('class_restriction'),
+                        **({'catalogue_key': item['catalogue_key']} if 'catalogue_key' in equipment_columns else {}),
                     )
                     db.session.add(eq)
                 db.session.commit()

@@ -50,6 +50,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 2,
         'rarity': 1,
         'image_url': '/static/images/equipment/warrior/warrior_1_accessory_ring.png',
+        'catalogue_key': 'warrior_1_accessory_ring',
         'class_restriction': 'warrior',
     },
     {
@@ -64,6 +65,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 5,
         'rarity': 1,
         'image_url': '/static/images/equipment/warrior/warrior_1_armor_leather.png',
+        'catalogue_key': 'warrior_1_armor_leather',
         'class_restriction': 'warrior',
     },
     {
@@ -78,6 +80,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 8,
         'rarity': 2,
         'image_url': '/static/images/equipment/warrior/warrior_1_armor_plate.png',
+        'catalogue_key': 'warrior_1_armor_plate',
         'class_restriction': 'warrior',
     },
     {
@@ -92,6 +95,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 10,
         'rarity': 2,
         'image_url': '/static/images/equipment/warrior/warrior_1_accessory_shield.png',
+        'catalogue_key': 'warrior_1_accessory_shield',
         'class_restriction': 'warrior',
     },
     {
@@ -106,6 +110,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 2,
         'rarity': 2,
         'image_url': '/static/images/equipment/warrior/warrior_2_weapon_bow.png',
+        'catalogue_key': 'warrior_2_weapon_bow',
         'class_restriction': 'warrior',
     },
     {
@@ -120,6 +125,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': -1,
         'rarity': 1,
         'image_url': '/static/images/equipment/warrior/warrior_1_weapon_axe.png',
+        'catalogue_key': 'warrior_1_weapon_axe',
         'class_restriction': 'warrior',
     },
     {
@@ -134,6 +140,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 0,
         'rarity': 1,
         'image_url': '/static/images/equipment/warrior/warrior_1_weapon_sword.png',
+        'catalogue_key': 'warrior_1_weapon_sword',
         'class_restriction': 'warrior',
     },
     # --- Sorcerer ---
@@ -149,6 +156,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 2,
         'rarity': 2,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_1_accessory_book.png',
+        'catalogue_key': 'sorcerer_1_accessory_book',
         'class_restriction': 'sorcerer',
     },
     {
@@ -163,10 +171,11 @@ EQUIPMENT_DATA = [
         'defense_bonus': 1,
         'rarity': 1,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_1_weapon_wand.png',
+        'catalogue_key': 'sorcerer_1_weapon_wand',
         'class_restriction': 'sorcerer',
     },
     {
-        'name': 'Sorcerer Cloak II',
+        'name': 'Sorcerer Cloak I',
         'description': 'An advanced cloak for sorcerers.',
         'type': EquipmentType.ARMOR,
         'slot': EquipmentSlot.CHEST,
@@ -177,6 +186,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 0,
         'rarity': 2,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_1_armor_cloak2.png',
+        'catalogue_key': 'sorcerer_1_armor_cloak2',
         'class_restriction': 'sorcerer',
     },
     {
@@ -191,6 +201,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 2,
         'rarity': 1,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_1_weapon_staff.png',
+        'catalogue_key': 'sorcerer_1_weapon_staff',
         'class_restriction': 'sorcerer',
     },
     {
@@ -205,6 +216,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 2,
         'rarity': 1,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_1_accessory_ring.png',
+        'catalogue_key': 'sorcerer_1_accessory_ring',
         'class_restriction': 'sorcerer',
     },
     {
@@ -219,6 +231,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 0,
         'rarity': 1,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_1_armor_cloak.png',
+        'catalogue_key': 'sorcerer_1_armor_cloak',
         'class_restriction': 'sorcerer',
     },
     # --- Druid ---
@@ -234,6 +247,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 4,
         'rarity': 2,
         'image_url': '/static/images/equipment/druid/druid_1_accessory_bracers.png',
+        'catalogue_key': 'druid_1_accessory_bracers',
         'class_restriction': 'druid',
     },
     {
@@ -248,10 +262,11 @@ EQUIPMENT_DATA = [
         'defense_bonus': 3,
         'rarity': 2,
         'image_url': '/static/images/equipment/druid/druid_1_weapon_flail.png',
+        'catalogue_key': 'druid_1_weapon_flail',
         'class_restriction': 'druid',
     },
     {
-        'name': 'Druid Cloak II',
+        'name': 'Druid Cloak I',
         'description': 'An enchanted cloak for druids.',
         'type': EquipmentType.ARMOR,
         'slot': EquipmentSlot.CHEST,
@@ -262,6 +277,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 7,
         'rarity': 2,
         'image_url': '/static/images/equipment/druid/druid_1_armor_cloak2.png',
+        'catalogue_key': 'druid_1_armor_cloak2',
         'class_restriction': 'druid',
     },
     {
@@ -276,6 +292,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 3,
         'rarity': 1,
         'image_url': '/static/images/equipment/druid/druid_1_weapon_staff.png',
+        'catalogue_key': 'druid_1_weapon_staff',
         'class_restriction': 'druid',
     },
     {
@@ -290,6 +307,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 2,
         'rarity': 1,
         'image_url': '/static/images/equipment/druid/druid_1_accessory_pendant.png',
+        'catalogue_key': 'druid_1_accessory_pendant',
         'class_restriction': 'druid',
     },
     {
@@ -304,6 +322,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 5,
         'rarity': 1,
         'image_url': '/static/images/equipment/druid/druid_1_armor_cloak.png',
+        'catalogue_key': 'druid_1_armor_cloak',
         'class_restriction': 'druid',
     },
     
@@ -320,6 +339,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 4,
         'rarity': 2,
         'image_url': '/static/images/equipment/warrior/warrior_2_accessory_ring.png',
+        'catalogue_key': 'warrior_2_accessory_ring',
         'class_restriction': 'warrior',
     },
     {
@@ -334,6 +354,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 20,
         'rarity': 2,
         'image_url': '/static/images/equipment/warrior/warrior_2_accessory_shield.png',
+        'catalogue_key': 'warrior_2_accessory_shield',
         'class_restriction': 'warrior',
     },
     {
@@ -348,6 +369,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 16,
         'rarity': 2,
         'image_url': '/static/images/equipment/warrior/warrior_2_armor_plate.png',
+        'catalogue_key': 'warrior_2_armor_plate',
         'class_restriction': 'warrior',
     },
     {
@@ -362,6 +384,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': -2,
         'rarity': 2,
         'image_url': '/static/images/equipment/warrior/warrior_2_weapon_axe.png',
+        'catalogue_key': 'warrior_2_weapon_axe',
         'class_restriction': 'warrior',
     },
     {
@@ -376,6 +399,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 0,
         'rarity': 2,
         'image_url': '/static/images/equipment/warrior/warrior_2_weapon_sword.png',
+        'catalogue_key': 'warrior_2_weapon_sword',
         'class_restriction': 'warrior',
     },
     
@@ -392,6 +416,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 40,
         'rarity': 3,
         'image_url': '/static/images/equipment/warrior/warrior_3_accessory_shield.png',
+        'catalogue_key': 'warrior_3_accessory_shield',
         'class_restriction': 'warrior',
     },
     {
@@ -406,6 +431,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 32,
         'rarity': 3,
         'image_url': '/static/images/equipment/warrior/warrior_3_armor_plate.png',
+        'catalogue_key': 'warrior_3_armor_plate',
         'class_restriction': 'warrior',
     },
     {
@@ -420,6 +446,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 0,
         'rarity': 3,
         'image_url': '/static/images/equipment/warrior/warrior_3_weapon_sword.png',
+        'catalogue_key': 'warrior_3_weapon_sword',
         'class_restriction': 'warrior',
     },
     
@@ -436,6 +463,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 4,
         'rarity': 2,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_2_accessory_book.png',
+        'catalogue_key': 'sorcerer_2_accessory_book',
         'class_restriction': 'sorcerer',
     },
     {
@@ -450,6 +478,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 4,
         'rarity': 2,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_2_accessory_ring.png',
+        'catalogue_key': 'sorcerer_2_accessory_ring',
         'class_restriction': 'sorcerer',
     },
     {
@@ -464,6 +493,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 0,
         'rarity': 2,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_2_armor_cloak.png',
+        'catalogue_key': 'sorcerer_2_armor_cloak',
         'class_restriction': 'sorcerer',
     },
     {
@@ -478,6 +508,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 4,
         'rarity': 2,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_2_weapon_staff.png',
+        'catalogue_key': 'sorcerer_2_weapon_staff',
         'class_restriction': 'sorcerer',
     },
     {
@@ -492,6 +523,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 2,
         'rarity': 2,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_2_weapon_wand.png',
+        'catalogue_key': 'sorcerer_2_weapon_wand',
         'class_restriction': 'sorcerer',
     },
     
@@ -508,6 +540,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 8,
         'rarity': 3,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_3_accessory_book.png',
+        'catalogue_key': 'sorcerer_3_accessory_book',
         'class_restriction': 'sorcerer',
     },
     {
@@ -522,6 +555,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 0,
         'rarity': 3,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_3_armor_cloak.png',
+        'catalogue_key': 'sorcerer_3_armor_cloak',
         'class_restriction': 'sorcerer',
     },
     {
@@ -536,6 +570,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 8,
         'rarity': 3,
         'image_url': '/static/images/equipment/sorcerer/sorcerer_3_weapon_staff.png',
+        'catalogue_key': 'sorcerer_3_weapon_staff',
         'class_restriction': 'sorcerer',
     },
     
@@ -552,6 +587,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 8,
         'rarity': 2,
         'image_url': '/static/images/equipment/druid/druid_2_accessory_bracers.png',
+        'catalogue_key': 'druid_2_accessory_bracers',
         'class_restriction': 'druid',
     },
     {
@@ -566,6 +602,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 4,
         'rarity': 2,
         'image_url': '/static/images/equipment/druid/druid_2_accessory_pendant.png',
+        'catalogue_key': 'druid_2_accessory_pendant',
         'class_restriction': 'druid',
     },
     {
@@ -580,6 +617,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 14,
         'rarity': 2,
         'image_url': '/static/images/equipment/druid/druid_2_armor_cloak.png',
+        'catalogue_key': 'druid_2_armor_cloak',
         'class_restriction': 'druid',
     },
     {
@@ -594,6 +632,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 6,
         'rarity': 2,
         'image_url': '/static/images/equipment/druid/druid_2_weapon_flail.png',
+        'catalogue_key': 'druid_2_weapon_flail',
         'class_restriction': 'druid',
     },
     {
@@ -608,6 +647,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 6,
         'rarity': 2,
         'image_url': '/static/images/equipment/druid/druid_2_weapon_staff.png',
+        'catalogue_key': 'druid_2_weapon_staff',
         'class_restriction': 'druid',
     },
     
@@ -624,6 +664,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 8,
         'rarity': 3,
         'image_url': '/static/images/equipment/druid/druid_3_accessory_pendant.png',
+        'catalogue_key': 'druid_3_accessory_pendant',
         'class_restriction': 'druid',
     },
     {
@@ -638,6 +679,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 28,
         'rarity': 3,
         'image_url': '/static/images/equipment/druid/druid_3_armor_cloak.png',
+        'catalogue_key': 'druid_3_armor_cloak',
         'class_restriction': 'druid',
     },
     {
@@ -652,6 +694,7 @@ EQUIPMENT_DATA = [
         'defense_bonus': 12,
         'rarity': 3,
         'image_url': '/static/images/equipment/druid/druid_3_weapon_staff.png',
+        'catalogue_key': 'druid_3_weapon_staff',
         'class_restriction': 'druid',
     },
-] 
+]

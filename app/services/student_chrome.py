@@ -74,6 +74,7 @@ def _member_stats(character: Character, is_current: bool = False) -> Dict[str, A
         "id": character.id,
         "name": character.name,
         "avatar_url": character.avatar_url,
+        "portrait_url": character.portrait_url,
         "is_current": is_current,
         "hp_current": hp_current,
         "hp_max": hp_max,
@@ -146,6 +147,7 @@ def student_chrome_context(user) -> Dict[str, Any]:
                 "id": member["id"],
                 "name": member["name"],
                 "avatar_url": member["avatar_url"],
+                "portrait_url": member["portrait_url"],
             }
             for member in clan_members[1 : 1 + PARTY_MEMBER_LIMIT]
         ]

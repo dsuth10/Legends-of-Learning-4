@@ -5,7 +5,7 @@ import uuid
 
 import pytest
 
-from app.models.adventure import AdventureRewardType, NodeType
+from app.models.adventure import AdventureRewardType, NodeReward, NodeType
 from app.models.adventure_progress import (
     CharacterAdventureProgress,
     NodeProgressStatus,
@@ -178,23 +178,58 @@ def test_student_linear_flow(client, db_session, adventure_student_setup):
     assert resp.status_code == 409 or resp.status_code == 200
 
     seed_node_progress(
-        ctx["character"],
-        slugs["battle"],
-        NodeProgressStatus.COMPLETED,
+        ctx["character"], slugs["battle"], NodeProgressStatus.COMPLETED
     )
     seed_node_progress(
-        ctx["character"],
-        slugs["start"],
-        NodeProgressStatus.COMPLETED,
+        ctx["character"], slugs["start"], NodeProgressStatus.COMPLETED
     )
-
     resp = _json(client, "POST", f"/student/adventures/{aid}/nodes/end/start")
     assert resp.status_code == 200
-
     resp = _json(client, "POST", f"/student/adventures/{aid}/nodes/end/complete")
     assert resp.status_code == 200
     assert resp.get_json()["data"].get("adventure_complete") is True
 
+
+def test_node_detail_includes_xp_gold_and_item_reward_previews(
+    client, db_session, adventure_student_setup
+):
+    ctx = adventure_student_setup
+    start_node = next(node for node in ctx["nodes"] if node.slug == "start")
+    db_session.add_all(
+        [
+            NodeReward(
+                node_id=start_node.id,
+                type=AdventureRewardType.EXPERIENCE.value,
+                amount=125,
+            ),
+            NodeReward(
+                node_id=start_node.id,
+                type=AdventureRewardType.GOLD.value,
+                amount=20,
+            ),
+            NodeReward(
+                node_id=start_node.id,
+                type=AdventureRewardType.EQUIPMENT.value,
+                amount=1,
+            ),
+        ]
+    )
+    db_session.commit()
+    _login_student(client, ctx["user"])
+
+    resp = _json(
+        client,
+        "GET",
+        f"/student/adventures/{ctx['adventure'].id}/nodes/start",
+    )
+
+    assert resp.status_code == 200
+    rewards = resp.get_json()["data"]["node"]["rewards_preview"]
+    assert [(reward["type"], reward["amount"]) for reward in rewards] == [
+        (AdventureRewardType.EXPERIENCE.value, 125),
+        (AdventureRewardType.GOLD.value, 20),
+        (AdventureRewardType.EQUIPMENT.value, 1),
+    ]
 
 def test_student_idempotent_start_and_complete(client, db_session, adventure_student_setup):
     ctx = adventure_student_setup

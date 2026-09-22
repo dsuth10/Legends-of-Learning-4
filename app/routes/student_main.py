@@ -762,6 +762,23 @@ def character_create():
         "Sorcerer":  {"health": 80,  "max_health": 80,  "power": 20, "defense": 8,  "gold": 0},
         "Druid":     {"health": 100, "max_health": 100, "power": 12, "defense": 12, "gold": 0},
     }
+    class_options = ['Warrior', 'Sorcerer', 'Druid']
+    gender_options = ['Male', 'Female', 'Other']
+    appearance_gender_options = ['male', 'female']
+    portrait_options = [1, 2, 3]
+
+    def render_creation_form(form):
+        return render_template(
+            'student/character_create.html',
+            **_chrome(
+                class_options=class_options,
+                gender_options=gender_options,
+                appearance_gender_options=appearance_gender_options,
+                portrait_options=portrait_options,
+                form=form,
+            ),
+        )
+
     # Get the correct student_id from the Student table
     student_profile = Student.query.filter_by(user_id=current_user.id).first()
     if student_profile and student_profile.characters.filter_by(is_active=True).first():
@@ -772,11 +789,22 @@ def character_create():
         name = request.form.get('name', '').strip()
         character_class = request.form.get('character_class', '').strip()
         gender = request.form.get('gender', '').strip()
-        avatar_url = request.form.get('avatar_url', '').strip()
+        avatar_url = Character.normalise_portrait_selection(
+            character_class,
+            gender,
+            request.form.get('avatar_url'),
+            request.form.get('portrait_gender'),
+            request.form.get('portrait_option'),
+        )
         # Basic validation
-        if not name or not character_class or not gender:
-            flash('Please fill out all required fields.', 'danger')
-            return render_template('student/character_create.html', **_chrome(form=request.form))
+        if (
+            not name
+            or character_class not in class_options
+            or gender not in gender_options
+            or not avatar_url
+        ):
+            flash('Please choose a name, class, gender, and character appearance.', 'danger')
+            return render_creation_form(request.form)
         # Set base stats based on class
         base_stats = CLASS_BASE_STATS.get(character_class, CLASS_BASE_STATS["Warrior"])
         if not student_profile:
@@ -806,26 +834,8 @@ def character_create():
         db.session.commit()
         flash('Character created successfully!', 'success')
         return redirect(url_for('student.character'))
-    # GET: Render form
-    class_options = ['Warrior', 'Sorcerer', 'Druid']
-    gender_options = ['Male', 'Female', 'Other']
-    avatar_options = [
-        '/static/avatars/warrior_m.png',
-        '/static/avatars/warrior_f.png',
-        '/static/avatars/sorcerer_m.png',
-        '/static/avatars/sorcerer_f.png',
-        '/static/avatars/druid_m.png',
-        '/static/avatars/druid_f.png',
-    ]
-    return render_template(
-        'student/character_create.html',
-        **_chrome(
-            class_options=class_options,
-            gender_options=gender_options,
-            avatar_options=avatar_options,
-            form={},
-        ),
-    )
+    # GET: Render form. "Other" starts without a selected art presentation.
+    return render_creation_form({})
 
 @student_bp.route('/character/gain_xp', methods=['POST'])
 @login_required
@@ -1198,4 +1208,4 @@ def shop_buy():
             'message': f'An error occurred while processing your purchase. Please try again.',
             'error_type': type(e).__name__,
             'error_code': 'INTERNAL_ERROR'
-        }), 500 
+        }), 500

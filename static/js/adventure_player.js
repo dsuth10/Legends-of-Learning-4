@@ -18,6 +18,11 @@
     boss: "cruelty_free",
     end: "sports_score",
   };
+  var DEFAULT_IMAGES = {
+    start: "node_start", story: "node_story", battle: "node_battle", quiz: "node_quiz",
+    choice: "node_choice", reward: "node_treasure", milestone: "node_milestone",
+    boss: "node_boss", end: "node_end",
+  };
 
   async function api(method, url, body) {
     const opts = { method, headers: { "Content-Type": "application/json" } };
@@ -30,11 +35,47 @@
     return "node-status-" + (status || "locked");
   }
 
+  function isImageIcon(value) {
+    return !!value && /^\/static\/.+\.(png|jpe?g|webp|svg)(?:[?#].*)?$/i.test(value);
+  }
+
   function iconLigature(node) {
     var value = node.icon_url;
-    if (value && value.charAt(0) === "/") return null;
-    if (value) return value;
-    return DEFAULT_ICONS[node.node_type] || "flag";
+    if (isImageIcon(value)) return value;
+    if (value && !/^(https?:|data:|\/\/)/i.test(value) && !/\.(png|jpe?g|webp|svg)(?:[?#].*)?$/i.test(value)) return value;
+    if (value) return DEFAULT_ICONS[node.node_type] || "flag";
+    return "/static/images/adventure_node_icons/" + (DEFAULT_IMAGES[node.node_type] || "node_start") + ".png";
+  }
+
+  function appendNodeIcon(g, value, ns, radius, fallbackLigature) {
+    if (isImageIcon(value)) {
+      var image = document.createElementNS(ns, "image");
+      image.setAttribute("class", "node-icon-image");
+      image.setAttribute("x", -radius * 0.58);
+      image.setAttribute("y", -radius * 0.58);
+      image.setAttribute("width", radius * 1.16);
+      image.setAttribute("height", radius * 1.16);
+      image.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      image.setAttribute("href", value);
+      image.addEventListener("error", function () {
+        var fallback = document.createElementNS(ns, "text");
+        fallback.setAttribute("class", "material-icons node-icon");
+        fallback.setAttribute("text-anchor", "middle");
+        fallback.setAttribute("dominant-baseline", "central");
+        fallback.setAttribute("y", "2");
+        fallback.textContent = fallbackLigature || "flag";
+        g.replaceChild(fallback, image);
+      });
+      g.appendChild(image);
+      return;
+    }
+    var icon = document.createElementNS(ns, "text");
+    icon.setAttribute("class", "material-icons node-icon");
+    icon.setAttribute("text-anchor", "middle");
+    icon.setAttribute("dominant-baseline", "central");
+    icon.setAttribute("y", "2");
+    icon.textContent = value || "flag";
+    g.appendChild(icon);
   }
 
   function edgeClass(edge, progressByNode) {
@@ -52,6 +93,58 @@
     return cls;
   }
 
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (char) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char];
+    });
+  }
+
+  function renderRewardPreview(rewards) {
+    if (!Array.isArray(rewards) || !rewards.length) return "";
+    var icons = {
+      experience: "reward_xp.png",
+      clan_experience: "reward_xp.png",
+      gold: "reward_gold.png",
+      special_currency: "reward_gold.png",
+      equipment: "reward_item.png",
+      ability: "reward_item.png",
+      badge: "reward_item.png",
+    };
+    var labels = {
+      experience: "XP",
+      clan_experience: "clan XP",
+      gold: "gold",
+      special_currency: "special currency",
+      equipment: "Equipment reward",
+      ability: "Ability reward",
+      badge: "Badge reward",
+    };
+    var html = "<section class=\"adventure-rewards mt-3\" aria-label=\"Possible rewards\">" +
+      "<h3 class=\"adventure-rewards-heading\">Possible rewards</h3>";
+    rewards.forEach(function (reward) {
+      if (!reward) return;
+      var type = reward.type || "";
+      var label = labels[type];
+      if (!label) return;
+      var amount = Number(reward.amount);
+      var validAmount = Number.isFinite(amount) && amount > 0;
+      var text = label;
+      if (["experience", "clan_experience", "gold", "special_currency"].indexOf(type) >= 0) {
+        text = (validAmount ? "+" + amount.toLocaleString("en-AU") + " " : "") + label;
+      } else if (type === "badge" && reward.badge_name) {
+        text = "Badge: " + reward.badge_name;
+      } else if (validAmount && amount > 1) {
+        text += " (" + amount.toLocaleString("en-AU") + ")";
+      }
+      var condition = reward.condition_summary ?
+        "<span class=\"adventure-reward-condition\">" + escapeHtml(reward.condition_summary) + "</span>" : "";
+      html += "<div class=\"adventure-reward-chip\">" +
+        "<img src=\"/static/images/quests/" + icons[type] + "\" alt=\"\" aria-hidden=\"true\">" +
+        "<span class=\"adventure-reward-label\">" + escapeHtml(text) + "</span>" + condition + "</div>";
+    });
+    return html + "</section>";
+  }
+
   function renderMap(svg, state) {
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     var ns = "http://www.w3.org/2000/svg";
@@ -59,6 +152,20 @@
     (state.my_progress.nodes || []).forEach(function (p) {
       progressByNode[p.node_id] = p;
     });
+
+    var backgroundUrl = state.adventure && state.adventure.background_image_url;
+    if (backgroundUrl && /^\/static\//.test(backgroundUrl)) {
+      var background = document.createElementNS(ns, "image");
+      background.setAttribute("class", "adventure-map-background");
+      background.setAttribute("x", "0");
+      background.setAttribute("y", "0");
+      background.setAttribute("width", state.adventure.width);
+      background.setAttribute("height", state.adventure.height);
+      background.setAttribute("preserveAspectRatio", "xMidYMid slice");
+      background.setAttribute("href", backgroundUrl);
+      background.setAttribute("aria-hidden", "true");
+      svg.appendChild(background);
+    }
 
     (state.edges || []).forEach(function (edge) {
       var from = state.nodes.find(function (n) { return n.id === edge.from_node_id; });
@@ -108,18 +215,26 @@
       }
       var circle = document.createElementNS(ns, "circle");
       circle.setAttribute("r", 28);
-      var icon = document.createElementNS(ns, "text");
-      icon.setAttribute("class", "material-icons node-icon");
-      icon.setAttribute("text-anchor", "middle");
-      icon.setAttribute("dominant-baseline", "central");
-      icon.setAttribute("y", "2");
-      icon.textContent = iconLigature(node);
       var label = document.createElementNS(ns, "text");
       label.setAttribute("y", 44);
       label.setAttribute("text-anchor", "middle");
       label.textContent = node.title;
       g.appendChild(circle);
-      g.appendChild(icon);
+      appendNodeIcon(g, iconLigature(node), ns, 28, DEFAULT_ICONS[node.node_type]);
+      var overlayName = prog.status === "completed" ? "node_complete" :
+        (prog.status === "in_progress" ? "node_current" :
+          (prog.status === "locked" ? "node_locked" : null));
+      if (overlayName) {
+        var overlay = document.createElementNS(ns, "image");
+        overlay.setAttribute("class", "node-status-image");
+        overlay.setAttribute("x", 12);
+        overlay.setAttribute("y", -27);
+        overlay.setAttribute("width", 18);
+        overlay.setAttribute("height", 18);
+        overlay.setAttribute("href", "/static/images/adventure_node_icons/" + overlayName + ".png");
+        overlay.setAttribute("aria-hidden", "true");
+        g.appendChild(overlay);
+      }
       g.appendChild(label);
       svg.appendChild(g);
     });
@@ -131,6 +246,7 @@
     var html = "<h2 class=\"text-lg font-bold\">" + node.title + "</h2>";
     html += "<p class=\"text-sm text-gray-400 mt-1\">" + (node.description || "") + "</p>";
     html += "<p class=\"text-xs mt-2\">Status: <span class=\"" + statusClass(status) + "\">" + status + "</span></p>";
+    html += renderRewardPreview(node.rewards_preview);
 
     if (node.node_type === "choice" && detail.outgoing_choices && detail.outgoing_choices.length) {
       html += "<div class=\"choice-options mt-3\">";
@@ -154,6 +270,9 @@
     }
 
     panel.innerHTML = html;
+    panel.querySelectorAll(".adventure-reward-chip img").forEach(function (image) {
+      image.addEventListener("error", function () { image.remove(); });
+    });
     panel.setAttribute("tabindex", "-1");
     panel.focus();
 

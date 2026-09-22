@@ -2,7 +2,7 @@
 
 **This is the product-direction source of truth.** When someone asks what to work on next, read this file first. Do not invent a new backlog, and do not treat older planning docs as current unless this file points at them.
 
-Last reviewed: 2026-09-21
+Last reviewed: 2026-09-23
 
 ---
 
@@ -17,7 +17,9 @@ Last reviewed: 2026-09-21
 
 ## Current
 
-None. Spec 005 (audio meter targeting) is implemented. Pick the next product item before starting new work — the parked Adventures Phase 6 items below are optional, not an automatic queue.
+**Art integration and review.** The current handoff is [Art and asset worklist](../Ideas/ART_ASSET_WORKLIST.md). PRs #3 and #4 are merged; PR #4 delivered nine Batch A images and six compressed Warrior portraits. The `codex/art-integration` branch has the equipment migration and active-page wiring under integration review. The user retained all 33 default powers; their icons remain deferred until the effect contract is settled.
+
+Next checkpoint: review and merge the wiring PR, then test the migrated database and key student/teacher screens. The five existing quest-giver portraits need a presenter-selection design before active Adventure wiring; the four legacy quest badges remain parked. Spec 005 is implemented; Adventures Phase 6 remains parked.
 
 ---
 

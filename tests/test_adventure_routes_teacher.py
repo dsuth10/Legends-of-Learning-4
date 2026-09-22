@@ -1214,6 +1214,15 @@ def test_node_icon_catalog_has_one_default_per_type(client, db_session, teacher_
         defaults.extend(icon.get("default_for") or [])
     assert sorted(defaults) == sorted(item.value for item in NodeType)
     assert len(defaults) == len(set(defaults))
+    optional_images = {
+        icon["id"]: icon
+        for icon in icons
+        if icon.get("id") in {"quest", "rest"}
+    }
+    assert set(optional_images) == {"quest", "rest"}
+    assert all(not icon.get("default_for") for icon in optional_images.values())
+    assert optional_images["quest"]["image_url"].endswith("node_quest.png")
+    assert optional_images["rest"]["image_url"].endswith("node_rest.png")
 
 
 def test_node_icon_save_and_clear(client, db_session, teacher_user):
