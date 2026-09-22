@@ -123,9 +123,10 @@ def create_app(config=None):
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
 
     # Register CLI commands
-    from app.commands import seed_db_command, sync_powers_command
+    from app.commands import seed_db_command, sync_powers_command, sync_equipment_command
     app.cli.add_command(seed_db_command)
     app.cli.add_command(sync_powers_command)
+    app.cli.add_command(sync_equipment_command)
 
     # --- Populate Equipment Table from Hardcoded Data (if empty) ---
     from app.models.equipment_data import EQUIPMENT_DATA

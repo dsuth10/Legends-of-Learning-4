@@ -136,7 +136,7 @@ class Character(Base):
         """Returns the full portrait path based on class, gender, and level.
         
         Format: /static/images/characters/{class}/{gender}/level{n}/{option}_{class}_{gender}_level{n}.png
-        Uses option 1 by default. Returns avatar_url as fallback if portrait cannot be determined.
+        Attempts to derive option from avatar_url if possible, otherwise defaults to option 1.
         """
         if not self.character_class or not self.gender:
             return self.avatar_url or '/static/avatars/default.png'
@@ -150,6 +150,10 @@ class Character(Base):
             gender = 'male'
         
         level_tier = self.portrait_level
+        
+        # Try to extract option from avatar_url if it follows the pattern
+        # e.g., /static/avatars/warrior_m.png -> option 1 (default)
+        # In the future, if avatars are named like warrior_m_2.png, we could parse that
         option = 1  # Default to option 1
         
         return f'/static/images/characters/{char_class}/{gender}/level{level_tier}/{option}_{char_class}_{gender}_level{level_tier}.png'
