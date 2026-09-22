@@ -120,6 +120,48 @@ class Character(Base):
     def learned_abilities(self):
         """Alias for abilities relationship."""
         return self.abilities
+    
+    @property
+    def portrait_level(self):
+        """Returns the portrait level tier (1, 2, or 3) based on character level."""
+        if self.level <= 10:
+            return 1
+        elif self.level <= 20:
+            return 2
+        else:
+            return 3
+    
+    @property
+    def portrait_url(self):
+        """Returns the full portrait path based on class, gender, and level.
+        
+        Format: /static/images/characters/{class}/{gender}/level{n}/{option}_{class}_{gender}_level{n}.png
+        Uses option 1 by default. Returns avatar_url as fallback if portrait cannot be determined.
+        """
+        if not self.character_class or not self.gender:
+            return self.avatar_url or '/static/avatars/default.png'
+        
+        # Normalize class and gender to lowercase
+        char_class = self.character_class.lower()
+        gender = self.gender.lower()
+        
+        # Map "other" gender to male as default
+        if gender not in ['male', 'female']:
+            gender = 'male'
+        
+        level_tier = self.portrait_level
+        option = 1  # Default to option 1
+        
+        return f'/static/images/characters/{char_class}/{gender}/level{level_tier}/{option}_{char_class}_{gender}_level{level_tier}.png'
+    
+    @property
+    def background_url(self):
+        """Returns the backdrop image path based on character level.
+        
+        Format: /static/images/Backgrounds/Core Level Backgrounds/Level {n}.png
+        """
+        level_tier = self.portrait_level
+        return f'/static/images/Backgrounds/Core Level Backgrounds/Level {level_tier}.png'
 
     # Helper properties for equipped items
     # Note: These are for UI display only. Stat calculations use ALL equipped items from all slots.
