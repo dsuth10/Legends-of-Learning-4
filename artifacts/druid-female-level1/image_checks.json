@@ -1,0 +1,29 @@
+{
+  "druid_female_level1.png": {
+    "dimensions": [
+      1200,
+      1600
+    ],
+    "channels": 4,
+    "alpha_min": 0.0,
+    "alpha_max": 1.0
+  },
+  "druid_three_quarter.png": {
+    "dimensions": [
+      780,
+      1040
+    ],
+    "channels": 4,
+    "alpha_min": 0.0,
+    "alpha_max": 1.0
+  },
+  "druid_back.png": {
+    "dimensions": [
+      780,
+      1040
+    ],
+    "channels": 4,
+    "alpha_min": 0.0,
+    "alpha_max": 1.0
+  }
+}

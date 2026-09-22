@@ -1,0 +1,13 @@
+{
+  "scene": "Druid \u2022 Level 1",
+  "objects": 663,
+  "evaluated_triangles": 2258244,
+  "render_size": [
+    1200,
+    1600
+  ],
+  "transparent_background": true,
+  "rigged": false,
+  "textures": "Procedural PBR node materials stored in blend; no external texture dependencies",
+  "unit": "metre"
+}

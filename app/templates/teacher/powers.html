@@ -6,10 +6,251 @@
 <li class="breadcrumb-item active">Powers</li>
 {% endblock %}
 
+{% block head_extra %}
+{{ super() }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+.power-page-hint {
+  color: #5c5348;
+  max-width: 42rem;
+}
+.power-class-tabs .nav-link {
+  color: #4a4036;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-weight: 600;
+}
+.power-class-tabs .nav-link.active {
+  color: #1f1710;
+  background: transparent;
+  border-bottom-color: #c4a15a;
+}
+.power-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  background: #f7f1e4;
+  border: 1px solid #d9cbb0;
+  border-radius: 12px;
+  padding: 0.9rem 1rem 1rem;
+  min-height: 7.25rem;
+  color: #1f1710;
+  position: relative;
+  overflow: hidden;
+  transition: transform 160ms ease-out, border-color 160ms ease-out;
+}
+.power-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: #8a7a62;
+}
+.power-tile[data-class="Warrior"]::before { background: #8a3a24; }
+.power-tile[data-class="Sorcerer"]::before { background: #4a3d8c; }
+.power-tile[data-class="Druid"]::before { background: #2e6b48; }
+.power-tile:hover,
+.power-tile:focus-visible {
+  transform: translateY(-2px);
+  border-color: #c4a15a;
+  outline: none;
+}
+.power-tile-kicker {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b6256;
+  margin-bottom: 0.35rem;
+  padding-left: 0.35rem;
+}
+.power-tile-name {
+  font-family: Cinzel, "Palatino Linotype", Palatino, serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1.25;
+  padding-left: 0.35rem;
+}
+.power-tile-meta {
+  margin-top: auto;
+  padding-top: 0.65rem;
+  padding-left: 0.35rem;
+  font-size: 0.8rem;
+  color: #5c5348;
+}
+.power-row {
+  cursor: pointer;
+}
+.power-row:hover,
+.power-row:focus-within {
+  background: #f7f1e4;
+}
+.power-open-name {
+  font-weight: 600;
+  color: #1f1710;
+  text-decoration: none;
+}
+.power-open-name:hover {
+  color: #6b2e1f;
+}
+.power-dossier-shell {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.power-dossier {
+  font-family: Lato, "Segoe UI", sans-serif;
+  color: #1f1710;
+  background: #f4ead4;
+  border: 1px solid #c4a15a;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 28px 60px rgba(28, 18, 10, 0.42);
+}
+.power-dossier-banner {
+  position: relative;
+  padding: 1.4rem 3.25rem 1.25rem 1.4rem;
+  color: #f7f0e4;
+}
+.power-dossier[data-class="Warrior"] .power-dossier-banner {
+  background: linear-gradient(145deg, #7a3220 0%, #3f160f 100%);
+}
+.power-dossier[data-class="Sorcerer"] .power-dossier-banner {
+  background: linear-gradient(145deg, #3d3278 0%, #1b1438 100%);
+}
+.power-dossier[data-class="Druid"] .power-dossier-banner {
+  background: linear-gradient(145deg, #2d6a45 0%, #143322 100%);
+}
+.power-dossier[data-class="Any"] .power-dossier-banner {
+  background: linear-gradient(145deg, #4a3f2f 0%, #241c14 100%);
+}
+.power-dossier-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.88;
+  margin-bottom: 0.45rem;
+}
+.power-dossier-title {
+  font-family: Cinzel, "Palatino Linotype", Palatino, serif;
+  font-weight: 700;
+  font-size: 1.7rem;
+  letter-spacing: 0.03em;
+  margin: 0;
+  line-height: 1.2;
+}
+.power-dossier-type {
+  margin-top: 0.4rem;
+  font-size: 0.95rem;
+  opacity: 0.92;
+}
+.power-dossier-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #f7f0e4;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+.power-dossier-close:hover,
+.power-dossier-close:focus-visible {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.power-dossier-body {
+  padding: 1.25rem 1.4rem 1.4rem;
+}
+.power-dossier-lore {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  margin: 0 0 1.15rem;
+}
+.power-dossier-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1.1rem;
+}
+.power-stat {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid #e2d4b6;
+  border-radius: 10px;
+  padding: 0.65rem 0.5rem 0.55rem;
+  text-align: center;
+}
+.power-stat-label {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b6256;
+  margin-bottom: 0.2rem;
+}
+.power-stat-value {
+  font-family: Cinzel, "Palatino Linotype", Palatino, serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.power-dossier-facts {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  column-gap: 0.75rem;
+  row-gap: 0.45rem;
+  align-items: baseline;
+}
+.power-dossier-facts dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b6256;
+  margin: 0;
+}
+.power-dossier-facts dd {
+  margin: 0;
+}
+.power-special {
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  background: #efe2c4;
+  border-left: 4px solid #c4a15a;
+  border-radius: 0 8px 8px 0;
+  font-size: 0.95rem;
+}
+.power-dossier-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #e2d4b6;
+}
+@media (max-width: 575.98px) {
+  .power-dossier-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+</style>
+{% endblock %}
+
 {% block dashboard_content %}
 <div class="container-fluid py-3">
-  <h2 class="mb-4">Powers</h2>
-  <p class="text-muted">Default powers are built into the game. Create your own custom powers for your classes; students in your classes will see defaults plus powers you create.</p>
+  <h2 class="mb-2">Powers</h2>
+  <p class="power-page-hint mb-4">Default powers are built into the game. Click any power for its full report. Create custom powers for your classes; students see defaults plus powers you create.</p>
 
   <div class="d-flex justify-content-end mb-3">
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPowerModal">Create custom power</button>
@@ -18,7 +259,7 @@
   <h4 class="mt-4">Your custom powers</h4>
   {% if custom_powers %}
   <div class="table-responsive">
-    <table class="table table-striped table-sm align-middle">
+    <table class="table table-sm align-middle">
       <thead>
         <tr>
           <th>Name</th>
@@ -34,8 +275,10 @@
       </thead>
       <tbody>
         {% for ab in custom_powers %}
-        <tr>
-          <td>{{ ab.name }}</td>
+        <tr class="power-row" data-power-id="{{ ab.id }}">
+          <td>
+            <button type="button" class="btn btn-link power-open-name p-0" data-power-id="{{ ab.id }}">{{ ab.name }}</button>
+          </td>
           <td>{{ ab.class_restriction or 'Any' }}</td>
           <td>{{ ab.tier }}</td>
           <td>{{ ab.level_requirement }}</td>
@@ -60,36 +303,73 @@
   <p class="text-muted">No custom powers yet.</p>
   {% endif %}
 
-  <h4 class="mt-5">Default powers (read-only)</h4>
-  <div class="table-responsive">
-    <table class="table table-sm table-bordered">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Class</th>
-          <th>Tier</th>
-          <th>Lv</th>
-          <th>PP</th>
-          <th>Power cost</th>
-          <th>Type</th>
-          <th>Target</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ab in default_powers %}
-        <tr>
-          <td>{{ ab.name }}</td>
-          <td>{{ ab.class_restriction or 'Any' }}</td>
-          <td>{{ ab.tier }}</td>
-          <td>{{ ab.level_requirement }}</td>
-          <td>{{ ab.pp_cost }}</td>
-          <td>{{ ab.cost }}</td>
-          <td>{{ ab.type }}</td>
-          <td>{{ ab.target_type }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <h4 class="mt-5 mb-2">Default powers (read-only)</h4>
+  <p class="text-muted small mb-3">Open a power to see classroom use, combat effect, costs, and prerequisites.</p>
+
+  <ul class="nav power-class-tabs mb-3" role="tablist">
+    <li class="nav-item"><button type="button" class="nav-link active" data-filter="all" role="tab" aria-selected="true">All</button></li>
+    <li class="nav-item"><button type="button" class="nav-link" data-filter="Warrior" role="tab" aria-selected="false">Warrior</button></li>
+    <li class="nav-item"><button type="button" class="nav-link" data-filter="Sorcerer" role="tab" aria-selected="false">Sorcerer</button></li>
+    <li class="nav-item"><button type="button" class="nav-link" data-filter="Druid" role="tab" aria-selected="false">Druid</button></li>
+    <li class="nav-item"><button type="button" class="nav-link" data-filter="Any" role="tab" aria-selected="false">Any class</button></li>
+  </ul>
+
+  <div class="row g-3" id="default-power-grid">
+    {% for ab in default_powers %}
+    {% set class_key = ab.class_restriction or 'Any' %}
+    <div class="col-sm-6 col-xl-4 power-tile-wrap" data-class="{{ class_key }}">
+      <button type="button" class="power-tile" data-power-id="{{ ab.id }}" data-class="{{ class_key }}" aria-haspopup="dialog">
+        <span class="power-tile-kicker">{{ class_key }} · {{ ab.tier }}</span>
+        <span class="power-tile-name">{{ ab.name }}</span>
+        <span class="power-tile-meta">Lv {{ ab.level_requirement }} · {{ ab.pp_cost }} PP · {{ ab.cost }} Power · {{ ab.type }}</span>
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script type="application/json" id="power-dossier-data">{{ power_dossiers|tojson }}</script>
+
+<div class="modal fade" id="powerDossierModal" tabindex="-1" aria-labelledby="power-dossier-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content power-dossier-shell">
+      <article class="power-dossier" id="power-dossier" data-class="Any">
+        <header class="power-dossier-banner">
+          <button type="button" class="power-dossier-close" data-bs-dismiss="modal" aria-label="Close report">×</button>
+          <div class="power-dossier-kicker">
+            <span id="power-dossier-origin"></span>
+            <span aria-hidden="true">·</span>
+            <span id="power-dossier-tier"></span>
+          </div>
+          <h3 class="power-dossier-title" id="power-dossier-title"></h3>
+          <p class="power-dossier-type mb-0" id="power-dossier-type"></p>
+        </header>
+        <div class="power-dossier-body">
+          <p class="power-dossier-lore" id="power-dossier-lore"></p>
+          <div class="power-dossier-stats">
+            <div class="power-stat"><span class="power-stat-label">Level</span><span class="power-stat-value" id="stat-level"></span></div>
+            <div class="power-stat"><span class="power-stat-label">PP to learn</span><span class="power-stat-value" id="stat-pp"></span></div>
+            <div class="power-stat"><span class="power-stat-label">Power cost</span><span class="power-stat-value" id="stat-cost"></span></div>
+            <div class="power-stat"><span class="power-stat-label">Effect</span><span class="power-stat-value" id="stat-power"></span></div>
+          </div>
+          <dl class="power-dossier-facts mb-0">
+            <dt>Target</dt>
+            <dd id="fact-target"></dd>
+            <dt>Duration</dt>
+            <dd id="fact-duration"></dd>
+            <dt>Cooldown</dt>
+            <dd id="fact-cooldown"></dd>
+            <dt>Prerequisite</dt>
+            <dd id="fact-prereq"></dd>
+          </dl>
+          <p class="power-special d-none" id="power-special"></p>
+          <div class="power-dossier-foot">
+            <span class="small text-muted" id="power-dossier-source"></span>
+            <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="dossier-edit">Edit custom power</button>
+          </div>
+        </div>
+      </article>
+    </div>
   </div>
 </div>
 
@@ -214,7 +494,7 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <script>
 (function() {
   const types = ['utility','heal','buff','defense','debuff','attack'];
@@ -224,6 +504,143 @@
     o.value = t; o.textContent = t;
     editType.appendChild(o);
   });
+
+  const TYPE_ICONS = {
+    attack: 'fa-khanda',
+    defense: 'fa-shield-halved',
+    heal: 'fa-heart-pulse',
+    buff: 'fa-arrow-trend-up',
+    debuff: 'fa-arrow-trend-down',
+    utility: 'fa-wand-magic-sparkles'
+  };
+  const TARGET_LABELS = {
+    self: 'Yourself',
+    single_ally: 'One clan ally',
+    all_allies: 'Entire clan',
+    single_enemy: 'One opponent'
+  };
+  const SPECIAL_LABELS = {
+    cheat_death: 'When a teammate has fallen, they take the better of two Cursed Die rolls.',
+    revive: 'Bring a fallen ally back to 1 HP.',
+    restore_power_full: 'Fully restore the target’s Power.',
+    full_heal: 'Fully heal all allies in the clan.'
+  };
+
+  let dossiers = {};
+  try {
+    dossiers = JSON.parse(document.getElementById('power-dossier-data').textContent || '{}');
+  } catch (e) {
+    dossiers = {};
+  }
+
+  const dossierEl = document.getElementById('power-dossier');
+  const dossierModalEl = document.getElementById('powerDossierModal');
+  const editBtn = document.getElementById('dossier-edit');
+  let pendingEditId = null;
+
+  function dossierModal() {
+    return bootstrap.Modal.getOrCreateInstance(dossierModalEl);
+  }
+
+  function classKey(value) {
+    if (value === 'Warrior' || value === 'Sorcerer' || value === 'Druid') return value;
+    return 'Any';
+  }
+
+  function titleCase(value) {
+    return String(value || '').replace(/_/g, ' ').replace(/\b\w/g, function(ch) {
+      return ch.toUpperCase();
+    });
+  }
+
+  function openDossier(id) {
+    const power = dossiers[String(id)];
+    if (!power || !dossierModalEl) return;
+    const klass = classKey(power.class_restriction);
+    dossierEl.setAttribute('data-class', klass);
+    document.getElementById('power-dossier-origin').textContent = power.class_restriction || 'Any class';
+    document.getElementById('power-dossier-tier').textContent = titleCase(power.tier);
+    document.getElementById('power-dossier-title').textContent = power.name;
+    const icon = TYPE_ICONS[power.type] || 'fa-bolt';
+    const typeEl = document.getElementById('power-dossier-type');
+    typeEl.replaceChildren();
+    const typeIcon = document.createElement('i');
+    typeIcon.className = 'fa-solid ' + icon;
+    typeIcon.setAttribute('aria-hidden', 'true');
+    typeEl.append(typeIcon, ' ' + titleCase(power.type));
+    document.getElementById('power-dossier-lore').textContent = power.description || 'No description yet.';
+    document.getElementById('stat-level').textContent = String(power.level_requirement);
+    document.getElementById('stat-pp').textContent = String(power.pp_cost);
+    document.getElementById('stat-cost').textContent = String(power.cost);
+    document.getElementById('stat-power').textContent = String(power.power);
+    document.getElementById('fact-target').textContent = TARGET_LABELS[power.target_type] || titleCase(power.target_type);
+    document.getElementById('fact-duration').textContent = power.duration + ' min';
+    document.getElementById('fact-cooldown').textContent = power.cooldown ? (power.cooldown + ' sec') : 'None';
+    document.getElementById('fact-prereq').textContent = power.prerequisite || 'None';
+    const special = document.getElementById('power-special');
+    if (power.special_effect) {
+      special.textContent = SPECIAL_LABELS[power.special_effect] || titleCase(power.special_effect);
+      special.classList.remove('d-none');
+    } else {
+      special.textContent = '';
+      special.classList.add('d-none');
+    }
+    document.getElementById('power-dossier-source').textContent = power.is_default
+      ? 'Built-in default · read-only'
+      : 'Custom power';
+    if (power.is_default) {
+      editBtn.classList.add('d-none');
+      editBtn.dataset.powerId = '';
+    } else {
+      editBtn.classList.remove('d-none');
+      editBtn.dataset.powerId = String(power.id);
+    }
+    dossierModal().show();
+  }
+
+  document.querySelectorAll('.power-tile, .power-open-name').forEach(function(btn) {
+    btn.addEventListener('click', function(event) {
+      event.stopPropagation();
+      openDossier(btn.dataset.powerId);
+    });
+  });
+
+  document.querySelectorAll('.power-row').forEach(function(row) {
+    row.addEventListener('click', function(event) {
+      if (event.target.closest('.edit-power, .delete-power')) return;
+      openDossier(row.dataset.powerId);
+    });
+  });
+
+  document.querySelectorAll('.power-class-tabs [data-filter]').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      const filter = tab.getAttribute('data-filter');
+      document.querySelectorAll('.power-class-tabs [data-filter]').forEach(function(other) {
+        const active = other === tab;
+        other.classList.toggle('active', active);
+        other.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      document.querySelectorAll('.power-tile-wrap').forEach(function(wrap) {
+        wrap.classList.toggle('d-none', filter !== 'all' && wrap.getAttribute('data-class') !== filter);
+      });
+    });
+  });
+
+  if (editBtn) {
+    editBtn.addEventListener('click', function() {
+      pendingEditId = editBtn.dataset.powerId;
+      dossierModal().hide();
+    });
+  }
+  if (dossierModalEl) {
+    dossierModalEl.addEventListener('hidden.bs.modal', function() {
+      if (!pendingEditId) return;
+      const id = pendingEditId;
+      pendingEditId = null;
+      const trigger = document.querySelector('.edit-power[data-id="' + id + '"]');
+      if (trigger) trigger.click();
+    });
+  }
 
   document.getElementById('save-create-power').addEventListener('click', async function() {
     const f = document.getElementById('create-power-form');
@@ -248,7 +665,8 @@
   });
 
   document.querySelectorAll('.edit-power').forEach(function(btn) {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function(event) {
+      event.stopPropagation();
       document.getElementById('edit-id').value = btn.dataset.id;
       document.getElementById('edit-name').value = btn.dataset.name || '';
       document.getElementById('edit-description').value = btn.dataset.description || '';
@@ -295,7 +713,8 @@
   });
 
   document.querySelectorAll('.delete-power').forEach(function(btn) {
-    btn.addEventListener('click', async function() {
+    btn.addEventListener('click', async function(event) {
+      event.stopPropagation();
       if (!confirm('Delete this power?')) return;
       const id = btn.dataset.id;
       const deleteUrl = "{{ url_for('teacher.powers_delete', power_id=0) }}".replace('/powers/0/', '/powers/' + id + '/');

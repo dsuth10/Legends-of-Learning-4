@@ -12,10 +12,7 @@ from app.models.student import Student
 from app.models.character import Character
 from app.models.equipment import Equipment, Inventory
 from app.models.audit import AuditLog, EventType
-from app.models.quest import Quest, QuestLog, QuestStatus
 from app.models.clan import Clan
-from app.services.quest_map_utils import find_available_coordinates
-from sqlalchemy.exc import IntegrityError
 
 # --- API Endpoints and Helpers ---
 def teacher_owns_student(teacher_id, student_id):
@@ -255,106 +252,14 @@ def api_award_xp(student_id):
 @login_required
 @teacher_required
 def api_assign_quest():
-    data = request.get_json() or request.form
-    quest_id = data.get('quest_id')
-    target_type = data.get('target_type')
-    target_id = data.get('target_id')
-    auto_assign = data.get('auto_assign', False)  # Can be boolean or string '1'/'true'
-    # Handle both boolean and string values
-    if isinstance(auto_assign, str):
-        auto_assign = auto_assign.lower() in ('1', 'true', 'yes')
-    elif not isinstance(auto_assign, bool):
-        auto_assign = False
-    
-    if not quest_id or not target_type or not target_id:
-        return jsonify({'success': False, 'message': 'Missing required parameters'}), 400
-    # Validate quest
-    quest = Quest.query.filter_by(id=quest_id).first()
-    if not quest:
-        return jsonify({'success': False, 'message': 'Invalid quest_id'}), 404
-    # Determine targets
-    characters = []
-    if target_type == 'student':
-        student = Student.query.filter_by(id=target_id).first()
-        if not student:
-            return jsonify({'success': False, 'message': 'Invalid student_id'}), 404
-        # Authorization: teacher must own the student
-        classroom = Classroom.query.filter_by(id=student.class_id, teacher_id=current_user.id).first()
-        if not classroom:
-            return jsonify({'success': False, 'message': 'Permission denied'}), 403
-        char = Character.query.filter_by(student_id=student.id, is_active=True).first()
-        if char:
-            characters.append(char)
-    elif target_type == 'clan':
-        clan = Clan.query.filter_by(id=target_id).first()
-        if not clan:
-            return jsonify({'success': False, 'message': 'Invalid clan_id'}), 404
-        # Authorization: teacher must own the class the clan belongs to
-        classroom = Classroom.query.filter_by(id=clan.class_id, teacher_id=current_user.id).first()
-        if not classroom:
-            return jsonify({'success': False, 'message': 'Permission denied'}), 403
-        chars = clan.members.filter_by(is_active=True).all()
-        characters.extend(chars)
-    elif target_type == 'class':
-        classroom = Classroom.query.filter_by(id=target_id, teacher_id=current_user.id).first()
-        if not classroom:
-            return jsonify({'success': False, 'message': 'Invalid or unauthorized class_id'}), 404
-        # Get all students in the class
-        students = Student.query.filter_by(class_id=classroom.id).all()
-        for student in students:
-            char = Character.query.filter_by(student_id=student.id, is_active=True).first()
-            if char:
-                characters.append(char)
-    else:
-        return jsonify({'success': False, 'message': 'Invalid target_type'}), 400
-    if not characters:
-        return jsonify({'success': False, 'message': 'No target characters found'}), 404
-    
-    # Determine initial status and started_at based on auto_assign
-    from app.utils.date_utils import get_utc_now
-    initial_status = QuestStatus.IN_PROGRESS if auto_assign else QuestStatus.NOT_STARTED
-    started_at = get_utc_now() if auto_assign else None
-    
-    # Assign quest to each character
-    assigned = 0
-    skipped = 0
-    errors = []
-    for char in characters:
-        # Check for existing QuestLog
-        existing = QuestLog.query.filter_by(character_id=char.id, quest_id=quest.id).first()
-        if existing:
-            skipped += 1
-            continue
-        try:
-            x, y = find_available_coordinates(char.id, db.session)
-        except Exception as e:
-            errors.append(f'No available coordinates for character {char.id}')
-            skipped += 1
-            continue
-        new_log = QuestLog(
-            character_id=char.id,
-            quest_id=quest.id,
-            status=initial_status,
-            x_coordinate=x,
-            y_coordinate=y,
-            started_at=started_at
-        )
-        db.session.add(new_log)
-        try:
-            db.session.commit()
-            assigned += 1
-        except IntegrityError:
-            db.session.rollback()
-            skipped += 1
-        except Exception as e:
-            db.session.rollback()
-            errors.append(str(e))
-            skipped += 1
-    assignment_type = "Auto-assigned" if auto_assign else "Assigned"
-    return jsonify({
-        'success': True,
-        'assigned': assigned,
-        'skipped': skipped,
-        'errors': errors,
-        'assignment_type': assignment_type
-    })
+    return (
+        jsonify(
+            {
+                'success': False,
+                'message': 'Quests have been retired. Assign learning paths with Adventures.',
+                'code': 'QUESTS_RETIRED',
+            }
+        ),
+        410,
+    )
+

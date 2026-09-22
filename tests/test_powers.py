@@ -424,6 +424,30 @@ def test_teacher_powers_manage_get(client, db_session, powers_ctx):
     assert res.status_code == 200
 
 
+def test_teacher_powers_dossier_includes_description(client, db_session, powers_ctx):
+    ctx = powers_ctx
+    _make_power(
+        name='Shield Wall',
+        description='Classroom: stand your ground — small personal protection.',
+        type='defense',
+        is_default=True,
+        class_restriction='Warrior',
+        prerequisite_id=None,
+    )
+    db_session.commit()
+    client.post(
+        '/auth/login',
+        data={'username': ctx['teacher'].username, 'password': 'testpass'},
+    )
+    res = client.get('/teacher/powers')
+    assert res.status_code == 200
+    html = res.get_data(as_text=True)
+    assert 'powerDossierModal' in html
+    assert 'power-tile' in html
+    assert 'Classroom: stand your ground' in html
+    assert 'Shield Wall' in html
+
+
 def test_teacher_powers_create_edit_delete(client, db_session, powers_ctx):
     ctx = powers_ctx
     client.post(

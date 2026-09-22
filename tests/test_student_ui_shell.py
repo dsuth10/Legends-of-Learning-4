@@ -12,17 +12,15 @@ from app.services.student_chrome import power_icon_for_ability
 
 DESTINATIONS = [
     b"Character",
-    b"Quests",
+    b"Adventures",
     b"Shop",
     b"Equipment",
-    b"Adventures",
     b"Progress",
     b"Powers",
 ]
 
 CHROME_PAGES = [
     ("/student/character", "student.character"),
-    ("/student/quests", "student.quests"),
     ("/student/shop", "student.shop"),
     ("/student/equipment", "student.equipment"),
     ("/student/adventures/", "adventures_student.list_adventures"),
@@ -145,7 +143,6 @@ def test_in_scope_pages_include_shared_chrome(client, db_session):
         assert b'aria-current="page"' in html
         if endpoint in (
             "student.character",
-            "student.quests",
             "student.shop",
             "student.equipment",
             "adventures_student.list_adventures",
@@ -193,7 +190,6 @@ def test_forbidden_placeholder_actions_are_absent(client, db_session):
     _login(client, user.username)
     for path in (
         "/student/character",
-        "/student/quests",
         "/student/shop",
         "/student/equipment",
     ):

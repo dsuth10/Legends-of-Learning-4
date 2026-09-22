@@ -7,7 +7,7 @@ from app.models.character import Character
 from app.models.clan import Clan
 from app.models.classroom import Classroom
 from app.models.quest import QuestLog, QuestStatus
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.audit import AuditLog, EventType
 from app.models.equipment import Inventory
 from app.models.ability import CharacterAbility
@@ -20,6 +20,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 teacher_quests_bp = Blueprint('teacher_quests', __name__, url_prefix='/teacher/quests')
+
+QUESTS_RETIRED_MESSAGE = (
+    'Quests have been retired. Assign learning paths with Adventures.'
+)
+
+
+@teacher_quests_bp.before_request
+def _redirect_retired_quests():
+    if not current_user.is_authenticated:
+        return redirect(url_for('auth.login', next=request.path))
+    if current_user.role != UserRole.TEACHER:
+        from flask import abort
+        abort(403)
+    flash(QUESTS_RETIRED_MESSAGE, 'info')
+    return redirect(url_for('adventures_teacher.adventures_list_page'))
+
 
 @teacher_quests_bp.route('/', methods=['GET'])
 @login_required

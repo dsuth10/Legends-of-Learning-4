@@ -559,172 +559,34 @@ def test_other_character():
     assert find_available_coordinates(2, session, 2, 2) == (0, 0)
 
 class TestAssignQuestAPI:
-    def test_assign_quest_to_student_success(self, client, db_session, test_user, test_classroom, test_character, quest):
-        # Log in as teacher
-        with client:
-            client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
-            # Assign quest to student
-            resp = client.post('/teacher/api/teacher/assign-quest', json={
-                'quest_id': quest.id,
-                'target_type': 'student',
-                'target_id': test_character.student_id
-            })
-            data = resp.get_json()
-            assert resp.status_code == 200
-            assert data['success'] is True
-            assert data['assigned'] == 1
-            assert data['skipped'] == 0
-
-    def test_assign_quest_to_student_duplicate(self, client, db_session, test_user, test_classroom, test_character, quest):
-        # Log in as teacher
-        with client:
-            client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
-            # Assign quest first time
-            client.post('/teacher/api/teacher/assign-quest', json={
-                'quest_id': quest.id,
-                'target_type': 'student',
-                'target_id': test_character.student_id
-            })
-            # Assign quest again (should skip)
-            resp = client.post('/teacher/api/teacher/assign-quest', json={
-                'quest_id': quest.id,
-                'target_type': 'student',
-                'target_id': test_character.student_id
-            })
-            data = resp.get_json()
-            assert resp.status_code == 200
-            assert data['success'] is True
-            assert data['assigned'] == 0
-            assert data['skipped'] == 1
-
-    def test_assign_quest_to_student_unauthorized(self, client, db_session, test_user, quest):
-        # Create a student not in teacher's class
+    def test_assign_quest_api_is_retired(self, client, db_session, test_classroom, quest):
         from app.models.user import User, UserRole
-        from app.models.student import Student
-        other_teacher = User(username='other_teacher', email='other_teacher@test.com', role=UserRole.TEACHER)
-        other_teacher.set_password('password')
-        db_session.add(other_teacher)
-        db_session.commit()
-        student = Student(user_id=9999, class_id=9999, level=1, gold=0, xp=0, health=100, power=10)
-        db_session.add(student)
-        db_session.commit()
-        with client:
-            client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
-            resp = client.post('/teacher/api/teacher/assign-quest', json={
-                'quest_id': quest.id,
-                'target_type': 'student',
-                'target_id': student.id
-            })
-            assert resp.status_code in (403, 404)
 
-    def test_assign_quest_invalid_quest_id(self, client, db_session, test_user, test_classroom, test_character):
-        with client:
-            client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
-            resp = client.post('/teacher/api/teacher/assign-quest', json={
-                'quest_id': 999999,
-                'target_type': 'student',
-                'target_id': test_character.student_id
-            })
-            assert resp.status_code == 404
-
-    def test_assign_quest_invalid_target_type(self, client, db_session, test_user, test_classroom, test_character, quest):
-        with client:
-            client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
-            resp = client.post('/teacher/api/teacher/assign-quest', json={
-                'quest_id': quest.id,
-                'target_type': 'invalid_type',
-                'target_id': test_character.student_id
-            })
-            # Ensure API returns 400 for invalid target_type (check API logic if this fails)
-            assert resp.status_code == 400
-
-    def test_assign_quest_to_clan_success(self, client, db_session, test_user, test_classroom, test_clan, quest):
-        from app.models.character import Character
-        from app.models.student import Student
-        # Create two students in the class
-        student1 = Student(user_id=1001, class_id=test_classroom.id, level=1, gold=0, xp=0, health=100, power=10)
-        student2 = Student(user_id=1002, class_id=test_classroom.id, level=1, gold=0, xp=0, health=100, power=10)
-        db_session.add_all([student1, student2])
-        db_session.commit()
-        # Create two active characters in the clan
-        char1 = Character(name='Char1', student_id=student1.id, clan_id=test_clan.id, is_active=True)
-        char2 = Character(name='Char2', student_id=student2.id, clan_id=test_clan.id, is_active=True)
-        db_session.add_all([char1, char2])
-        db_session.commit()
-        with client:
-            client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
-            resp = client.post('/teacher/api/teacher/assign-quest', json={
-                'quest_id': quest.id,
-                'target_type': 'clan',
-                'target_id': test_clan.id
-            })
-            data = resp.get_json()
-            assert resp.status_code == 200
-            assert data['success'] is True
-            assert data['assigned'] == 2
-            assert data['skipped'] == 0
-
-    def test_assign_quest_to_class_success(self, client, db_session, test_user, test_classroom, quest):
-        from app.models.character import Character
-        from app.models.student import Student
-        # Create three students in the class
-        students = []
-        characters = []
-        for i in range(3):
-            student = Student(user_id=2000 + i, class_id=test_classroom.id, level=1, gold=0, xp=0, health=100, power=10)
-            db_session.add(student)
+        teacher = User.query.get(test_classroom.teacher_id)
+        if teacher.role != UserRole.TEACHER:
+            teacher.role = UserRole.TEACHER
             db_session.commit()
-            students.append(student)
-            char = Character(name=f'Char{i+1}', student_id=student.id, is_active=True)
-            db_session.add(char)
-            db_session.commit()
-            characters.append(char)
-        with client:
-            client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
-            resp = client.post('/teacher/api/teacher/assign-quest', json={
-                'quest_id': quest.id,
-                'target_type': 'class',
-                'target_id': test_classroom.id
-            })
-            data = resp.get_json()
-            assert resp.status_code == 200
-            assert data['success'] is True
-            assert data['assigned'] == 3
-            assert data['skipped'] == 0
-
-    def test_assign_quest_no_available_coordinates(self, client, db_session, test_user, test_classroom, quest):
-        from app.models.character import Character
-        from app.models.student import Student
-        from app.models.quest import QuestLog, QuestStatus
-        # Create a student and active character
-        student = Student(user_id=3001, class_id=test_classroom.id, level=1, gold=0, xp=0, health=100, power=10)
-        db_session.add(student)
-        db_session.commit()
-        char = Character(name='CharFull', student_id=student.id, is_active=True)
-        db_session.add(char)
-        db_session.commit()
-        # Fill all coordinates (default 10x10 grid = 100)
-        for y in range(10):
-            for x in range(10):
-                log = QuestLog(character_id=char.id, quest_id=100000 + y * 10 + x, status=QuestStatus.NOT_STARTED, x_coordinate=x, y_coordinate=y)
-                db_session.add(log)
+        teacher.set_password("password")
         db_session.commit()
         with client:
-            client.post('/auth/login', data={'username': test_user.username, 'password': 'password'}, follow_redirects=True)
-            resp = client.post('/teacher/api/teacher/assign-quest', json={
-                'quest_id': quest.id,
-                'target_type': 'student',
-                'target_id': student.id
-            })
+            client.post(
+                "/auth/login",
+                data={"username": teacher.username, "password": "password"},
+                follow_redirects=True,
+            )
+            resp = client.post(
+                "/teacher/api/teacher/assign-quest",
+                json={
+                    "quest_id": quest.id,
+                    "target_type": "student",
+                    "target_id": 1,
+                },
+            )
             data = resp.get_json()
-            assert resp.status_code == 200
-            assert data['success'] is True
-            assert data['assigned'] == 0
-            assert data['skipped'] == 1
-            assert any('No available coordinates' in err for err in data['errors'])
+            assert resp.status_code == 410
+            assert data["success"] is False
+            assert data["code"] == "QUESTS_RETIRED"
 
-    # Additional tests for clan and class can be added similarly
-    # ... 
 
 def test_student_quest_map_assignment_logic(db_session, quest, character):
     from app.models.quest import Quest, QuestLog, QuestStatus, QuestType

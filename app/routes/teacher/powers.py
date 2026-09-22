@@ -4,6 +4,7 @@ Teacher CRUD for custom powers (per teacher account; visible to their classes' s
 
 from flask import jsonify, render_template, request
 from flask_login import current_user, login_required
+from sqlalchemy.orm import joinedload
 
 from app.models import db
 from app.models.ability import Ability, AbilityType, CharacterAbility
@@ -11,21 +12,60 @@ from app.models.ability import Ability, AbilityType, CharacterAbility
 from .blueprint import teacher_bp, teacher_required
 
 
+_CLASS_ORDER = {'Warrior': 0, 'Sorcerer': 1, 'Druid': 2}
+_TIER_ORDER = {'basic': 0, 'advanced': 1, 'elite': 2}
+
+
+def _default_sort_key(ability):
+    return (
+        _CLASS_ORDER.get(ability.class_restriction, 3),
+        _TIER_ORDER.get(ability.tier, 9),
+        ability.level_requirement or 0,
+        ability.name or '',
+    )
+
+
+def _power_dossier(ability):
+    prerequisite = ability.prerequisite
+    return {
+        'id': ability.id,
+        'name': ability.name,
+        'description': ability.description or '',
+        'type': ability.type,
+        'class_restriction': ability.class_restriction or '',
+        'tier': ability.tier,
+        'level_requirement': ability.level_requirement,
+        'pp_cost': ability.pp_cost,
+        'cost': ability.cost,
+        'power': ability.power,
+        'cooldown': ability.cooldown,
+        'duration': ability.duration,
+        'target_type': ability.target_type,
+        'special_effect': ability.special_effect or '',
+        'prerequisite': prerequisite.name if prerequisite else '',
+        'is_default': bool(ability.is_default),
+    }
+
+
 @teacher_bp.route('/powers', methods=['GET'])
 @login_required
 @teacher_required
 def powers_manage():
-    defaults = Ability.query.filter_by(is_default=True).order_by(
-        Ability.class_restriction, Ability.tier, Ability.level_requirement, Ability.name
-    ).all()
-    custom = Ability.query.filter_by(created_by_teacher_id=current_user.id).order_by(
-        Ability.updated_at.desc()
-    ).all()
+    query = Ability.query.options(joinedload(Ability.prerequisite))
+    defaults = sorted(
+        query.filter_by(is_default=True).all(),
+        key=_default_sort_key,
+    )
+    custom = Ability.query.options(joinedload(Ability.prerequisite)).filter_by(
+        created_by_teacher_id=current_user.id
+    ).order_by(Ability.updated_at.desc()).all()
+    dossiers = {str(ab.id): _power_dossier(ab) for ab in defaults + custom}
     return render_template(
         'teacher/powers.html',
         active_page='powers',
         default_powers=defaults,
         custom_powers=custom,
+        power_dossiers=dossiers,
     )
 
 

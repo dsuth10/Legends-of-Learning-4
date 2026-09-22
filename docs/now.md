@@ -23,7 +23,7 @@ None. Spec 005 (audio meter targeting) is implemented. Pick the next product ite
 
 ## Next
 
-1. **Adventures optional later** — cross-teacher clone, public sharing, clan-shared progress, time-limited nodes, difficulty analytics, legacy-quest migration. Source: [Ideas/Adventures Quest Map System - Roadmap.md](../Ideas/Adventures%20Quest%20Map%20System%20-%20Roadmap.md) §17 Phase 6. Only if Phase 6 is explicitly chosen.
+1. **Adventures optional later** — cross-teacher clone, public sharing, clan-shared progress, time-limited nodes, difficulty analytics. Source: [Ideas/Adventures Quest Map System - Roadmap.md](../Ideas/Adventures%20Quest%20Map%20System%20-%20Roadmap.md) §17 Phase 6. Only if Phase 6 is explicitly chosen. Legacy quests are retired in the UI; tables remain as archive.
 
 ---
 
@@ -65,6 +65,7 @@ Use this table instead of creating another tool.
 
 ## Shipped recently (so we do not re-plan them)
 
+- Legacy quest UI retired: student/teacher quest pages and assign-quest API redirect or 410; Adventures is the learning-path system. `Quest` / `QuestLog` tables kept as archive.
 - Audio meter targeting (spec 005): participant-scoped quiet-time sessions, server-derived ceil-halved rewards, optional HP (default off), per-character Progress descriptions.
 - Student UI remaining gaps (spec 004): one shared student shell, leftover pages off Bootstrap `base.html`, unfinished placeholder controls removed, truthful stats/power icons, small-screen stack. (No longer Current; see 005.)
 - Adventures map system (spec 001): models, teacher editor, student play, branching, assignment, rewards.

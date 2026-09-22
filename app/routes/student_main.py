@@ -7,7 +7,7 @@ from app.models.equipment import Inventory, Equipment, EquipmentType, EquipmentS
 from app.models.student import Student
 from app.models.ability import Ability, CharacterAbility
 from app.models.shop import ShopPurchase, PurchaseType
-from app.models.quest import Quest, QuestLog, QuestStatus, RewardType
+from app.models.quest import QuestLog, QuestStatus
 from app.models.audit import AuditLog, EventType
 from app.models.achievement_badge import AchievementBadge
 from app.models.shop_config import ShopItemOverride
@@ -56,265 +56,25 @@ def profile():
 @login_required
 @student_required
 def quests():
-    try:
-        logger.info(f"Quest page accessed by user {current_user.id}")
-        student_profile = Student.query.filter_by(user_id=current_user.id).first()
-        if not student_profile:
-            logger.warning(f"No student profile found for user {current_user.id}")
-            flash('No student profile found. Please contact your administrator.', 'warning')
-            return redirect(url_for('student.character'))
-        logger.debug(f"Student profile found: {student_profile.id}")
-        main_char = student_profile.characters.filter_by(is_active=True).first()
-        assigned_quests = []
-        equipped_abilities = []
-        ability_targets = []
-        
-        if main_char:
-            # quest_logs is lazy='dynamic', so we need to call .all()
-            for log in main_char.quest_logs.all():
-                logger.debug(f"Quest log: quest_id={log.quest_id}, status={log.status}, log_id={log.id}")
-                quest = log.quest
-                if not quest:
-                    logger.warning(f"Quest log {log.id} references non-existent quest {log.quest_id}, skipping")
-                    continue
-                
-                # Parse objectives from completion_criteria
-                objectives = []
-                completion_criteria = quest.completion_criteria or {}
-                progress_data = log.progress_data or {}
-                
-                # Try to extract objectives from completion_criteria
-                if isinstance(completion_criteria, dict):
-                    # Check for objectives list
-                    if 'objectives' in completion_criteria:
-                        objectives = completion_criteria['objectives']
-                    # Or create objectives from criteria keys
-                    elif completion_criteria:
-                        obj_num = 1
-                        for key, value in completion_criteria.items():
-                            if key not in ['progress', 'min_score_percent']:
-                                objectives.append({
-                                    'id': obj_num,
-                                    'text': f"{key.replace('_', ' ').title()}: {value}",
-                                    'completed': progress_data.get(key, False) or progress_data.get('progress', 0) >= (value if isinstance(value, (int, float)) else 0)
-                                })
-                                obj_num += 1
-                
-                # If no objectives found, create default ones
-                if not objectives:
-                    objectives = [
-                        {'id': 1, 'text': 'Complete quest requirements', 'completed': log.status == QuestStatus.COMPLETED}
-                    ]
-                
-                # Calculate progress percentage
-                completed_count = sum(1 for obj in objectives if obj.get('completed', False))
-                total_count = len(objectives) if objectives else 1
-                progress_percent = int((completed_count / total_count * 100)) if total_count > 0 else 0
-                
-                # Get rewards breakdown
-                rewards_xp = 0
-                rewards_gold = 0
-                rewards_items = []
-                # quest.rewards is lazy='dynamic', so we need to call .all()
-                for reward in quest.rewards.all():
-                    # Handle enum comparison - reward.type is a RewardType enum
-                    reward_type_value = reward.type.value if hasattr(reward.type, 'value') else str(reward.type)
-                    
-                    if reward_type_value == 'experience' or reward_type_value == 'xp':
-                        rewards_xp += reward.amount
-                    elif reward_type_value == 'gold':
-                        rewards_gold += reward.amount
-                    elif reward_type_value == 'equipment' or reward_type_value == 'item':
-                        # Add item_name for template display
-                        reward_data = {
-                            'reward': reward,
-                            'item_name': 'Quest Item'  # Default fallback
-                        }
-                        # Try to get equipment name if it's an equipment reward
-                        if reward_type_value == 'equipment' and reward.item_id:
-                            equipment = reward.equipment
-                            if equipment:
-                                reward_data['item_name'] = equipment.name
-                            else:
-                                # Fallback: query directly if relationship not loaded
-                                equipment = Equipment.query.get(reward.item_id)
-                                if equipment:
-                                    reward_data['item_name'] = equipment.name
-                        # Try to get ability name if it's an ability reward
-                        elif reward_type_value == 'ability' and reward.ability_id:
-                            ability = reward.ability
-                            if ability:
-                                reward_data['item_name'] = ability.name
-                            else:
-                                # Fallback: query directly if relationship not loaded
-                                ability = Ability.query.get(reward.ability_id)
-                                if ability:
-                                    reward_data['item_name'] = ability.name
-                        rewards_items.append(reward_data)
-                
-                # Calculate time remaining if deadline exists
-                time_remaining = None
-                if quest.end_date:
-                    from datetime import datetime
-                    now = datetime.utcnow()
-                    if quest.end_date > now:
-                        delta = quest.end_date - now
-                        days = delta.days
-                        hours = delta.seconds // 3600
-                        if days > 0:
-                            time_remaining = f"{days} day{'s' if days != 1 else ''} remaining"
-                        elif hours > 0:
-                            time_remaining = f"{hours} hour{'s' if hours != 1 else ''} remaining"
-                        else:
-                            time_remaining = "Less than 1 hour remaining"
-                
-                # Get quest type display name
-                quest_type_display = quest.type.value.title() if hasattr(quest.type, 'value') else str(quest.type).title()
-                if quest_type_display == 'Story':
-                    quest_type_display = 'Story Quest'
-                
-                assigned_quests.append({
-                    'quest': quest,
-                    'status': log.status,
-                    'x': log.x_coordinate,
-                    'y': log.y_coordinate,
-                    'log': log,
-                    'objectives': objectives,
-                    'progress_percent': progress_percent,
-                    'rewards_xp': rewards_xp,
-                    'rewards_gold': rewards_gold,
-                    'rewards_items': rewards_items,
-                    'time_remaining': time_remaining,
-                    'quest_type_display': quest_type_display
-                })
-            
-            # Get equipped abilities for quest context
-            equipped_abilities = []
-            for ca in main_char.abilities.filter_by(is_equipped=True).all():
-                # Ensure ability relationship is loaded
-                if ca.ability:
-                    equipped_abilities.append({
-                        'id': ca.ability.id,
-                        'name': ca.ability.name,
-                        'type': ca.ability.type,
-                        'description': ca.ability.description,
-                        'power': ca.ability.power,
-                        'cooldown': ca.ability.cooldown,
-                        'duration': ca.ability.duration,
-                        'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
-                    })
-                else:
-                    # Fallback: query ability directly if relationship not loaded
-                    ability = Ability.query.get(ca.ability_id)
-                    if ability:
-                        equipped_abilities.append({
-                            'id': ability.id,
-                            'name': ability.name,
-                            'type': ability.type,
-                            'description': ability.description,
-                            'power': ability.power,
-                            'cooldown': ability.cooldown,
-                            'duration': ability.duration,
-                            'last_used_at': ca.last_used_at.isoformat() if ca.last_used_at else None,
-                        })
-            # Get ability targets (clanmates)
-            if main_char.clan:
-                ability_targets = [
-                    {'id': member.id, 'name': member.name, 'character_class': member.character_class}
-                    for member in main_char.clan.members if member.id != main_char.id
-                ]
-        # Eager load classroom and teacher for template
-        if student_profile and student_profile.classroom:
-            # Access teacher relationship to ensure it's loaded
-            _ = student_profile.classroom.teacher
-        
-        now = int(time.time())
-        logger.info(f"Rendering quests_new.html template for user {current_user.id} with {len(assigned_quests)} quests")
-        logger.debug(f"Quest data: assigned_quests={len(assigned_quests)}, equipped_abilities={len(equipped_abilities)}, ability_targets={len(ability_targets)}")
-        return render_template('student/quests_new.html', **_chrome(
-            assigned_quests=assigned_quests,
-            equipped_abilities=equipped_abilities,
-            ability_targets=ability_targets,
-            now=now,
-        ))
-    except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        logger.error(f"Error loading quests page: {str(e)}\n{error_details}", exc_info=True)
-        flash(f'An error occurred while loading quests: {str(e)}. Please try again.', 'danger')
-        return redirect(url_for('student.character'))
+    flash('Quests have been retired. Continue your learning path in Adventures.', 'info')
+    return redirect(url_for('adventures_student.list_adventures'))
+
 
 @student_bp.route('/quests/start/<int:quest_id>', methods=['POST'])
 @login_required
 @student_required
 def start_quest(quest_id):
-    try:
-        student_profile = Student.query.filter_by(user_id=current_user.id).first()
-        main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
-        quest = Quest.query.get_or_404(quest_id)
-        if not main_char:
-            flash('No active character found.', 'danger')
-            return redirect(url_for('student.quests'))
-        existing_log = QuestLog.query.filter_by(character_id=main_char.id, quest_id=quest.id).first()
-        if existing_log:
-            if existing_log.status == QuestStatus.NOT_STARTED:
-                existing_log.status = QuestStatus.IN_PROGRESS
-                db.session.commit()
-                db.session.refresh(existing_log)
-                logger.debug(f"Quest started: quest_id={quest.id}, character_id={main_char.id}, status={existing_log.status}")
-                flash('Quest started!', 'success')
-            elif existing_log.status == QuestStatus.IN_PROGRESS:
-                flash('You have already started this quest.', 'info')
-            elif existing_log.status == QuestStatus.COMPLETED:
-                flash('You have already completed this quest.', 'info')
-            else:
-                flash('Quest already in progress or completed.', 'info')
-            return redirect(url_for('student.quests'))
-        # If no log exists, create a new one (should not happen with current assign flow)
-        new_log = QuestLog(character_id=main_char.id, quest_id=quest.id, status=QuestStatus.IN_PROGRESS)
-        db.session.add(new_log)
-        db.session.commit()
-        flash('Quest accepted!', 'success')
-        return redirect(url_for('student.quests'))
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error starting quest {quest_id}: {str(e)}", exc_info=True)
-        flash('An error occurred while starting the quest. Please try again.', 'danger')
-        return redirect(url_for('student.quests'))
+    flash('Quests have been retired. Continue your learning path in Adventures.', 'info')
+    return redirect(url_for('adventures_student.list_adventures'))
+
 
 @student_bp.route('/quests/complete/<int:quest_id>', methods=['POST'])
 @login_required
 @student_required
 def complete_quest(quest_id):
-    student_profile = Student.query.filter_by(user_id=current_user.id).first()
-    main_char = student_profile.characters.filter_by(is_active=True).first() if student_profile else None
-    if not main_char:
-        flash('No active character found.', 'danger')
-        return redirect(url_for('student.quests'))
-    quest_log = QuestLog.query.filter_by(character_id=main_char.id, quest_id=quest_id).first()
-    if not quest_log or quest_log.status != QuestStatus.IN_PROGRESS:
-        flash('Quest not in progress or already completed.', 'warning')
-        return redirect(url_for('student.quests'))
-    try:
-        logger.info(f"Completing quest: quest_id={quest_id}, character_id={main_char.id}, current_gold={main_char.gold}, current_level={main_char.level}, current_xp={main_char.experience}")
-        
-        # Ensure character and quest_log are in session before completing quest
-        db.session.add(main_char)
-        db.session.add(quest_log)
-        
-        # Complete quest - this distributes rewards and commits in a single transaction
-        quest_log.complete_quest()  # This calls self.save() which commits all changes
-        
-        # Character is already refreshed in complete_quest(), but refresh again to be safe
-        db.session.refresh(main_char)
-        
-        logger.info(f"Quest completed successfully: quest_id={quest_id}, character_id={main_char.id}, gold={main_char.gold}, level={main_char.level}, experience={main_char.experience}")
-        flash('Quest completed! Rewards granted.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Quest completion error: quest_id={quest_id}, character_id={main_char.id if main_char else None}, error={str(e)}", exc_info=True)
-        flash(f'Error completing quest: {str(e)}', 'danger')
-    return redirect(url_for('student.quests'))
+    flash('Quests have been retired. Continue your learning path in Adventures.', 'info')
+    return redirect(url_for('adventures_student.list_adventures'))
+
 
 @student_bp.route('/clan')
 @login_required
