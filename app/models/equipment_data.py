@@ -29,7 +29,7 @@ Example entry:
     'power_bonus': 5,
     'defense_bonus': 0,
     'rarity': 1,
-    'image_url': '/static/images/equipment/warrior/warrior 1 Weapon Sword.png',
+    'image_url': '/static/images/equipment/warrior/warrior_1_weapon_sword.png',
     'class_restriction': 'sorcerer',
 }
 """
@@ -49,7 +49,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 2,
         'defense_bonus': 2,
         'rarity': 1,
-        'image_url': '/static/images/equipment/warrior/warrior 1 Accessory Ring.png',
+        'image_url': '/static/images/equipment/warrior/warrior_1_accessory_ring.png',
         'class_restriction': 'warrior',
     },
     {
@@ -63,7 +63,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 0,
         'defense_bonus': 5,
         'rarity': 1,
-        'image_url': '/static/images/equipment/warrior/warrior 1 Armor Leather.png',
+        'image_url': '/static/images/equipment/warrior/warrior_1_armor_leather.png',
         'class_restriction': 'warrior',
     },
     {
@@ -77,7 +77,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 0,
         'defense_bonus': 8,
         'rarity': 2,
-        'image_url': '/static/images/equipment/warrior/warrior 1 Armor Plate.png',
+        'image_url': '/static/images/equipment/warrior/warrior_1_armor_plate.png',
         'class_restriction': 'warrior',
     },
     {
@@ -91,7 +91,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 0,
         'defense_bonus': 10,
         'rarity': 2,
-        'image_url': '/static/images/equipment/warrior/warrior 1 Accessory Shield.png',
+        'image_url': '/static/images/equipment/warrior/warrior_1_accessory_shield.png',
         'class_restriction': 'warrior',
     },
     {
@@ -105,7 +105,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 4,
         'defense_bonus': 2,
         'rarity': 2,
-        'image_url': '/static/images/equipment/warrior/warrior 2 Weapon Bow.png',
+        'image_url': '/static/images/equipment/warrior/warrior_2_weapon_bow.png',
         'class_restriction': 'warrior',
     },
     {
@@ -119,7 +119,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 6,
         'defense_bonus': -1,
         'rarity': 1,
-        'image_url': '/static/images/equipment/warrior/warrior 1 Weapon Axe.png',
+        'image_url': '/static/images/equipment/warrior/warrior_1_weapon_axe.png',
         'class_restriction': 'warrior',
     },
     {
@@ -133,7 +133,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 5,
         'defense_bonus': 0,
         'rarity': 1,
-        'image_url': '/static/images/equipment/warrior/warrior 1 Weapon Sword.png',
+        'image_url': '/static/images/equipment/warrior/warrior_1_weapon_sword.png',
         'class_restriction': 'warrior',
     },
     # --- Sorcerer ---
@@ -148,7 +148,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 8,
         'defense_bonus': 2,
         'rarity': 2,
-        'image_url': '/static/images/equipment/sorcerer/sorcerer 1 Accessory Book.png',
+        'image_url': '/static/images/equipment/sorcerer/sorcerer_1_accessory_book.png',
         'class_restriction': 'sorcerer',
     },
     {
@@ -162,7 +162,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 4,
         'defense_bonus': 1,
         'rarity': 1,
-        'image_url': '/static/images/equipment/sorcerer/sorcerer 1 Weapon Wand.png',
+        'image_url': '/static/images/equipment/sorcerer/sorcerer_1_weapon_wand.png',
         'class_restriction': 'sorcerer',
     },
     {
@@ -176,7 +176,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 8,
         'defense_bonus': 0,
         'rarity': 2,
-        'image_url': '/static/images/equipment/sorcerer/sorcerer 1 Armor Cloak2.png',
+        'image_url': '/static/images/equipment/sorcerer/sorcerer_1_armor_cloak2.png',
         'class_restriction': 'sorcerer',
     },
     {
@@ -190,7 +190,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 3,
         'defense_bonus': 2,
         'rarity': 1,
-        'image_url': '/static/images/equipment/sorcerer/sorcerer 1 Weapon Staff.png',
+        'image_url': '/static/images/equipment/sorcerer/sorcerer_1_weapon_staff.png',
         'class_restriction': 'sorcerer',
     },
     {
@@ -204,7 +204,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 5,
         'defense_bonus': 2,
         'rarity': 1,
-        'image_url': '/static/images/equipment/sorcerer/sorcerer 1 Accessory Ring.png',
+        'image_url': '/static/images/equipment/sorcerer/sorcerer_1_accessory_ring.png',
         'class_restriction': 'sorcerer',
     },
     {
@@ -218,7 +218,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 5,
         'defense_bonus': 0,
         'rarity': 1,
-        'image_url': '/static/images/equipment/sorcerer/sorcerer 1 Armor Cloak.png',
+        'image_url': '/static/images/equipment/sorcerer/sorcerer_1_armor_cloak.png',
         'class_restriction': 'sorcerer',
     },
     # --- Druid ---
@@ -233,7 +233,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 2,
         'defense_bonus': 4,
         'rarity': 2,
-        'image_url': '/static/images/equipment/druid/druid 1 Accessory Bracers.png',
+        'image_url': '/static/images/equipment/druid/druid_1_accessory_bracers.png',
         'class_restriction': 'druid',
     },
     {
@@ -247,7 +247,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 4,
         'defense_bonus': 3,
         'rarity': 2,
-        'image_url': '/static/images/equipment/druid/druid 1 Weapon Flail.png',
+        'image_url': '/static/images/equipment/druid/druid_1_weapon_flail.png',
         'class_restriction': 'druid',
     },
     {
@@ -261,7 +261,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 3,
         'defense_bonus': 7,
         'rarity': 2,
-        'image_url': '/static/images/equipment/druid/druid 1 Armor Cloak2.png',
+        'image_url': '/static/images/equipment/druid/druid_1_armor_cloak2.png',
         'class_restriction': 'druid',
     },
     {
@@ -275,7 +275,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 2,
         'defense_bonus': 3,
         'rarity': 1,
-        'image_url': '/static/images/equipment/druid/druid 1 Weapon Staff.png',
+        'image_url': '/static/images/equipment/druid/druid_1_weapon_staff.png',
         'class_restriction': 'druid',
     },
     {
@@ -289,7 +289,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 4,
         'defense_bonus': 2,
         'rarity': 1,
-        'image_url': '/static/images/equipment/druid/druid 1 Accessory Pendant.png',
+        'image_url': '/static/images/equipment/druid/druid_1_accessory_pendant.png',
         'class_restriction': 'druid',
     },
     {
@@ -303,7 +303,7 @@ EQUIPMENT_DATA = [
         'power_bonus': 2,
         'defense_bonus': 5,
         'rarity': 1,
-        'image_url': '/static/images/equipment/druid/druid 1 Armor Cloak.png',
+        'image_url': '/static/images/equipment/druid/druid_1_armor_cloak.png',
         'class_restriction': 'druid',
     },
 ] 
