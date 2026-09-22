@@ -17,9 +17,9 @@ Last reviewed: 2026-09-23
 
 ## Current
 
-**Art integration and review.** The current handoff is [Art and asset worklist](../Ideas/ART_ASSET_WORKLIST.md). PRs #3 and #4 are merged; PR #4 delivered nine Batch A images and six compressed Warrior portraits. The `codex/art-integration` branch has the equipment migration and active-page wiring under integration review. The user retained all 33 default powers; their icons remain deferred until the effect contract is settled.
+**Art integration and review.** The current handoff is [Art and asset worklist](../Ideas/ART_ASSET_WORKLIST.md). PRs #3 and #4 are merged; [PR #5 — art integration wiring](https://github.com/dsuth10/Legends-of-Learning-4/pull/5) is open. PR #5 implements the character portrait flow, equipment catalogue migration/sync, Adventure node/background/reward artwork, and battle portraits. The user retained all 33 default powers; their icons remain deferred until the effect contract is settled.
 
-Next checkpoint: review and merge the wiring PR, then test the migrated database and key student/teacher screens. The five existing quest-giver portraits need a presenter-selection design before active Adventure wiring; the four legacy quest badges remain parked. Spec 005 is implemented; Adventures Phase 6 remains parked.
+Next checkpoint: review PR #5 and test the migrated database on a recoverable copy. Completed disposable-browser smoke on a temporary database confirmed Adventure editor icons/background picker, student-map progression/reward symbols, and Character/Equipment rendering with real catalogue paths. PR #5 fixes the shared-header fallback with neutral `/static/avatars/default.svg` art and a teacher-specific fallback. Battle portraits and full interaction/level-boundary checks remain open. Production database and live deployment verification remain separate. The five existing quest-giver portraits need a presenter-selection design before active Adventure wiring; the four legacy quest badges remain parked. Spec 005 is implemented; Adventures Phase 6 remains parked.
 
 ---
 

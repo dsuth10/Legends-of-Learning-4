@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 membersHtml = `<ul class='space-y-2 mb-3'>` +
                     clan.members.map(m => `
                         <li class='flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2'>
-                            <img src='${m.avatar_url || '/static/avatars/default.png'}' class='rounded mr-2 w-8 h-8' width='32' height='32' alt='avatar'>
+                            <img src='${m.avatar_url || '/static/avatars/default.svg'}' class='rounded mr-2 w-8 h-8' width='32' height='32' alt='avatar'>
                             <span>${m.name} <span class='ml-2 text-xs rounded bg-gray-200 dark:bg-gray-700 px-2 py-0.5'>${m.character_class}</span></span>
                             ${m.is_active ? '<span class="ml-auto text-xs rounded bg-green-600 text-white px-2 py-0.5">Active</span>' : ''}
                         </li>

@@ -57,7 +57,7 @@ def test_portrait_fallback_and_legacy_compact_avatar_mapping():
         level=21,
     )
 
-    assert other_without_choice.portrait_url == "/static/avatars/default.png"
+    assert other_without_choice.portrait_url == "/static/avatars/default.svg"
     assert legacy.portrait_url == (
         "/static/images/characters/sorcerer/female/level2/1_sorcerer_female_level2.png"
     )
@@ -70,6 +70,38 @@ def test_portrait_fallback_and_legacy_compact_avatar_mapping():
     assert Character.normalise_portrait_selection(
         "Warrior", "Other", None
     ) is None
+
+
+def test_invalid_other_portrait_uses_served_silhouette_without_rewriting_avatar_url(
+    client, db_session, test_user, test_student
+):
+    client.post("/auth/login", data={"username": test_user.username, "password": "password"})
+    legacy_url = "/static/avatars/default.png"
+    character = Character(
+        name="Fern",
+        student_id=test_student.id,
+        character_class="Druid",
+        gender="Other",
+        avatar_url=legacy_url,
+        is_active=True,
+    )
+    db_session.add(character)
+    db_session.commit()
+
+    profile = client.get("/student/character")
+    equipment = client.get("/student/equipment")
+    silhouette = client.get("/static/avatars/default.svg")
+
+    assert profile.status_code == 200
+    assert equipment.status_code == 200
+    assert b"/static/avatars/default.svg" in profile.data
+    assert b"/static/avatars/default.svg" in equipment.data
+    assert b"/static/avatars/default.png" not in profile.data
+    assert b"/static/avatars/default.png" not in equipment.data
+    assert silhouette.status_code == 200
+    assert silhouette.mimetype == "image/svg+xml"
+    assert b"Character silhouette" in silhouette.data
+    assert character.avatar_url == legacy_url
 
 
 def test_character_creation_persists_independent_other_appearance(

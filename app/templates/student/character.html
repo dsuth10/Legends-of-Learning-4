@@ -126,7 +126,7 @@
                                 <div class="card card-body p-2" style="max-width: 300px;">
                                   <div class="target-selection-card mb-2 p-2 border rounded" data-target-id="{{ main_character.id }}" data-ability-id="{{ ab.id }}" style="cursor: pointer;">
                                     <div class="d-flex align-items-center">
-                                      <img src="{{ main_character.avatar_url or '/static/avatars/default.png' }}" alt="Avatar" class="rounded me-2" style="width: 40px; height: 40px;">
+                                      <img src="{{ main_character.avatar_url or '/static/avatars/default.svg' }}" alt="Avatar" class="rounded me-2" style="width: 40px; height: 40px;">
                                       <div class="flex-grow-1">
                                         <strong>{{ main_character.name }}</strong> (Self)<br>
                                         <small class="text-muted">{{ main_character.character_class }} | HP: {{ main_character.health }}/{{ main_character.max_health }}</small>
@@ -439,4 +439,4 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('history-filter-days')?.addEventListener('change', loadAbilityHistory);
 });
 </script>
-{% endblock %} 
+{% endblock %}

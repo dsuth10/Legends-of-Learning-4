@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Character silhouette</title>
+  <rect width="256" height="256" rx="32" fill="#e2e8f0"/>
+  <circle cx="128" cy="88" r="48" fill="#64748b"/>
+  <path d="M36 230c5-52 42-82 92-82s87 30 92 82v10H36z" fill="#64748b"/>
+</svg>

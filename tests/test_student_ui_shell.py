@@ -133,6 +133,8 @@ def test_in_scope_pages_include_shared_chrome(client, db_session):
             assert label in html, f"{path} missing {label!r}"
         assert b'data-student-chrome="identity"' in html
         assert b'data-student-chrome="strip"' in html
+        assert b'src="/static/avatars/teacher_1_avatar.png"' in html
+
         assert b'data-student-chrome="stats"' in html
         assert b'data-student-chrome="destinations"' in html
         assert b"HP" in html
@@ -150,6 +152,10 @@ def test_in_scope_pages_include_shared_chrome(client, db_session):
             "student.powers",
         ):
             assert html.count(b'aria-current="page"') >= 1
+
+    avatar = client.get('/static/avatars/teacher_1_avatar.png')
+    assert avatar.status_code == 200
+    assert avatar.mimetype == 'image/png'
 
 
 def test_clanless_student_gets_classroom_strip_and_single_tab(client, db_session):

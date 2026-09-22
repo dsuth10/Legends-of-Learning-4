@@ -63,13 +63,13 @@
             <div class="absolute bottom-20 w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] animate-pulse"></div>
             <img alt="{{ (main_character.name ~ ' portrait') if main_character else 'Character portrait unavailable' }}"
                  class="h-[85%] object-contain drop-shadow-2xl relative z-10 mask-image-gradient"
-                 src="{{ main_character.portrait_url if main_character else '/static/avatars/default.png' }}">
+                 src="{{ main_character.portrait_url if main_character else '/static/avatars/default.svg' }}">
             {% if party_members %}
                 <div class="absolute bottom-4 right-8 flex space-x-[-20px] scale-75 origin-bottom-right opacity-90" data-student-chrome="party">
                     {% for member in party_members %}
                         <img alt="{{ member.name }} portrait" class="w-24 h-32 object-contain rounded-lg border-2 border-white dark:border-gray-700 shadow-lg"
                              style="transform: rotate({{ [-5, 5, -2][loop.index0] }}deg);"
-                             src="{{ member.portrait_url or '/static/avatars/default.png' }}">
+                             src="{{ member.portrait_url or '/static/avatars/default.svg' }}">
                     {% endfor %}
                 </div>
             {% endif %}

@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 from app.models import db
 from app.models.base import Base
 
+DEFAULT_PORTRAIT_URL = "/static/avatars/default.svg"
+
 class Character(Base):
     """Character model representing a student's game avatar."""
     
@@ -137,7 +139,7 @@ class Character(Base):
         """Resolve the selected class portrait at the character's current level."""
         char_class = (self.character_class or "").strip().lower()
         if char_class not in {"warrior", "sorcerer", "druid"}:
-            return "/static/avatars/default.png"
+            return DEFAULT_PORTRAIT_URL
 
         appearance_gender = None
         option = 1
@@ -165,7 +167,7 @@ class Character(Base):
         # "Other" is an identity choice, not a request to substitute male art.
         # A selected appearance is stored in avatar_url; otherwise use the neutral fallback.
         if appearance_gender is None:
-            return "/static/avatars/default.png"
+            return DEFAULT_PORTRAIT_URL
 
         level_tier = self.portrait_level
         return (
