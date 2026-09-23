@@ -27,7 +27,7 @@
         {% if student_profile and student_profile.classroom and student_profile.classroom.teacher %}
             {% set teacher = student_profile.classroom.teacher %}
             <img alt="Teacher Avatar" class="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-600"
-                 src="{{ teacher.avatar_url or '/static/avatars/default.png' }}">
+                 src="{{ teacher.avatar_url or url_for('static', filename='avatars/teacher_1_avatar.png') }}">
         {% endif %}
         <a href="{{ url_for('auth.logout') }}"
            class="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors"

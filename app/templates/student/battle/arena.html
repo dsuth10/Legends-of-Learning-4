@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "student/battle/_monster_portrait.html" import monster_portrait %}
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -60,9 +61,10 @@
                 {% if monsters %}
                 <div class="list-group">
                     {% for monster in monsters %}
-                    <label class="list-group-item">
+                    <label class="list-group-item d-flex align-items-center gap-2">
                         <input class="form-check-input me-2" type="radio" name="monster_id" value="{{ monster.id }}"
                             id="monster_{{ monster.id }}" required>
+                        {{ monster_portrait(monster, 'sm') }}
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <h6 class="mb-1">{{ monster.name }} (Level {{ monster.level }})</h6>

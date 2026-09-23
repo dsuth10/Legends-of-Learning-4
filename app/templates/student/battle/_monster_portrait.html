@@ -1,0 +1,10 @@
+{% macro monster_portrait(monster, size='md') -%}
+<div class="battle-monster-portrait" role="img" aria-label="{{ monster.name }} portrait" style="display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto;border-radius:.5rem;background:#f1f3f5;width:{% if size == 'sm' %}4rem;height:4rem{% else %}7rem;height:7rem{% endif %};">
+    {% if monster.image_url and monster.image_url.startswith('/static/') and not monster.image_url.startswith('//') %}
+    <img src="{{ monster.image_url }}" alt="{{ monster.name }}" loading="lazy" style="display:block;width:100%;height:100%;object-fit:contain;">
+    {% else %}
+    <span aria-hidden="true" style="color:#6c757d;font-size:2rem;"><i class="bi bi-bug-fill"></i></span>
+    <span class="visually-hidden">Portrait unavailable for {{ monster.name }}</span>
+    {% endif %}
+</div>
+{%- endmacro %}

@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function () {
       li.className = 'list-group-item d-flex align-items-center draggable-student';
       li.draggable = true;
       li.dataset.characterId = character.id;
-      li.innerHTML = `<img src="${escapeAttr(character.avatar_url || '/static/avatars/default.png')}" class="rounded me-2" width="32" height="32" alt="avatar"> <span>${escapeHtml(student.username)} (${escapeHtml(character.name)})</span>`;
+      li.innerHTML = `<img src="${escapeAttr(character.avatar_url || '/static/avatars/default.svg')}" class="rounded me-2" width="32" height="32" alt="avatar"> <span>${escapeHtml(student.username)} (${escapeHtml(character.name)})</span>`;
       li.addEventListener('dragstart', handleStudentDragStart);
       studentRoster.appendChild(li);
     });
@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
       col.innerHTML = `
         <div class="card clan-card" data-clan-id="${clan.id}">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <span><img src="${escapeAttr(clan.emblem || '/static/avatars/default.png')}" width="32" height="32" class="me-2"> <strong>${escapeHtml(clan.name)}</strong></span>
+            <span><img src="${escapeAttr(clan.emblem || '/static/avatars/default.svg')}" width="32" height="32" class="me-2"> <strong>${escapeHtml(clan.name)}</strong></span>
             <div class="d-flex flex-wrap gap-1 mt-1">
               ${(clan.badges || []).map(b => `<img src='${escapeAttr(b.icon)}' title='${escapeAttr(b.name)}: ${escapeAttr(b.description)}' alt='${escapeAttr(b.name)}' style='width:28px;height:28px;' class='badge-icon'>`).join('')}
             </div>
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <ul class="list-group mb-2 clan-member-list" id="clan-members-${clan.id}">
               ${clan.members.map(m => `
                 <li class="list-group-item d-flex align-items-center draggable-student" draggable="true" data-character-id="${m.id}">
-                  <img src="${escapeAttr(m.avatar_url || '/static/avatars/default.png')}" class="rounded me-2" width="32" height="32" alt="avatar">
+                  <img src="${escapeAttr(m.avatar_url || '/static/avatars/default.svg')}" class="rounded me-2" width="32" height="32" alt="avatar">
                   <span>${escapeHtml(m.name)}</span>
                   <button class="btn btn-sm btn-outline-danger ms-auto remove-member-btn" data-character-id="${m.id}" data-clan-id="${clan.id}"><i class="fas fa-times"></i></button>
                 </li>

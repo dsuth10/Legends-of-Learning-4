@@ -184,6 +184,10 @@
   pointer-events: none;
 }
 
+.adventure-canvas .node-icon-image {
+  pointer-events: none;
+}
+
 .node-icon-picker {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(2.4rem, 1fr));
@@ -211,6 +215,12 @@
 
 .node-icon-option .material-icons {
   font-size: 1.25rem;
+}
+
+.node-icon-option-image {
+  width: 1.8rem;
+  height: 1.8rem;
+  object-fit: contain;
 }
 
 @media (max-width: 991.98px) {

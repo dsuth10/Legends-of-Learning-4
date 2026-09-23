@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import re
 from typing import List, Optional
 from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, or_
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -6,6 +7,8 @@ from pydantic import BaseModel, Field
 
 from app.models import db
 from app.models.base import Base
+
+DEFAULT_PORTRAIT_URL = "/static/avatars/default.svg"
 
 class Character(Base):
     """Character model representing a student's game avatar."""
@@ -133,30 +136,99 @@ class Character(Base):
     
     @property
     def portrait_url(self):
-        """Returns the full portrait path based on class, gender, and level.
-        
-        Format: /static/images/characters/{class}/{gender}/level{n}/{option}_{class}_{gender}_level{n}.png
-        Attempts to derive option from avatar_url if possible, otherwise defaults to option 1.
-        """
-        if not self.character_class or not self.gender:
-            return self.avatar_url or '/static/avatars/default.png'
-        
-        # Normalize class and gender to lowercase
-        char_class = self.character_class.lower()
-        gender = self.gender.lower()
-        
-        # Map "other" gender to male as default
-        if gender not in ['male', 'female']:
-            gender = 'male'
-        
+        """Resolve the selected class portrait at the character's current level."""
+        char_class = (self.character_class or "").strip().lower()
+        if char_class not in {"warrior", "sorcerer", "druid"}:
+            return DEFAULT_PORTRAIT_URL
+
+        appearance_gender = None
+        option = 1
+        stored_url = (self.avatar_url or "").strip()
+        full_portrait = re.fullmatch(
+            r"/static/images/characters/(?P<class>warrior|sorcerer|druid)/"
+            r"(?P<gender>male|female)/level[123]/(?P<option>[123])_"
+            r"(?P=class)_(?P=gender)_level[123]\.png",
+            stored_url,
+        )
+        if full_portrait and full_portrait.group("class") == char_class:
+            appearance_gender = full_portrait.group("gender")
+            option = int(full_portrait.group("option"))
+        else:
+            # Older creation forms stored compact class_m/class_f avatar URLs.
+            legacy_avatar = re.fullmatch(
+                r"/static/avatars/(warrior|sorcerer|druid)_([mf])\.png",
+                stored_url,
+            )
+            if legacy_avatar:
+                appearance_gender = "male" if legacy_avatar.group(2) == "m" else "female"
+            elif (self.gender or "").strip().lower() in {"male", "female"}:
+                appearance_gender = self.gender.strip().lower()
+
+        # "Other" is an identity choice, not a request to substitute male art.
+        # A selected appearance is stored in avatar_url; otherwise use the neutral fallback.
+        if appearance_gender is None:
+            return DEFAULT_PORTRAIT_URL
+
         level_tier = self.portrait_level
-        
-        # Try to extract option from avatar_url if it follows the pattern
-        # e.g., /static/avatars/warrior_m.png -> option 1 (default)
-        # In the future, if avatars are named like warrior_m_2.png, we could parse that
-        option = 1  # Default to option 1
-        
-        return f'/static/images/characters/{char_class}/{gender}/level{level_tier}/{option}_{char_class}_{gender}_level{level_tier}.png'
+        return (
+            f"/static/images/characters/{char_class}/{appearance_gender}/level{level_tier}/"
+            f"{option}_{char_class}_{appearance_gender}_level{level_tier}.png"
+        )
+
+    @staticmethod
+    def portrait_selection_url(character_class, appearance_gender, option):
+        """Return a canonical level-one URL to persist an appearance selection."""
+        char_class = (character_class or "").strip().lower()
+        appearance_gender = (appearance_gender or "").strip().lower()
+        try:
+            option = int(option)
+        except (TypeError, ValueError):
+            return None
+        if char_class not in {"warrior", "sorcerer", "druid"}:
+            return None
+        if appearance_gender not in {"male", "female"} or option not in {1, 2, 3}:
+            return None
+        return (
+            f"/static/images/characters/{char_class}/{appearance_gender}/level1/"
+            f"{option}_{char_class}_{appearance_gender}_level1.png"
+        )
+
+    @classmethod
+    def normalise_portrait_selection(
+        cls, character_class, identity_gender, avatar_url=None,
+        appearance_gender=None, option=None,
+    ):
+        """Validate new choices and translate older compact avatar values."""
+        selected_url = cls.portrait_selection_url(
+            character_class, appearance_gender, option
+        )
+        if selected_url:
+            return selected_url
+
+        stored_url = (avatar_url or "").strip()
+        full_portrait = re.fullmatch(
+            r"/static/images/characters/(?P<class>warrior|sorcerer|druid)/"
+            r"(?P<gender>male|female)/level[123]/(?P<option>[123])_"
+            r"(?P=class)_(?P=gender)_level[123]\.png",
+            stored_url,
+        )
+        char_class = (character_class or "").strip().lower()
+        if full_portrait and full_portrait.group("class") == char_class:
+            return cls.portrait_selection_url(
+                char_class, full_portrait.group("gender"), full_portrait.group("option")
+            )
+
+        compact = re.fullmatch(
+            r"/static/avatars/(warrior|sorcerer|druid)_([mf])\.png",
+            stored_url,
+        )
+        if compact:
+            selected_gender = "male" if compact.group(2) == "m" else "female"
+            return cls.portrait_selection_url(char_class, selected_gender, 1)
+
+        if (identity_gender or "").strip().lower() in {"male", "female"}:
+            return cls.portrait_selection_url(char_class, identity_gender, 1)
+        return None
     
     @property
     def background_url(self):
@@ -307,4 +379,4 @@ class StatusEffect(Base):
             'source': self.source
         }
 
-Character.status_effects = db.relationship('StatusEffect', back_populates='character', lazy='dynamic', cascade='all, delete-orphan') 
+Character.status_effects = db.relationship('StatusEffect', back_populates='character', lazy='dynamic', cascade='all, delete-orphan')

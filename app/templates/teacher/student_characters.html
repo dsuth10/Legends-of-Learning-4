@@ -114,7 +114,7 @@
               {% if student.character %}
               <div class="row">
                 <div class="col-md-3 text-center">
-                  <img src="{{ student.character.avatar_url or '/static/avatars/default.png' }}" alt="Avatar" class="img-thumbnail mb-2" style="width:96px;height:96px;">
+                  <img src="{{ student.character.avatar_url or '/static/avatars/default.svg' }}" alt="Avatar" class="img-thumbnail mb-2" style="width:96px;height:96px;">
                   <div class="mt-2">
                     <span class="badge bg-warning text-dark">Gold: {{ student.character.gold }}</span>
                   </div>
@@ -514,4 +514,4 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
-{% endblock %} 
+{% endblock %}

@@ -61,8 +61,8 @@
 {% block shell_main %}
 <div class="relative h-full overflow-hidden">
         <div class="absolute inset-0 z-0">
-            <img alt="Fantasy Landscape Background" class="w-full h-full object-cover"
-                 src="{{ url_for('static', filename='images/quest_maps/quest_map.png') }}">
+            <img alt="" aria-hidden="true" class="w-full h-full object-cover"
+                 src="{{ main_character.background_url if main_character else url_for('static', filename='images/quest_maps/quest_map.png') }}">
             <div class="absolute inset-0 bg-white/30 dark:bg-black/50"></div>
         </div>
         <div class="relative z-10 h-full flex flex-col items-center justify-center p-8 overflow-hidden">
@@ -72,9 +72,9 @@
                 
                 {# Character model #}
                 <div class="relative h-[85%] z-10 flex items-center justify-center group">
-                    <img alt="{{ main_character.name if main_character else 'Character' }}"
+                    <img alt="{{ (main_character.name ~ ' portrait') if main_character else 'Character portrait unavailable' }}"
                          class="h-full w-auto object-contain drop-shadow-2xl mask-image-gradient"
-                         src="{{ main_character.avatar_url if main_character else '/static/avatars/default.png' }}">
+                         src="{{ main_character.portrait_url if main_character else '/static/avatars/default.svg' }}">
                 </div>
                 
                 {# Weapon slot (left side) #}

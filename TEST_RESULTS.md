@@ -1,3 +1,9 @@
+# Historical test report — current limits clarified
+
+See the [23 September art audit and acceptance plan](Ideas/ART_ASSET_WORKLIST.md). Compilation and file-path checks do not establish database synchronisation or visible UI integration. No application tests were rerun during that planning audit. The source catalogue has 43 entries (18/16/9 by filename tier), with two duplicate display names that require synchronisation repairs. Retain the report below as historical evidence only.
+
+---
+
 # Test Results - Art Asset Wiring (PR #3)
 
 ## Date: 2026-09-22

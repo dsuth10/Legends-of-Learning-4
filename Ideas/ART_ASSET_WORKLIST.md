@@ -1,395 +1,180 @@
-# Legends of Learning — Art & Asset Worklist
+# Legends of Learning — current art and integration worklist
 
-**Repo:** `dsuth10/Legends-of-Learning-4`  
-**Date:** 21 September 2026 (Australia/Brisbane)  
-**Purpose:** Commission / create every outstanding visual asset, with game context, UI placement, naming, and delivery specs.
+**Reviewed:** 23 September 2026 (Australia/Brisbane).
+**Scope:** Source-checked asset register and integration handoff. Batch A is merged through PR #4; the implementation is in [PR #5 — art integration wiring](https://github.com/dsuth10/Legends-of-Learning-4/pull/5) (**open**).
+**Direction:** [Now / Next](../docs/now.md). This file is the detailed asset handoff, not a second project roadmap.
+**Evidence baseline:** source and filesystem inspected against local `4251d46` and the Batch A branch. PR #3 (`5cbc965`) and PR #4 (`7bb9f1b`) are merged; PR #5 is open for the active-page wiring and equipment catalogue migration. Automated tests and file checks are evidence of implementation only; browser review and live-environment verification remain separate gates.
 
----
+This replaces the 21 September estimates. Earlier agent messages, the PR description, `ART_ASSET_WIRING_SUMMARY.md` and `TEST_RESULTS.md` are historical handoffs; their claims of complete wiring and their tier counts are not current acceptance evidence. File presence, catalogue references, database migration and visible rendering are separate checks.
 
-## 1. How the game is structured (so art has a home)
+## 1. What is already done
 
-Legends of Learning is a **classroom RPG loop**, not a free-roam action game.
+| Category | Verified files | Remaining work |
+|---|---:|---|
+| Character portraits | All 54 expected options; 54 distinct file hashes | PR #5 exposes 18 level-1 class/appearance options, preserves the selected option across level bands, maps recognised legacy selections, and wires the active Character and Equipment pages. Disposable-browser smoke confirmed Character/Equipment rendering with real catalogue image paths. The shared-header fallback now uses neutral `/static/avatars/default.svg` art with a teacher-specific fallback. Full interaction and level-boundary checks remain. Visual consistency still needs review. |
+| Equipment | 43 PNGs and 43 catalogue entries; every path resolves on disk | PR #5 adds stable catalogue keys, distinguishes the older cloak variants, and adds a dry-run/idempotent sync plus a backfill migration. A recoverable database-copy migration check and full shop/equip/reload walkthrough remain. |
+| Adventure map symbols | 14 including PR #4 | PR #5 wires nine type defaults, three state badges, and optional Quest/Rest image choices with ligature and image-failure fallbacks. Disposable-browser smoke confirmed editor icons and the student map; full editor/player interaction and accessibility review remains. |
+| Adventure background pack | 3 (forest, castle, arcane) | PR #5 adds a built-in picker and renders the stored background URL in the editor and player. Disposable-browser smoke confirmed the background picker and student map. Saved editor/player alignment and full interaction review remain. Two additional files under `adventure_backgrounds/1/` are local adventure content, not pack deliverables. |
+| Character backgrounds | Levels 1, 2 and 3 | PR #5 wires level-aware backgrounds on active Character and Equipment pages. Disposable-browser smoke confirmed real portrait/background paths on Character and Equipment. Level-boundary checks at 1, 10, 11, 20 and 21 remain. |
+| Quest cast and symbols | 12: five givers, four badges, three reward symbols | PR #5 uses XP, gold and item symbols in Adventure reward previews. Quest-giver portraits still need a presenter-selection design; legacy Quests redirects to Adventures. |
+| Class avatars / clan icons / achievement badges | 6 class avatars, 10 clan icons, 6 badges | Reuse; migrate old persisted clan paths and review consistency. No new commission. |
+| Power icons | 0 | Retain 33 default powers; resolve effect contract, then commission one per stable key. |
+| Battle opponents | 4 in PR #4 | PR #5 wires local portraits with a text/icon fallback on Arena, fight and results. Battle portrait browser review remains open. |
 
-```text
-Teacher sets up class → Students create a character (class + look)
-        ↓
-Students complete Quests / Adventures → earn XP + Gold
-        ↓
-Level up (character art can progress) → spend Gold in Shop
-        ↓
-Equip gear (equipment icons on character) → join Clans → earn Badges
-```
+The equipment file tiers are **18 tier 1 + 16 tier 2 + 9 tier 3 = 43**. These are filename tiers, not rarity counts. The current seed contains 24 added entries compared with its original 19-entry group; the old bow already points at a tier-2 filename. Neither “21 all-tier-1 entries” nor “32 new entries” describes this checkout.
 
-### Core player surfaces (student)
+Asset compression is largely complete: 48 portraits are 256×256; PR #4 re-exported the six Warrior level-1 portraits to 384×384, about 60–66 kB each, preserving the earlier painted scenes. Their photorealistic style and scene backgrounds still differ visibly from the Sorcerer/Druid cut-outs. This is a visual acceptance choice, not a compression defect. All equipment and quest PNGs are below 200 kB. Backgrounds have a separate size budget.
 
-| Surface | What the student does | Art that shows here |
-|---|---|---|
-| **Welcome / Login** | Enter the game | App icon, welcome background |
-| **Character** | See self, stats (HP/PP/XP/GP), powers | Full-body portrait, class background, power icons |
-| **Shop** | Buy weapons / armour / accessories | Item icons, rarity framing, wallet/GP symbol |
-| **Equipment** | Equip / unequip on slots | Item icons on paper-doll slots + inventory grid |
-| **Quests** | Pick up / continue / turn in work | Quest-giver avatars, type badges, reward icons |
-| **Adventure / Quest Map** *(planned)* | Move across a map of nodes | Map background, node icons, state overlays |
-| **Clans** | Belong to a group | Clan icons |
-| **Progress / Achievements** | See milestones | Badge art, charts (charts are code, not art) |
+## 2. Branch and agent coordination
 
-### Teacher surfaces
+- PR #3 is **already merged**. Its source branch still existing is not evidence of pending work. Do not merge it again.
+- PR #4 is **merged**. [PR #5 — art integration wiring](https://github.com/dsuth10/Legends-of-Learning-4/pull/5) is **open** and carries the active-page wiring and equipment migration.
+- Local `main` remains at baseline `4251d46`; `origin/main` is `7bb9f1b` after PR #4. The PR #5 wiring and migration are under review in the open pull request.
+- The cached `feature/interface-redesign` commit `adf5773` is an ancestor of local main. GitHub confirms the branch still exists; its latest tip was not refreshed. Shell remote-ref lookup failed with a Windows credential error. Refresh remote refs before implementation and inspect any uncommitted work in other agents' checkouts.
+- PR #3 and PR #4 merge status was verified using the GitHub connector. The disposable-browser smoke is complete; production deployment and live-database acceptance have not been verified.
+- Each implementation owner should return: branch + commit, files changed, catalogue/asset counts, checks performed and outstanding user review. One integrator owns migrations, shared model fields and final acceptance.
 
-| Surface | Art touchpoints |
-|---|---|
-| Teacher header / class view | Teacher avatar |
-| Clan management | Clan icon picker (folder auto-scanned) |
-| Shop config *(stub)* | Same equipment icons students see |
-
-### Three character classes (theme the whole set)
-
-| Class | Look & feel | Typical gear |
-|---|---|---|
-| **Warrior** | Armour, steel, martial | Sword, axe, bow, plate/leather, shield, ring |
-| **Sorcerer** | Robes, arcane glow | Staff, wand, cloak, book, ring |
-| **Druid** | Nature, organic | Staff, flail, cloak, bracers, pendant |
-
-Rarity colours (UI already coded — art should read clearly against them):
-
-- Common · Rare · Epic · Legendary
-
----
-
-## 2. Global delivery standards (apply to every new asset)
-
-| Spec | Requirement |
-|---|---|
-| Format | PNG with transparency (backgrounds may be JPG/PNG opaque) |
-| Colour | RGB, school-appropriate fantasy (no gore / horror) |
-| Style | Consistent illustrative style across the set (match existing clan/equipment tone) |
-| Character portraits | Target **256×256** (or 512×512 master → export 256) |
-| Icons (items, nodes, badges) | **128×128** or **256×256** square |
-| Backgrounds / maps | **1920×1080** (or 1600×900) landscape |
-| File size | Aim **&lt; 100–200 KB** per icon/portrait after export (current assets are often 1–3 MB — compress) |
-| Naming | No spaces; use underscores; no “Copy” suffixes |
-| Licence | Own / school-cleared; no unlicensed scraped art |
-
----
-
-## 3. Workstreams (priority order)
-
-### Workstream A — Adventure map pack *(highest priority for new feature)*
-
-**Why:** Folders exist but are empty. Adventure/quest-map system cannot ship without these.
-
-**Paths:**
-
-- `static/images/adventure_node_icons/`
-- `static/images/adventure_backgrounds/`
-- Existing map plate: `static/images/quest_maps/quest_map.png` (keep or replace)
-
-**Where they sit in the game:** Student **Adventure / Quest Map** screen — a board of nodes on a background. Teacher may preview the same map when assigning adventures.
-
-#### A1. Node icons (required set)
-
-| ID | Filename (suggested) | Purpose | In-game location |
+| Order / owner role | Bounded handoff | Depends on | Acceptance |
 |---|---|---|---|
-| N01 | `node_quest.png` | Standard learning quest stop | Map node |
-| N02 | `node_battle.png` | Challenge / contest node | Map node |
-| N03 | `node_rest.png` | Rest / recovery stop | Map node |
-| N04 | `node_boss.png` | Capstone / boss encounter | Map node |
-| N05 | `node_treasure.png` | Reward / loot stop | Map node |
-| N06 | `node_story.png` | Narrative / dialogue beat | Map node |
-| N07 | `node_locked.png` | Not yet unlocked | Overlay or alternate state |
-| N08 | `node_complete.png` | Cleared / done | Overlay or alternate state |
-| N09 | `node_current.png` | Player’s current position marker | Map marker |
-| N10 | `node_failed.png` *(optional)* | Failed attempt / retry | Overlay |
+| 0 — Coordinator | Reconcile remote refs and each active agent's actual changes; use this worklist as the asset brief | None | No duplicate seeding or work based on the retired quest UI |
+| 1 — Catalogue and rules owner | Equipment identities/sync; approved powers list and effect corrections; stable icon keys | 0 | Existing and fresh database copies converge safely; exact icon manifest is stable |
+| 2 — Character and shop owner | Portrait selection/progression, backdrops, equipment cards/slots and clan URL compatibility | 1 for migrations | Correct art for all classes/options/bands and a buy/equip/reload walkthrough |
+| 3 — Adventure and battle owner | PNG node rendering/defaults, background picker, selective reuse of quest pack, opponent portraits | 0; 1 for shared schema changes | Editor, saved map and player agree; all opponent images appear |
+| 4 — Art owner | Four opponents and five node symbols first; 33 power icons after effect contract | Stable brief below | Files match manifest, small-size readability and style review |
+| 5 — Integrator | Review focused follow-up PRs, test a database copy, merge and verify deployed result | 1–4 | No broken paths, no lost inventory/identity, user visual acceptance recorded |
 
-**Count:** 9 required + 1 optional = **10**
+These workstream boundaries were used to split PR #5 implementation across agents; the table records their acceptance criteria. Remaining browser and database-copy acceptance should stay with the integrator. Existing fonts/CSS fallbacks allow wiring changes to proceed before power art arrives.
 
-**Art notes:** Read clearly at ~48–64 px on screen; strong silhouette; colour-code by type but keep consistent stroke weight.
+## 3. Implementation status and remaining acceptance
 
-#### A2. Adventure backgrounds
+### Equipment and existing databases
 
-| ID | Filename (suggested) | Purpose | In-game location |
-|---|---|---|---|
-| B01 | `adventure_bg_forest.png` | Default / early path | Map canvas behind nodes |
-| B02 | `adventure_bg_castle.png` | Mid / martial theme | Map canvas |
-| B03 | `adventure_bg_arcane.png` | Magic / endgame feel | Map canvas |
-| B04 | `adventure_bg_classroom_fantasy.png` *(optional)* | School-friendly variant | Alternate map |
+Source: `app/models/equipment_data.py`, `app/commands.py`, `app/models/equipment.py`, `app/routes/student_main.py` and the active Shop/Equipment templates.
 
-**Count:** 3 required + 1 optional = **4**
+1. Keep `/static/images/equipment/{class}/{class}_{tier}_{slot}_{slug}.png` unchanged. All 43 catalogue URLs currently match files. `armor` remains the literal filename/API token; use Australian spelling in display copy.
+2. PR #5 adds stable keys for all 43 built-in entries and explicitly renames the older Sorcerer and Druid cloak variants so tier 1 and tier 2 no longer share display names. The migration backfills recognised legacy rows by catalogue identity/path and updates them in place, preserving equipment IDs and their inventory, purchase and shop-override references.
+3. PR #5 adds a dry-run report and an idempotent sync for fresh, previously seeded and partially synced databases. It repairs recognised legacy image URLs and duplicate cloak identities, and leaves unmatched teacher-created entries alone. The sync preserves existing catalogue balance values. Focused automated tests cover repeat runs and inventory references; a recoverable database-copy migration check remains before production use. Do not run `seed-db` as a substitute on a populated database.
+4. **Proposed progression baseline:** keep the implemented visual bands 1–10 / 11–20 / 21+, and current new-gear thresholds 11 / 21 for this integration. The earlier suggestion of levels 4–6 / 8+ is a separate pacing change, not something already applied. Resolve the tier-2 Warrior Bow at level 2 explicitly before catalogue acceptance; do not silently rewrite owned items.
+5. Keep escalating costs (new tier-2 entries 300–500 gold; tier-3 600–1000), pending gameplay balance review. Separate visual tier, rarity and unlock level in the manifest. The model documents rarity 2 as uncommon while Shop labels 2 as rare; agree one shared display mapping. Do not bake rarity frames or numbers into artwork.
+6. Verify all 43 items through class/level/teacher shop filters and purchase → equip → reload. File-path coverage alone cannot prove they appear in an existing shop.
 
-#### A3. Quest map plate
+### Character identity
 
-| ID | Action | Purpose |
+- The route renders `character_new.html`; the refresh changed the older `character.html`. Use the active route/template pair.
+- PR #5 wires 18 level-1 portrait choices and stores the selected class-compatible appearance and option in the existing avatar URL. Recognised compact and full portrait URLs map forward across level bands; “Other” does not silently choose an appearance.
+- Active Character and Equipment pages use the resolved portrait and level background; shared student chrome receives the resolved portrait URL. Browser checks at levels 1, 10, 11, 20 and 21, across all class/appearance options, remain.
+- Missing or invalid legacy selections use the existing neutral fallback. No additional raster fallback commission is required.
+
+### Adventures, quest assets and battle art
+
+- Actual `NodeType` values are **start, story, battle, quiz, choice, reward, milestone, boss, end**. `quest` and `rest` are not current node types. Do not add gameplay types just to use images.
+- PR #5 adds a shared icon catalogue and image/ligature renderers in editor and player, with image-failure fallbacks and custom overrides. Nine type defaults are mapped to the existing node types; `node_quest.png` and `node_rest.png` remain optional decorations. The disposable-browser smoke confirmed Adventure editor icons and student-map rendering; full interaction and accessibility review remains.
+- `node_locked.png`, `node_complete.png` and `node_current.png` are wired as state markers, not node types. Verify status readability, keyboard focus and activation in browser acceptance.
+- PR #5 adds a built-in background selector using `background_image_url` and retains existing uploads and map coordinates. The disposable-browser smoke confirmed the picker and student map; verify saved editor/player/mini-map alignment in full browser acceptance.
+- Five quest-giver portraits, four quest badges and three reward images already exist under `static/images/quests/`. PR #5 reuses XP/gold/item symbols in Adventure reward previews. Quest-giver presenter selection still needs a design and explicit selection field or catalogue mapping. Keep story/daily/clan/challenge badges parked until they describe real metadata; they must not invent new quest modes.
+- PR #5 wires the four seeded opponents’ local portraits to Arena, fight and results, with a fallback for missing/remote image URLs. No enemies or battle stats were added or changed. Battle portrait browser review remains open; reconcile deployed/custom monsters separately.
+
+## 4. Powers retained for the art brief
+
+**User decision, 23 September:** retain all **33 default powers**: Warrior 9, Sorcerer 10, Druid 9, universal 5. Keep their current names, class assignments and prerequisite graph. The old examples “Strike / Guard / Rally”, “Bolt / Shield / Focus” and “Heal / Entangle / Renew” are not the seeded list and must not drive commissions.
+
+The following is a catalogue/name freeze for planning, not a claim that current runtime behaviour or balance is accepted. Proposed stable keys are `{class}_{snake_case_name}` (use `universal` for shared powers, omit apostrophes). Store the key independently of editable display names; use it in an icon manifest. The current Ability model has neither a stable slug nor an image field. Backfill known defaults without replacing IDs or teacher edits. Existing `sync-powers` is additive by name and will not apply corrected effects to existing rows.
+
+Before commissioning this pack, resolve these concrete effect contracts:
+
+- **Unbreakable:** description says +15 defence to the clan, but type `buff` creates a power status effect. Recommended correction: retain the name and shield concept, make it a defence effect.
+- **Last Stand:** currently a timed defence effect, not an automatic rescue from 0 HP. Retain that effect and make wording truthful; use shield imagery rather than resurrection imagery. Any interception mechanic would need separate implementation.
+- **Battle Cry, Arcane Spark, Mana Transfer, Power Surge, Arcane Mastery:** currently create timed `power` status effects; they do not refill the spendable power pool. Recommended baseline: describe them as temporary power bonuses and test their actual consumers. Fountain of Mana is the explicit refill. Avoid commissioning contradictory “resource refill” art before this is settled.
+- **Classroom privileges:** ordinary utility powers return generic success; there is no privilege redemption/approval state in that executor. Define whether activation is a request or an already teacher-authorised use, when power is charged/refunded, and how fulfilment is recorded. Do not imply automatic permission to change seats, use notes or take a pass.
+- **Revive / Cheat Death / Rejuvenation:** verify fallen-event integration and rescue semantics. Revive restores 1 HP; Cheat Death selects the better of two Cursed Die outcomes, not a direct resurrection. Ordinary healing at 0 HP and full healing need a consistent policy before sign-off.
+- Verify target rules, prerequisites, four equipped slots, learning PP versus activation power, cooldowns, effect duration and stacking. Current default PP cost is 1 each; cooldown is 0 except Cheat Death at 60 seconds. Do not use equipment tiers as power tiers: powers have basic / advanced / elite and their own unlock levels.
+- Teacher-created powers can keep type-based Material Icon fallbacks. They do not expand the default commissioned pack indefinitely.
+
+Each row below becomes `static/images/powers/{filename}`. Level, activation cost and prerequisite are the current source snapshot, not new balance changes. PNGs contain no text, level numbers or rarity borders. Use distinct silhouettes: warrior steel/red, sorcerer purple/blue, druid green/brown, universal neutral gold/teal.
+
+| Power | Class | Level | Activation power | Prerequisite | Filename | Art concept |
+|---|---|---:|---:|---|---|---|
+| Shield Wall | Warrior | 1 | 2 | — | `warrior_shield_wall.png` | Single shield forming a wall |
+| Battle Cry | Warrior | 2 | 3 | — | `warrior_battle_cry.png` | Horn with an outward rally wave |
+| Seat Swap | Warrior | 3 | 3 | — | `warrior_seat_swap.png` | Two chairs with exchange arrows |
+| Protect Ally | Warrior | 4 | 4 | Shield Wall | `warrior_protect_ally.png` | Shield sheltering an ally |
+| Fortify | Warrior | 6 | 5 | Protect Ally | `warrior_fortify.png` | Linked shields surrounding a team |
+| Frontal Assault | Warrior | 8 | 6 | Fortify | `warrior_frontal_assault.png` | Team banner and rolled assignment pass |
+| Iron Will | Warrior | 10 | 4 | Battle Cry | `warrior_iron_will.png` | Steel helm and steady flame |
+| Last Stand | Warrior | 13 | 8 | Fortify | `warrior_last_stand.png` | Shield braced against impact |
+| Unbreakable | Warrior | 16 | 10 | Last Stand | `warrior_unbreakable.png` | Unbroken ring of linked shields |
+| Arcane Spark | Sorcerer | 1 | 2 | — | `sorcerer_arcane_spark.png` | Bright arcane spark |
+| Mana Transfer | Sorcerer | 2 | 4 | — | `sorcerer_mana_transfer.png` | Energy ribbon linking two hands |
+| Teleport | Sorcerer | 3 | 3 | — | `sorcerer_teleport.png` | Small doorway portal |
+| Invisibility | Sorcerer | 5 | 4 | Arcane Spark | `sorcerer_invisibility.png` | Fading cloak silhouette |
+| Power Surge | Sorcerer | 7 | 6 | Mana Transfer | `sorcerer_power_surge.png` | Concentrated arcane burst |
+| Mana Shield | Sorcerer | 9 | 5 | Arcane Spark | `sorcerer_mana_shield.png` | Shield formed from runes |
+| Time Warp | Sorcerer | 11 | 7 | Power Surge | `sorcerer_time_warp.png` | Hourglass with a circular trail |
+| Cheat Death | Sorcerer | 12 | 8 | Power Surge | `sorcerer_cheat_death.png` | Two dice and a protective charm |
+| Arcane Mastery | Sorcerer | 14 | 9 | Power Surge | `sorcerer_arcane_mastery.png` | Several linked glowing runes |
+| Fountain of Mana | Sorcerer | 17 | 12 | Arcane Mastery | `sorcerer_fountain_of_mana.png` | Overflowing magical fountain |
+| Minor Heal | Druid | 1 | 2 | — | `druid_minor_heal.png` | Leaf and small healing glow |
+| Snack Time | Druid | 2 | 2 | — | `druid_snack_time.png` | Apple and small lunch pouch |
+| Nature's Touch | Druid | 3 | 3 | Minor Heal | `druid_natures_touch.png` | Hand cupping a leaf |
+| Herbal Remedy | Druid | 4 | 3 | Snack Time | `druid_herbal_remedy.png` | Herbal sprig beside an open notebook |
+| Greater Heal | Druid | 6 | 5 | Minor Heal | `druid_greater_heal.png` | Large leaf with strong healing glow |
+| Healing Circle | Druid | 9 | 7 | Greater Heal | `druid_healing_circle.png` | Ring of leaves around a team |
+| Revive | Druid | 11 | 8 | Healing Circle | `druid_revive.png` | Sprout rising in a warm light |
+| Nature's Blessing | Druid | 14 | 10 | Greater Heal | `druid_natures_blessing.png` | Bloom and protective open hands |
+| Rejuvenation | Druid | 17 | 12 | Healing Circle | `druid_rejuvenation.png` | Tree canopy radiating renewal |
+| Quick Rest | Universal | 5 | 3 | — | `universal_quick_rest.png` | Cup of water and restful leaf |
+| Study Buddy | Universal | 7 | 4 | Quick Rest | `universal_study_buddy.png` | Two learners with an open book |
+| Music Pass | Universal | 10 | 5 | Study Buddy | `universal_music_pass.png` | Headphones with a musical note |
+| Late Pass | Universal | 13 | 6 | Music Pass | `universal_late_pass.png` | Assignment sheet with a clock |
+| Teacher's Pet | Universal | 16 | 8 | Late Pass | `universal_teachers_pet.png` | Teacher star and positive message card |
+
+## 5. Updated image production queue
+
+### Batch A — delivered in PR #4 (9)
+
+| File | Subject / purpose | Display surface |
 |---|---|---|
-| M01 | Audit/replace `quest_maps/quest_map.png` | Base illustrated map if node layer sits on a painted map (compress if keeping) |
+| `static/monsters/goblin.png` | Playful goblin opponent; level 1 seed | Arena opponent picker, fight, results |
+| `static/monsters/orc.png` | Orc warrior; level 3 seed | Same |
+| `static/monsters/wizard.png` | Dark Wizard; level 5 seed; clearly distinct from student Sorcerer portraits | Same |
+| `static/monsters/dragon.png` | Fantasy dragon; level 10 seed; no gore/horror | Same |
+| `static/images/adventure_node_icons/node_start.png` | Trailhead flag / beginning | Start node |
+| `static/images/adventure_node_icons/node_quiz.png` | Scroll and question symbol | Quiz node |
+| `static/images/adventure_node_icons/node_choice.png` | Forked path / signpost | Choice node |
+| `static/images/adventure_node_icons/node_milestone.png` | Trophy or summit marker | Milestone node |
+| `static/images/adventure_node_icons/node_end.png` | Finish arch / destination flag, distinct from completed overlay | End node |
 
----
+These five node symbols complete a consistent raster set; the application can continue using existing font fallbacks until they are ready. Opponent files match existing seed paths deliberately.
 
-### Workstream B — Character portrait set *(largest volume)*
+### Batch B — after power effect contract is accepted (33)
 
-**Why:** Spec requires **54** unique full-body (or bust) options. Repo only fully covers **Warrior level 1**; other classes are partial / poorly named.
+Create exactly the 33 power PNGs listed in section 4. Names and roster are retained by user decision; generation is deferred until descriptions, effect semantics and the stable-key mapping are settled. No power artwork was generated during this planning task.
 
-**Path:** `static/images/characters/{warrior|sorcerer|druid}/{male|female}/level{1|2|3}/`
+### Optional, not in the required queue (2)
 
-**Naming (mandatory):**
+- `static/images/adventure_node_icons/node_failed.png`: only if a distinct retry state is chosen. Keep current CSS/text feedback otherwise.
+- `static/images/adventure_backgrounds/adventure_bg_classroom_fantasy.png`: optional fourth map theme.
 
-```text
-{option}_{class}_{gender}_level{level}.png
-```
+### Existing art to reuse or re-export — do not commission again
 
-Examples: `1_warrior_male_level1.png`, `3_druid_female_level2.png`
+- All 54 character options, including the six compressed Warrior level-1 exports in PR #4.
+- All 43 equipment icons, all three character backgrounds and all three pack map backgrounds.
+- Nine existing map symbols, twelve quest assets, six compact class avatars, ten clan icons, six achievement badges, app icon and welcome background.
+- Keep `quest_map.png` available; assigning the level backdrops removes the need for it as an Equipment default.
+- No new gear variants, badges, class-tinted backgrounds, animated sprites or 3D models are part of this plan. Extra equipment art requires an approved catalogue entry first.
 
-**Where they sit:**
+**Production count: 9 Batch A images delivered + 33 power icons deferred = 42 selected new images.** Two optional images are excluded. Six Warrior level-1 portraits were re-exported, not newly commissioned. This is the source-defined roster, not an audit of teacher-created database content.
 
-- Character creation picker
-- Character page main portrait
-- Equipment page centre “paper doll”
-- Clan bar / party mini-cards (may use same art scaled down, or the smaller `static/avatars/` set)
+## 6. Delivery and acceptance
 
-#### Matrix (54 total)
+- Icons: transparent PNG, 256×256 delivery; strong silhouette readable at 48–64 px. Opponent portraits: 512×512 master, 256×256 transparent web export. Match existing illustrative art and use school-appropriate fantasy.
+- Aim below 200 kB per web icon/portrait (prefer below 100 kB where quality allows). Retain larger masters outside served web assets. Backgrounds: 1920×1080 or 1600×900, compressed separately.
+- Keep exact lowercase filenames, underscores and existing path contracts. Do not rename historical files without updating persisted URLs. Track source/licence and master/export location in the handoff.
+- Before integration: confirm all files decode, dimensions and transparency are correct, filenames are unique, manifest paths exist and no accidental exact duplicate exports were delivered.
+- PR #5 focused tests cover fresh, legacy and partially synced equipment data, idempotent reruns, inventory ID preservation, character portrait selection, Adventure rendering routes and battle portrait fallbacks. Still validate catalogue sync and power IDs/prerequisites on a recoverable database copy before production use.
+- Browser acceptance: character creation and option retention; level boundaries; all three classes in Shop; buy/equip/unequip/reload; clan icons; all nine Adventure types in editor/player; overrides and backgrounds; reward displays; all four battle opponents; power fallbacks and custom powers; small screens and keyboard use. Inspect actual images and network requests, not only response status codes.
+- After merge: confirm the deployment contains both assets and code, apply the reviewed database migration to the intended environment with a recoverable backup, then repeat the key walkthrough there. A merged PR is not evidence of deployment or a successful database update.
 
-| Class | Gender | Level 1 | Level 2 | Level 3 | Subtotal |
-|---|---|---|---|---|---|
-| Warrior | Male | 3 options | 3 | 3 | 9 |
-| Warrior | Female | 3 | 3 | 3 | 9 |
-| Sorcerer | Male | 3 | 3 | 3 | 9 |
-| Sorcerer | Female | 3 | 3 | 3 | 9 |
-| Druid | Male | 3 | 3 | 3 | 9 |
-| Druid | Female | 3 | 3 | 3 | 9 |
-| **Total** | | | | | **54** |
+## 7. Immediate next checkpoint
 
-**Level meaning (visual):**
-
-- **Level 1** — Starter look (basic kit)
-- **Level 2** — Clear upgrade (better gear/details)
-- **Level 3** — Advanced (glow / prestige details; still age-appropriate)
-
-#### Current gap (from audit)
-
-| Gap | Action |
-|---|---|
-| Warrior male/female **level 2 & 3** folders missing | Create 12 images (2 genders × 2 levels × 3 options) |
-| Sorcerer / Druid files often named `Sorcerer (1) - Copy.png` etc. | Rename to convention; fill any missing level/gender slots to reach 54 |
-| Files ~1.5–2 MB | Re-export compressed |
-
-**Also keep (already exist, small set):** `static/avatars/{warrior|sorcerer|druid}_{m|f}.png` — used as compact class icons in headers. Refresh only if style drifts.
-
-**Teacher:** `static/avatars/teacher_1_avatar.png` — optional refresh; not blocking.
-
----
-
-### Workstream C — Equipment & shop icons
-
-**Why:** Shop + Equipment redesign show an **image on every item card** and on equip slots. Most current art is **tier 1** only; filenames have spaces; files are huge.
-
-**Path:** `static/images/equipment/{warrior|sorcerer|druid}/`
-
-**Suggested naming:**
-
-```text
-{class}_{tier}_{slot}_{item_slug}.png
-```
-
-Example: `warrior_1_weapon_sword.png`, `sorcerer_2_armor_cloak.png`
-
-**Where they sit:**
-
-- Shop item grid (category filters: Weapon / Armor / Accessory)
-- Equipment inventory grid
-- Equipment slots on character (weapon / armour / accessory overlays)
-- Teacher shop config (same icons)
-
-#### Recommended catalogue to create / complete
-
-Per class, aim for a readable shop depth:
-
-| Slot | Tier 1 | Tier 2 | Tier 3 | Notes |
-|---|---|---|---|---|
-| Weapon A | ✓ | ✓ | ✓ | Class-themed primary |
-| Weapon B | ✓ | ✓ | optional | Alternate weapon type |
-| Armor A | ✓ | ✓ | ✓ | |
-| Armor B | ✓ | optional | optional | Variant |
-| Accessory A | ✓ | ✓ | ✓ | Ring / pendant / etc. |
-| Accessory B | ✓ | optional | optional | Shield / book / bracers |
-
-**Minimum viable new commission (if only filling gaps):**
-
-- **Warrior:** Tier 2–3 for sword/axe/bow, plate/leather, ring/shield → ~8–10 new  
-- **Sorcerer:** Tier 2–3 staff/wand, cloaks, book/ring → ~8–10 new  
-- **Druid:** Tier 2–3 staff/flail, cloaks, bracers/pendant → ~8–10 new  
-
-**Plus:** Re-export / rename existing ~19 tier-1 assets to the naming scheme and compress.
-
-**Count guide:** ~**24–30 new** icons if aiming at a full tier ladder; ~**19 renames/compress** for existing.
-
-**Placeholder to retire:** `static/images/test_sword.png`, `test_armor.png`, `test_ring.png` — replace references with real equipment art.
-
----
-
-### Workstream D — Scene / level backgrounds
-
-**Why:** Character page uses a background behind the model; only **Level 1** core background exists.
-
-**Path:** `static/images/Backgrounds/Core Level Backgrounds/`
-
-| ID | Filename | Purpose | Where it sits |
-|---|---|---|---|
-| L1 | `Level 1.png` *(exists — compress)* | Early-game character backdrop | Character / Equipment main stage |
-| L2 | `Level 2.png` **create** | Mid progression backdrop | Same, when level band = 2 |
-| L3 | `Level 3.png` **create** | Late progression backdrop | Same, when level band = 3 |
-| W1 | `welcome_background.jpg` *(exists)* | Login / welcome | Welcome screen |
-
-**Optional:** Class-tinted variants (warrior forge / sorcerer tower / druid grove) if you want stronger identity on Character page.
-
-**Count:** **2 required new** (+ compress L1/welcome)
-
----
-
-### Workstream E — Quest page cast & symbols
-
-**Why:** Quest redesign specifies quest-giver portrait, type badge, rewards — currently not a dedicated art pack.
-
-**Where they sit:** Student **Quest** page (sidebar list + detail panel).
-
-#### E1. Quest-giver avatars (suggested starter cast)
-
-| ID | Filename | Role in fiction | UI |
-|---|---|---|---|
-| QG1 | `questgiver_archivist.png` | Master Archivist — story/knowledge quests | Detail panel |
-| QG2 | `questgiver_captain.png` | Challenge / PE / competition quests | Detail panel |
-| QG3 | `questgiver_sage.png` | Magic / stretch quests | Detail panel |
-| QG4 | `questgiver_ranger.png` | Outdoor / exploration quests | Detail panel |
-| QG5 | `questgiver_teacher.png` | Generic “your teacher” fallback | Detail panel |
-
-**Count:** **5**
-
-#### E2. Quest type badges
-
-| ID | Filename | Purpose |
-|---|---|---|
-| QT1 | `badge_story.png` | Story Quest label |
-| QT2 | `badge_daily.png` | Daily Quest label |
-| QT3 | `badge_clan.png` | Clan Quest label |
-| QT4 | `badge_challenge.png` | Challenge / timed |
-
-**Count:** **4**
-
-#### E3. Reward symbols (if not using Material Icons)
-
-| ID | Filename | Purpose |
-|---|---|---|
-| R1 | `reward_xp.png` | XP reward chip |
-| R2 | `reward_gold.png` | Gold reward chip |
-| R3 | `reward_item.png` | Item reward chip |
-
-**Count:** **3** (optional if Material Icons remain)
-
-**Existing badges to keep:** `static/images/badges/achieve1.png` … `achieve6.png` — achievement gallery / progress. Optionally redesign for style consistency later (not blocking Shop/Equipment).
-
----
-
-### Workstream F — Powers / ability icons *(medium)*
-
-**Why:** Character sidebar has a **powers grid**. Backend abilities exist; custom icons beat generic Material Icons for fantasy feel.
-
-**Suggested path:** `static/images/powers/` *(create folder)*
-
-| Class | Example powers to icon | Count guide |
-|---|---|---|
-| Warrior | Strike, Guard, Rally | 3–6 |
-| Sorcerer | Bolt, Shield, Focus | 3–6 |
-| Druid | Heal, Entangle, Renew | 3–6 |
-
-**Where they sit:** Character page powers grid; ability-use feedback.
-
-**Count:** **9–18** depending on how many abilities are live in seed data.
-
-*Defer until ability list is frozen in seed DB — then 1:1 icon per ability slug.*
-
----
-
-### Workstream G — Brand & chrome *(low / polish)*
-
-| Asset | Path | Status | Action |
-|---|---|---|---|
-| App icon | `static/images/legends_icon.png` (+ root duplicate) | Exists | Compress; drop duplicate root file if unused |
-| Clan icons | `static/images/clan_icons/clan_icon (1–10).png` | 10 exist | Compress; rename to `clan_01.png`…`clan_10.png` |
-| Nav icons | Material Icons CDN | OK for now | Custom set only if brand pass |
-
-**Where clan icons sit:** Teacher clan create/edit picker; student clan display.
-
----
-
-## 4. Master production checklist
-
-### Phase 1 — Unblock Adventure + Shop feel (do first)
-
-- [ ] A1 Node icons (9–10)
-- [ ] A2 Adventure backgrounds (3–4)
-- [ ] C Rename/compress existing equipment; kill `test_*.png` usage
-- [ ] C Create tier 2–3 equipment minimum (~24)
-- [ ] D Level 2 & 3 backgrounds
-- [ ] B Warrior level 2 & 3 (12 portraits)
-
-### Phase 2 — Complete character identity
-
-- [ ] B Audit sorcerer/druid slots → fill to 54
-- [ ] B Rename all portraits to convention
-- [ ] B Compress all portraits
-- [ ] Refresh `static/avatars/*` if style mismatch
-
-### Phase 3 — Quest & powers flavour
-
-- [ ] E1 Quest-giver avatars (5)
-- [ ] E2 Quest type badges (4)
-- [ ] E3 Reward chips (optional 3)
-- [ ] F Power icons after ability list locked (9–18)
-
-### Phase 4 — Hygiene & brand
-
-- [ ] Compress clan icons + badges + app icon
-- [ ] Rename clan icons without spaces
-- [ ] Remove unused root `Legends of Learning icon..png` if redundant
-- [ ] Spot-check every `image_url` in equipment seed data
-
----
-
-## 5. Counts at a glance
-
-| Workstream | New art (approx.) | Also: rename/compress |
-|---|---:|---:|
-| A Adventure nodes + BGs | 13–14 | 1 map plate |
-| B Character portraits | ~12–40 (depends on what’s already valid) | toward 54 total |
-| C Equipment | 24–30 | ~19 existing |
-| D Level backgrounds | 2 | 2 existing |
-| E Quest cast/badges | 9–12 | 6 achieve badges optional |
-| F Powers | 9–18 | — |
-| G Brand/clan | 0–10 refreshes | 10 clan + icon |
-| **Rough total new** | **~70–120** | **heavy export pass** |
-
----
-
-## 6. Handoff package for illustrator / generator
-
-For each batch, supply:
-
-1. This worklist section (A–F) as the brief  
-2. 2–3 reference screenshots from `Ideas/Student UI redesign/*/screen.png`  
-3. Class colour cues (warrior steel/red, sorcerer purple/blue, druid green/brown)  
-4. Export checklist: size, PNG, transparency, filename table  
-5. “School-safe fantasy” constraint line  
-
-Acceptance: asset opens in UI on the correct surface; filename matches code/seed; file under size budget; no broken image placeholders on Character / Shop / Equipment / Map.
-
----
-
-## 7. Out of scope (do not commission yet)
-
-- Full animated sprites / walk cycles  
-- 3D models  
-- Sound effects  
-- Custom font files (Cinzel + Lato already via Google Fonts)  
-- Replacing Material Icons for every nav button  
-- Real student / teacher photos  
-
----
-
-*Generated from repo audit of `static/images`, `STUDENT-UI-REDESIGN-GUIDE.md`, and character/equipment READMEs.*
+Review [PR #5 — art integration wiring](https://github.com/dsuth10/Legends-of-Learning-4/pull/5) (**open**) and validate the equipment migration/sync on a recoverable database copy. Completed disposable-browser smoke on a temporary database confirmed Adventure editor icons/background picker, student-map progression/reward symbols, and Character/Equipment rendering with real catalogue paths. PR #5 fixes the shared-header fallback with neutral `/static/avatars/default.svg` art and a teacher-specific fallback. Battle portraits and full interaction/level-boundary checks remain open. The combined focused integration suite passed 148 tests; the full suite passed 335 and failed two unrelated classroom/legacy quest tests. Both failures were reproduced against baseline source `4251d46` with its historical ignored migration files restored for test setup. Do not treat passing tests or a merged PR as live-deployment or database evidence. Batch B waits for the power effect contract. After visual review, decide whether to regenerate the six Warrior level-1 scenes to match the newer cut-out style.

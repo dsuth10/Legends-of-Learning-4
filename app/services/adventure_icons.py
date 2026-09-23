@@ -1,4 +1,4 @@
-"""Curated Material Icon catalog and type defaults for adventure nodes."""
+"""Adventure node artwork catalog and type defaults."""
 
 from __future__ import annotations
 
@@ -7,15 +7,17 @@ from typing import Any, Dict, List, Optional
 from app.models.adventure import NodeType
 
 ICON_CATALOG: List[Dict[str, Any]] = [
-    {"id": "flag", "label": "Flag", "ligature": "flag", "default_for": ["start"]},
-    {"id": "auto_stories", "label": "Story", "ligature": "auto_stories", "default_for": ["story"]},
-    {"id": "swords", "label": "Swords", "ligature": "swords", "default_for": ["battle"]},
-    {"id": "quiz", "label": "Quiz", "ligature": "quiz", "default_for": ["quiz"]},
-    {"id": "alt_route", "label": "Branch", "ligature": "alt_route", "default_for": ["choice"]},
-    {"id": "redeem", "label": "Reward", "ligature": "redeem", "default_for": ["reward"]},
-    {"id": "emoji_events", "label": "Milestone", "ligature": "emoji_events", "default_for": ["milestone"]},
-    {"id": "cruelty_free", "label": "Boss", "ligature": "cruelty_free", "default_for": ["boss"]},
-    {"id": "sports_score", "label": "Finish", "ligature": "sports_score", "default_for": ["end"]},
+    {"id": "start", "label": "Start", "ligature": "flag", "image_url": "/static/images/adventure_node_icons/node_start.png", "default_for": ["start"]},
+    {"id": "story", "label": "Story", "ligature": "auto_stories", "image_url": "/static/images/adventure_node_icons/node_story.png", "default_for": ["story"]},
+    {"id": "battle", "label": "Battle", "ligature": "swords", "image_url": "/static/images/adventure_node_icons/node_battle.png", "default_for": ["battle"]},
+    {"id": "quiz", "label": "Quiz", "ligature": "quiz", "image_url": "/static/images/adventure_node_icons/node_quiz.png", "default_for": ["quiz"]},
+    {"id": "choice", "label": "Choice", "ligature": "alt_route", "image_url": "/static/images/adventure_node_icons/node_choice.png", "default_for": ["choice"]},
+    {"id": "reward", "label": "Reward", "ligature": "redeem", "image_url": "/static/images/adventure_node_icons/node_treasure.png", "default_for": ["reward"]},
+    {"id": "milestone", "label": "Milestone", "ligature": "emoji_events", "image_url": "/static/images/adventure_node_icons/node_milestone.png", "default_for": ["milestone"]},
+    {"id": "boss", "label": "Boss", "ligature": "cruelty_free", "image_url": "/static/images/adventure_node_icons/node_boss.png", "default_for": ["boss"]},
+    {"id": "end", "label": "Finish", "ligature": "sports_score", "image_url": "/static/images/adventure_node_icons/node_end.png", "default_for": ["end"]},
+    {"id": "quest", "label": "Quest", "ligature": "explore", "image_url": "/static/images/adventure_node_icons/node_quest.png", "default_for": []},
+    {"id": "rest", "label": "Rest", "ligature": "bedtime", "image_url": "/static/images/adventure_node_icons/node_rest.png", "default_for": []},
     {"id": "castle", "label": "Castle", "ligature": "castle", "default_for": []},
     {"id": "forest", "label": "Forest", "ligature": "forest", "default_for": []},
     {"id": "pets", "label": "Creature", "ligature": "pets", "default_for": []},
@@ -27,7 +29,7 @@ ICON_CATALOG: List[Dict[str, Any]] = [
 _DEFAULT_BY_TYPE = {}
 for _icon in ICON_CATALOG:
     for _node_type in _icon["default_for"]:
-        _DEFAULT_BY_TYPE[_node_type] = _icon["ligature"]
+        _DEFAULT_BY_TYPE[_node_type] = _icon["image_url"]
 
 _KNOWN_LIGATURES = {icon["ligature"] for icon in ICON_CATALOG}
 
@@ -39,7 +41,7 @@ def catalog_payload() -> Dict[str, Any]:
 def default_icon_for(node_type: str) -> str:
     if not node_type:
         return "flag"
-    return _DEFAULT_BY_TYPE.get(node_type, "flag")
+    return _DEFAULT_BY_TYPE.get(node_type, "/static/images/adventure_node_icons/node_start.png")
 
 
 def normalize_icon_url(value: Optional[str]) -> Optional[str]:

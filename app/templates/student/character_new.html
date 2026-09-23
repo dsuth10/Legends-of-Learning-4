@@ -54,22 +54,22 @@
     </div>
     {% endif %}
     <div class="absolute inset-0 z-0">
-        <img alt="Fantasy Landscape Background" class="w-full h-full object-cover"
-             src="{{ url_for('static', filename='images/Backgrounds/Core Level Backgrounds/Level 1.png') }}">
+        <img alt="" aria-hidden="true" class="w-full h-full object-cover"
+             src="{{ main_character.background_url if main_character else url_for('static', filename='images/Backgrounds/Core Level Backgrounds/Level 1.png') }}">
         <div class="absolute inset-0 bg-white/30 dark:bg-black/40"></div>
     </div>
     <main class="relative z-10 h-full flex items-center justify-center">
         <div class="relative w-full h-full max-w-4xl mx-auto flex items-end justify-center pb-12">
             <div class="absolute bottom-20 w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[100px] animate-pulse"></div>
-            <img alt="{{ main_character.name if main_character else 'Character' }}"
+            <img alt="{{ (main_character.name ~ ' portrait') if main_character else 'Character portrait unavailable' }}"
                  class="h-[85%] object-contain drop-shadow-2xl relative z-10 mask-image-gradient"
-                 src="{{ main_character.avatar_url if main_character else '/static/avatars/default.png' }}">
+                 src="{{ main_character.portrait_url if main_character else '/static/avatars/default.svg' }}">
             {% if party_members %}
                 <div class="absolute bottom-4 right-8 flex space-x-[-20px] scale-75 origin-bottom-right opacity-90" data-student-chrome="party">
                     {% for member in party_members %}
-                        <img alt="{{ member.name }}" class="w-24 h-32 object-cover rounded-lg border-2 border-white dark:border-gray-700 shadow-lg"
+                        <img alt="{{ member.name }} portrait" class="w-24 h-32 object-contain rounded-lg border-2 border-white dark:border-gray-700 shadow-lg"
                              style="transform: rotate({{ [-5, 5, -2][loop.index0] }}deg);"
-                             src="{{ member.avatar_url or '/static/avatars/default.png' }}">
+                             src="{{ member.portrait_url or '/static/avatars/default.svg' }}">
                     {% endfor %}
                 </div>
             {% endif %}

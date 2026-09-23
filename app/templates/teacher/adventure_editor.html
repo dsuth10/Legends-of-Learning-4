@@ -153,6 +153,13 @@
           <div id="settings-share-help" class="form-text">Draft adventures must be published before sharing.</div>
         </div>
         <div class="mb-2">
+          <label class="form-label" for="settings-background-preset">Built-in map background</label>
+          <select class="form-select mb-2" id="settings-background-preset">
+            <option value="">No background</option>
+            <option value="/static/images/adventure_backgrounds/adventure_bg_forest.png">Forest</option>
+            <option value="/static/images/adventure_backgrounds/adventure_bg_castle.png">Castle</option>
+            <option value="/static/images/adventure_backgrounds/adventure_bg_arcane.png">Arcane</option>
+          </select>
           <label class="form-label" for="settings-background-file">Background image</label>
           <input type="file" class="form-control" id="settings-background-file"
                  accept="image/png,image/jpeg,image/webp">
